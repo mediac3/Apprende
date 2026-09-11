@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n### 1) Título exacto de la pantalla\n**ASIGNATURAS**\n\n### 2) Campos de formulario visibles\n*   **Mostrar** (Tipo: *Select*) — Opción visible: `All`\n*   **Buscar** (Tipo: *Texto*)\n\n### 3) Botones visibles\n*   **Nuevo Registro** (Botón principal, color verde, con icono de círculo más)\n*   Iconos de acción por fila en la tabla:\n    *   ✏️ (Editar - lápiz)\n    *   🗑️ (Eliminar - papelera)\n*   Controles de paginación:\n    *   `<` (Anterior)\n    *   `>` (Siguiente)\n\n### 4) Tabs o secciones\n*   Barra de navegación superior (menú principal):\n    *   **ESTUDIANTES**\n    *   **CALIFICACIONES**\n    *   **MÓDULOS**\n    *   **CONFIGURACIÓN**\n    *   **REPORTES**\n*   Barra lateral izquierda (iconos, sin etiquetas de texto visibles excepto por contexto):\n    *   Menú/Listado\n    *   Usuarios/Estudiantes\n    *   Calificaciones/Notas\n    *   Configuración/Engranaje\n    *   Módulos/Archivos\n    *   Grupos/Personas\n    *   Reportes/Gráficos\n    *   Calculadora\n    *   Salir/Cerrar sesión\n\n### 5) Tabla con sus columnas EXACTAS\n**Nombre de la tabla:** Lista de asignaturas (implícito por el título)\n\n| Columna | Tipo de dato / Descripción |\n| :--- | :--- |\n| **Orden** | Número (entero, ordenable) |\n| **Nombre** | Texto (nombre completo de la asignatura) |\n| **Abreviatura** | Texto (código corto) |\n| **Promedia** | Etiqueta/Badge (`Sí` o `No`) |\n| **Estado** | Etiqueta/Badge (`Activo`) |\n| *(Acciones)* | Iconos de editar y eliminar |\n\n**Contenido literal de las filas visibles (41 registros):**\n\n| Orden | Nombre | Abreviatura | Promedia | Estado |\n|:---:|---|:---:|:---:|:---:|\n| 1 | Humanidades: Lengua Cast. e Idioma Extranjero | HUM | Sí | Activo |\n| 2 | Ciencias sociales, historia, geografía, constitución política y democracia | SOC | Sí | Activo |\n| 3 | Matemáticas | MAT | Sí | Activo |\n| 4 | Ciencias Naturales y Educación Ambiental | NAT | Sí | Activo |\n| 5 | Educación artística y cultural | ART | Sí | Activo |\n| 6 | Educación ética y en valores humanos | ETI | Sí | Activo |\n| 7 | Educación física, recreación y deportes | EDF | Sí | Activo |\n| 8 | Educación religiosa | RELI | Sí | Activo |\n| 9 | Aritmética | Arit | Sí | Activo |\n| 10 | Tecnología e informática | TECN | Sí | Activo |\n| 11 | Lengua Castellana | ESP | Sí | Activo |\n| 12 | Lectoescritura | LECT | Sí | Activo |\n| 13 | Idioma Extranjero: Inglés | ING | Sí | Activo |\n| 14 | Desarrollo motriz | DMot | No | Activo |\n| 15 | Desarrollo Socioafectivo | DSof | No | Activo |\n| 16 | Desarrollo Cognoscitivo | DCogn | No | Activo |\n| 17 | Habilidades comunicativas | HCom | Sí | Activo |\n| 18 | Desarrollo Espiritual | Despi | No | Activo |\n| 19 | Cátedra Afrocolombiana | AFRO | Sí | Activo |\n| 20 | Estadística | EST | Sí | Activo |\n| 21 | Emprendimiento | EMP | Sí | Activo |\n| 22 | Cátedra De La Paz | PAZ | Sí | Activo |\n| 23 | Ciencias Sociales, Filosofía, C. Políticas, C. Económicas y Democracia. | CFP | No | Activo |\n| 24 | Humanidades Idioma extranjero inglés | Hing | Sí | Activo |\n| 25 | Humanidades Lengua castellana | HCas | Sí | Activo |\n| 26 | Geometría | Geo | Sí | Activo |\n| 27 | Biología | Bio | Sí | Activo |\n| 28 | Ecología | Eco | Sí | Activo |\n| 29 | Química | Quim | Sí | Activo |\n| 30 | Física | Fis | Sí | Activo |\n| 31 | Historia | Hist | Sí | Activo |\n| 32 | Geografía, Constitución Política, Democracia Y Filosofía | GCDF | Sí | Activo |\n| 33 | Etnoeducación | Ethno | Sí | Activo |\n| 34 | Álgebra | ALG | Sí | Activo |\n| 35 | Biología y ecología | BECO | Sí | Activo |\n| 36 | Ciencias sociales, historia y geografía | HistGEOG | Sí | Activo |\n| 37 | Constitución política y democracia | POLyDEMO | Sí | Activo |\n| 38 | Expresión corporal, recreación y deportes | EXCORP | Sí | Activo |\n| 39 | Educación y acondicionamiento físico (Nutrición y salud) | NUTRI | Sí | Activo |\n| 40 | Filosofía | FILO | Sí | Activo |\n| 41 | Convivencia escolar | CEsc | Sí | Activo |\n\n### 6) Texto informativo\n*   **\"Mostrar\"** (etiqueta junto al select)\n*   **\"registros\"** (texto junto al selector \"Mostrar All\")\n*   **\"Buscar\"** (etiqueta del campo de búsqueda en la parte superior derecha de la tabla)\n*   **\"Mostrando 1 a 41 de 41 registros\"** (texto de paginación inferior izquierdo)\n*   **\"2026 © Una aplicación web desarrollada por Colegio en línea\"** (pie de página inferior)\n*   **\"Tutoriales\"** (enlace en el pie de página inferior derecho)\n*   **\"Buscar estudiante...\"** (placeholder en la barra de búsqueda global superior derecha)\n*   **\"CHAT\"** (etiqueta en los botones flotantes púrpuras laterales)",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789163963,
+  "id": "202609120558556caf0a82b0534e5b",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609120558556caf0a82b0534e5b",
+  "usage": {
+    "completion_tokens": 1545,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 4138
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n### 1) Título exacto de la pantalla\n**EDITAR MODELO EVALUATIVO**\n\n### 2) TODOS los campos de formulario visibles\n*   **Etiqueta:** `Año *` | **Tipo:** Select (desplegable) | **Valor actual/placeholder:** 2026 | *(Nota: Presenta una \"X\" para limpiar y una flecha para desplegar)*\n*   **Etiqueta:** `Escala Valorativa *` | **Tipo:** Select (desplegable) | **Valor actual/placeholder:** Superior | *(Nota: Presenta una \"X\" para limpiar y una flecha para desplegar)*\n*   **Etiqueta:** `Nota Minima *` | **Tipo:** Number (numérico) | **Valor actual/placeholder:** 4,5 | *(Nota: Presenta un icono de control numérico/stepper a la derecha)*\n*   **Etiqueta:** `Nota Maxima *` | **Tipo:** Number (numérico) | **Valor actual/placeholder:** 5.00 | *(Nota: Presenta un icono de control numérico/stepper a la derecha)*\n\n### 3) Botones visibles\n*   **Volver al listado** (Ubicado en la esquina superior derecha del contenedor principal, estilo enlace con icono de flecha izquierda)\n*   **Actualizar** (Botón principal de acción, color verde, ubicado alineado a la derecha debajo del formulario)\n\n### 4) Tabs o secciones\nNo se observan tabs o secciones divididas en esta pantalla específica.\n\n### 5) Tablas con sus columnas EXACTAS\nNo hay tablas visibles en esta vista.\n\n### 6) Texto informativo\n*   **Pie de página izquierdo:** `2026 © Una aplicación web desarrollada por Colegio en línea`\n*   **Pie de página derecho:** `Tutoriales`\n*   **Barra superior derecha (placeholder):** `Buscar estudiante...`\n*   **Menú superior (navegación principal):** `ESTUDIANTES`, `CALIFICACIONES`, `MÓDULOS`, `CONFIGURACIÓN` (activo), `REPORTES`\n*   **Elemento flotante (esquina inferior derecha):** Icono circular morado con el texto `CHAT`",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789164018,
+  "id": "20260912060005fedfe4f6a0144182",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912060005fedfe4f6a0144182",
+  "usage": {
+    "completion_tokens": 523,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3116
+  }
+}

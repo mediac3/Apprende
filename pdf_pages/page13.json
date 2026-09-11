@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n### 1) Título exacto de la pantalla\n**EDITAR INSTITUCIÓN**\n\n### 2) TODOS los campos de formulario visibles\n*(Nota: Los campos marcados con * son obligatorios según la interfaz)*\n\n*   **Nombre** * | Tipo: **Texto** | Valor: `CENTRO EDUCATIVO UNIÓN 15`\n*   **Nit** * | Tipo: **Texto** | Valor: `811019108-2`\n*   **Dane** * | Tipo: **Texto** | Valor: `205147000597`\n*   **Resolución** * | Tipo: **Texto** | Valor: `S 127082 3/Octubre de 2014`\n*   **Ciudad** * | Tipo: **Select** (Desplegable) | Opción seleccionada: `Carepa - Antioquia`\n*   **Dirección** * | Tipo: **Texto** | Valor: `CAREPA`\n*   **E-Mail** * | Tipo: **Texto** (email) | Valor: `mavame06@gmail.com`\n*   **Código ifces** | Tipo: **Texto** | Valor: (vacío)\n*   **Teléfono** | Tipo: **Texto** (o número) | Valor: (vacío)\n\n### 3) Botones visibles\n*   **Volver al listado** (Ubicado en la esquina superior derecha del formulario, con icono de flecha izquierda)\n*   **Actualizar** (Botón principal de acción, color verde oscuro, ubicado en la parte inferior derecha del formulario)\n*   Botón flotante circular púrpura con icono de chat/mensajería (esquina inferior derecha)\n\n### 4) Tabs o secciones\nNo hay tabs ni secciones divididas visibles en esta pantalla. Es un formulario único y continuo.\n\n### 5) Tablas con sus columnas EXACTAS\nNo hay tablas visibles en esta pantalla.\n\n### 6) Texto informativo\n*   **Pie de página (izquierda):** `2025 © Una aplicación web desarrollada por Colegio en línea`\n*   **Pie de página (derecha):** `Tutoriales`\n*   **Barra superior (buscador):** Placeholder `Buscar estudiante...`\n*   **Menú de navegación principal:** `ESTUDIANTES` | `CALIFICACIONES` | `MÓDULOS` | `CONFIGURACIÓN` (activo/seleccionado) | `REPORTES`\n*   **Logo/Marca:** `iPro` (en la barra superior izquierda)",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789164091,
+  "id": "20260912060118070dc8cfd5434d62",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912060118070dc8cfd5434d62",
+  "usage": {
+    "completion_tokens": 583,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3176
+  }
+}

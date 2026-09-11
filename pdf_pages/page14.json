@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n**1) Título exacto de la pantalla:**\n`INSTITUCIÓN`\n\n**2) Campos de formulario visibles:**\n*   **Etiqueta:** `Mostrar`\n    *   **Tipo:** Select (desplegable)\n    *   **Valor seleccionado:** `10`\n    *   **Texto adyacente:** `registros`\n*   **Etiqueta:** `Buscar:`\n    *   **Tipo:** Texto (campo de búsqueda)\n    *   **Ubicación:** Alineado a la derecha, sobre la tabla\n\n**3) Botones visibles:**\n*   **En la barra superior de navegación:**\n    *   `ESTUDIANTES`\n    *   `CALIFICACIONES`\n    *   `MÓDULOS`\n    *   `CONFIGURACIÓN` (activo/seleccionado)\n    *   `REPORTES`\n    *   Botón con icono de lupa y texto: `Buscar estudiante...`\n    *   Botón con icono de campana (notificaciones)\n    *   Botón con imagen de perfil de usuario\n*   **En la barra lateral izquierda (menú vertical):**\n    *   Icono de lista (menú)\n    *   Icono de usuario (personas/estudiantes)\n    *   Icono de portapapeles/calendario\n    *   Icono de actualización/sincronización\n    *   Icono de carpeta\n    *   Icono de grupo de personas\n    *   Icono de documento\n    *   Icono de gráfico estadístico\n    *   Icono de calculadora\n    *   Icono de salida/flecha\n*   **Dentro de la tabla (fila de datos):**\n    *   Icono de lápiz/editar (color verde)\n    *   Icono de papelera/basura o eliminar (color naranja/rojo)\n*   **En la paginación (pie de tabla):**\n    *   Flecha izquierda `<` (página anterior)\n    *   Número `1` (página actual, resaltado en verde oscuro)\n    *   Flecha derecha `>` (página siguiente)\n*   **Flotante (esquina inferior derecha):**\n    *   Botón circular púrpura con icono de chat y texto `CHAT`\n\n**4) Tabs o secciones:**\nNo hay tabs visibles en esta pantalla específica. La sección activa es \"CONFIGURACIÓN\" en el menú principal, y el submódulo es \"INSTITUCIÓN\".\n\n**5) Tablas con sus columnas EXACTAS:**\n\n| Columna 1 | Columna 2 | Columna 3 | Columna 4 | Columna 5 | Columna 6 | Columna 7 |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n| *(Imagen/Logo)* | **Nombre** | **Nit** | **Dane** | **Resolución** | **Email** | **Plan** |\n\n*Datos de la fila visible:*\n*   **Columna 1 (Imagen):** Logo institucional circular\n*   **Nombre:** `CENTRO EDUCATIVO UNIÓN IS`\n*   **Nit:** `81101908-2`\n*   **Dane:** `205147000597`\n*   **Resolución:** `S 127082 3/Octubre de 2014`\n*   **Email:** `mavame06@gmail.com`\n*   **Plan:** *(vacío)*\n\n**6) Texto informativo:**\n*   Sobre la tabla (izquierda): `Mostrar 10 registros`\n*   Bajo la tabla (izquierda): `Mostrando 1 a 1 de 1 registros`\n*   En el pie de página (centro): `2026 © Una aplicación web desarrollada por Colegio en línea`\n*   En el pie de página (derecha): `Tutoriales`",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789164109,
+  "id": "202609120601333cd83bb4e8b14163",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609120601333cd83bb4e8b14163",
+  "usage": {
+    "completion_tokens": 877,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3470
+  }
+}

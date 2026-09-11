@@ -35,6 +35,17 @@ export type ModuleKey =
   | "custom-module-builder"
   // Aprobación de módulos (rol rector)
   | "module-approvals"
+  // Módulos de parámetros del sistema (PDF)
+  | "param-academic-years"
+  | "param-subjects"
+  | "param-evaluation-scales"
+  | "param-indicator-adjectives"
+  | "param-evaluation-models"
+  | "param-institution"
+  | "param-branches"
+  | "param-journeys"
+  | "param-report-templates"
+  | "param-report-variables"
   // Módulos personalizados publicados — se usa el prefijo `custom:<moduleId>`
   | string; // permite cualquier string para soportar custom:<id>
 

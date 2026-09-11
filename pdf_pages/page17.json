@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n**1) Título exacto de la pantalla**\n*   **CREAR REPORTE**\n\n**2) Campos de formulario visibles**\n*   **Etiqueta:** `Nombre *` | **Tipo:** Texto\n*   **Etiqueta:** `Slug *` | **Tipo:** Texto\n\n**3) Botones visibles**\n*   `Volver al listado` (Botón de enlace/retorno, ubicado en la esquina superior derecha del contenedor)\n*   `Guardar` (Botón primario, color verde, alineado a la derecha)\n\n**4) Tabs o secciones**\n*   No hay tabs o secciones visibles en esta pantalla.\n\n**5) Tablas con sus columnas EXACTAS**\n*   No hay tablas visibles en esta pantalla.\n\n**6) Texto informativo**\n*   En el pie de página (centrado): `2026 © Una aplicación web desarrollada por Colegio en línea`\n*   En el pie de página (derecha): `Tutoriales`\n*   En la barra superior (derecha, dentro del campo de búsqueda): `Buscar estudiante...` (placeholder)\n*   Icono flotante inferior derecho: `CHAT` (dentro de un círculo morado)\n\n**Elementos adicionales del menú principal (Barra superior verde):**\n*   ESTUDIANTES\n*   CALIFICACIONES\n*   MÓDULOS\n*   CONFIGURACIÓN\n*   REPORTES",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789164153,
+  "id": "202609120602264b981053ae154fc1",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609120602264b981053ae154fc1",
+  "usage": {
+    "completion_tokens": 332,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2925
+  }
+}

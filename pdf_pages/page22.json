@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n**1) Título exacto de la pantalla**\n*   **EDITAR JORNADA**\n\n**2) Campos de formulario visibles**\n*   **Modelo educativo * (obligatorio)**\n    *   **Tipo:** Select (con búsqueda y selección múltiple por etiquetas/tags)\n    *   **Opciones visibles/seleccionadas:** Educación tradicional, Escuela nueva, Post-primaria, Etnoeducación, Educación para adultos, Burbuja, Caminar por secundaria\n    *   **Valor actual mostrado en campo:** (Vacío/placeholder no visible, pero las opciones aparecen como tags seleccionados arriba del campo)\n*   **Nombre * (obligatorio)**\n    *   **Tipo:** Texto\n    *   **Valor actual:** Mañana\n\n**3) Botones visibles**\n*   **Volver al listado** (ubicado en la esquina superior derecha del contenedor blanco, con icono de flecha izquierda)\n*   **Actualizar** (botón principal de acción, color verde oscuro, ubicado en la parte inferior derecha del formulario)\n\n**4) Tabs o secciones**\n*   No hay tabs o secciones divisorias visibles en esta pantalla específica.\n\n**5) Tablas con sus columnas EXACTAS**\n*   No hay tablas visibles en esta pantalla.\n\n**6) Texto informativo**\n*   **Pie de página izquierdo:** \"2026 © Una aplicación web desarrollada por Colegio en línea\"\n*   **Pie de página derecho:** \"Tutoriales\"\n*   **Barra superior derecha (placeholder):** \"Buscar estudiante...\"\n*   **Elemento flotante (esquina inferior derecha):** Icono circular morado con texto \"CHAT\"",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789164220,
+  "id": "202609120603302d241cc4b9b44d57",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609120603302d241cc4b9b44d57",
+  "usage": {
+    "completion_tokens": 387,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2980
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n**1) Título exacto de la pantalla**\n`CREAR MODELO EVALUATIVO`\n\n**2) TODOS los campos de formulario visibles**\n\n*   **Año*** (tipo: texto/select con valor pre-llenado)\n    *   Valor actual: `2026`\n    *   Controles: Botón de limpiar (X), flecha desplegable (v)\n\n*   **Escala valorativa*** (tipo: select)\n    *   Placeholder/Valor por defecto: `Seleccione`\n    *   Flecha desplegable (v)\n\n*   **Nota Minima*** (tipo: select - **desplegado/abierto en la imagen**)\n    *   Opciones visibles:\n        1.  `Bajo`\n        2.  `Básico`\n        3.  `Alto`\n        4.  `Superior`\n\n*   **Nota Máxima*** (tipo: texto/select - campo visible debajo del anterior, sin opciones expandidas)\n\n**3) Botones visibles**\n*   `Volver al listado` (ubicado arriba a la derecha, estilo enlace/botón secundario con icono de flecha izquierda)\n*   `Guardar` (ubicado abajo a la derecha, estilo botón primario verde oscuro)\n\n**4) Tabs o secciones**\n*   No hay tabs o secciones divisorias visibles en esta pantalla específica.\n\n**5) Tablas con sus columnas EXACTAS**\n*   No hay tablas visibles en esta pantalla.\n\n**6) Texto informativo**\n*   **Pie de página izquierdo:** `2026 © Una aplicación web desarrollada por Colegio en línea`\n*   **Pie de página derecho:** `Tutoriales`\n*   **Barra superior derecha (placeholder):** `Buscar estudiante...`\n*   **Menú de navegación principal (de izquierda a derecha):** `ESTUDIANTES`, `CALIFICACIONES`, `MÓDULOS`, `CONFIGURACIÓN` (activo/resaltado), `REPORTES`",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789164034,
+  "id": "202609120600212fa7eda7a2ef41f9",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609120600212fa7eda7a2ef41f9",
+  "usage": {
+    "completion_tokens": 457,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3050
+  }
+}

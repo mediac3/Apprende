@@ -21,6 +21,10 @@ model Institution {
   phone         String?
   email         String?
   academicYear  String   @default("2025")
+  resolution    String?  // Resolución de aprobación (PDF pág 13)
+  city          String?  // Ciudad (PDF pág 13)
+  icfesCode     String?  // Código ICFES (PDF pág 13)
+  decree        String?  // Decreto (PDF pág 2 - tabla años)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -36,6 +40,12 @@ model Institution {
   audits        AuditLog[]
   customModules CustomModule[]
   customRecords CustomModuleRecord[]
+  branches      Branch[]
+  journeys      Journey[]
+  evalScales    EvaluationScale[]
+  evalModels    EvaluationModel[]
+  reportTemplates ReportTemplate[]
+  academicYears AcademicYear[]
 }
 
 // UserRole values: rector, coordinador, director_grupo, docente, orientador, acudiente, estudiante, administrativo
@@ -126,6 +136,9 @@ model Subject {
   name          String
   code          String?
   area          String?
+  abbreviation  String?  // Abreviatura (PDF pág 3-4)
+  averages      Boolean  @default(true)  // Promedia (PDF pág 3-4) - si cuenta para el promedio
+  active        Boolean  @default(true)  // Estado (PDF pág 3-4)
   createdAt     DateTime @default(now())
 
   assignments   SubjectAssignment[]
@@ -502,4 +515,137 @@ model CustomModuleRecord {
 
   @@index([moduleId])
   @@index([institutionId])
+}
+
+// ============================================================
+// MÓDULOS DE PARÁMETROS DEL SISTEMA (según PDF)
+// ============================================================
+
+// --- Año académico (PDF pág 1-2) ---
+model AcademicYear {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  year          Int      // 2025, 2026, 2027...
+  decree        String?  // Decreto (PDF pág 2)
+  startDate     DateTime?
+  endDate       DateTime?
+  active        Boolean  @default(false)  // Solo un año activo por institución
+  closed        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  evalModels    EvaluationModel[]
+
+  @@unique([institutionId, year])
+}
+
+// --- Escala valorativa (PDF pág 6-8) ---
+// Bajo, Básico, Alto, Superior - con rango numérico
+model EvaluationScale {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name          String   // Bajo, Básico, Alto, Superior
+  minValue      Float    // 0.0
+  maxValue      Float    // 2.9
+  color         String?  // chip-bajo, chip-basico, chip-alto, chip-superior
+  sortOrder     Int      @default(0)  // Bajo=1, Básico=2, Alto=3, Superior=4
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  adjectives    IndicatorAdjective[]
+  evalModels    EvaluationModel[]
+
+  @@unique([institutionId, name])
+}
+
+// --- Adjetivos para indicadores (PDF pág 6-8) ---
+// Adjetivos como "Difícilmente", "Algunas veces", "Frecuentemente", "Siempre"
+// asociados a una escala valorativa
+model IndicatorAdjective {
+  id            String   @id @default(cuid())
+  institutionId String
+  scaleId       String
+  scale         EvaluationScale @relation(fields: [scaleId], references: [id], onDelete: Cascade)
+  name          String   // "Difícilmente", "Algunas veces", etc.
+  createdAt     DateTime @default(now())
+
+  @@unique([scaleId, name])
+}
+
+// --- Modelos evaluativos (PDF pág 9-12) ---
+// Combinación año + escala + notas mín/máx
+model EvaluationModel {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  academicYearId String?
+  academicYear  AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
+  scaleId       String
+  scale         EvaluationScale @relation(fields: [scaleId], references: [id], onDelete: Cascade)
+  minNote       Float    // Nota mínima (ej: 4.5)
+  maxNote       Float    // Nota máxima (ej: 5.0)
+  createdAt     DateTime @default(now())
+
+  @@unique([institutionId, academicYearId, scaleId])
+}
+
+// --- Sedes (PDF pág 19-21) ---
+model Branch {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name          String   // "Principal", "Sede B", etc.
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@unique([institutionId, name])
+}
+
+// --- Jornadas (PDF pág 22-24) ---
+model Journey {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name          String   // "Mañana", "Tarde", "Única", "Nocturna", etc.
+  educationalModelsJson String?  // JSON array: ["Educación tradicional", "Escuela nueva", ...]
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@unique([institutionId, name])
+}
+
+// --- Plantillas de reportes (PDF pág 16-18) ---
+// Constancia de estudio, Certificado periódico, Informe valorativo
+model ReportTemplate {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name          String   // "Constancia de estudio", "Certificado periódico"
+  slug          String   // constancia_estudio, certificado_periodico
+  type          String   @default("constancia")  // constancia, certificado, informe_valorativo
+  headerHtml    String?  // HTML del encabezado (editor WYSIWYG)
+  bodyHtml      String?  // HTML del cuerpo
+  footerHtml    String?  // HTML del pie
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  variables     ReportVariable[]
+
+  @@unique([institutionId, slug])
+}
+
+// --- Variables de reporte (PDF pág 15) ---
+// Variables dinámicas para informes valorativos: {{nombre_estudiante}}, {{fecha}}, etc.
+model ReportVariable {
+  id            String   @id @default(cuid())
+  reportTemplateId String
+  reportTemplate ReportTemplate @relation(fields: [reportTemplateId], references: [id], onDelete: Cascade)
+  variable      String   // "nombre_estudiante", "fecha", "promedio"
+  value         String   // Valor por defecto o fórmula
+  description   String?
+  createdAt     DateTime @default(now())
+
+  @@unique([reportTemplateId, variable])
 }

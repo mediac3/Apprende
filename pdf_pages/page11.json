@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n### 1) Título exacto de la pantalla\n**MODELOS EVALUATIVOS**\n\n### 2) Campos de formulario visibles\n*   **Buscar estudiante...** (Tipo: texto, ubicado en la barra de navegación superior derecha)\n*   **Mostrar** (Tipo: select, opciones visibles: \"All\")\n*   **registros** (Texto estático adyacente al select anterior)\n*   **Buscar:** (Tipo: texto, campo de búsqueda rápido en la parte superior derecha de la tabla)\n\n### 3) Botones visibles\n*   **Nuevo Registro** (Botón principal, color verde, ubicado en la esquina superior derecha del contenido)\n*   **Editar** (Icono de lápiz verde, repetido por cada fila de la tabla)\n*   **Eliminar** (Icono de papelera roja, repetido por cada fila de la tabla)\n\n### 4) Tabs o secciones\n*   **ESTUDIANTES** (En la barra de navegación superior)\n*   **CALIFICACIONES** (En la barra de navegación superior)\n*   **MÓDULOS** (En la barra de navegación superior)\n*   **CONFIGURACIÓN** (En la barra de navegación superior, parece ser la sección activa o relacionada)\n*   **REPORTES** (En la barra de navegación superior)\n\n### 5) Tabla con sus columnas EXACTAS\nLa tabla contiene las siguientes columnas:\n1.  **Año**\n2.  **Escala**\n3.  **Nota mínima**\n4.  **Nota máxima**\n5.  *(Columna sin etiqueta de texto visible, contiene los iconos de acción: Editar y Eliminar)*\n\n### 6) Texto informativo\n*   **iPro** (Logo/Nombre del software en la parte superior izquierda)\n*   **Mostrar**\n*   **All**\n*   **registros**\n*   **Buscar:**",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789164046,
+  "id": "20260912060036d0b0055e352542f3",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912060036d0b0055e352542f3",
+  "usage": {
+    "completion_tokens": 440,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3033
+  }
+}

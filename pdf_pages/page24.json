@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n**1) Título exacto de la pantalla:**\nJORNADAS\n\n**2) Campos de formulario visibles:**\n*   **Buscar estudiante...** (Tipo: Texto/Buscador, ubicado en la barra de navegación superior derecha)\n*   **Mostrar** (Tipo: Select, opciones visibles: 10)\n*   **Buscar:** (Tipo: Texto, ubicado en la parte superior derecha del contenedor principal)\n\n**3) Botones visibles:**\n*   **Nuevo Registro** (Botón verde con icono de círculo más, ubicado en la esquina superior derecha del contenido)\n*   **Editar** (Icono de lápiz, repetido por cada fila de la tabla)\n*   **Eliminar** (Icono de papelera/basura, repetido por cada fila de la tabla)\n*   **<** (Botón de paginación anterior)\n*   **1** (Botón de paginación activa)\n*   **>** (Botón de paginación siguiente)\n\n**4) Tabs o secciones:**\n*   **ESTUDIANTES**\n*   **CALIFICACIONES**\n*   **MÓDULOS**\n*   **CONFIGURACIÓN** (Seleccionada/Activa)\n*   **REPORTES**\n\n*(Nota: En la barra lateral izquierda hay iconos que representan secciones, pero no tienen etiquetas de texto visibles en esta vista)*\n\n**5) Tabla con sus columnas EXACTAS:**\n\n| Nombre | Modelo educativo | *(Columna de acciones sin título)* |\n| :--- | :--- | :--- |\n| Mañana | Burbuja, Caminar por secundaria, Educación para adultos, Educación tradicional, Escuela nueva, Etnoeducación, Post-primaria | [Icono Editar] [Icono Eliminar] |\n| Tarde | Burbuja, Caminar por secundaria, Educación para adultos, Educación tradicional, Escuela nueva, Etnoeducación, Post-primaria | [Icono Editar] [Icono Eliminar] |\n| Única | Burbuja, Caminar por secundaria, Educación para adultos, Educación tradicional, Escuela nueva, Etnoeducación, Post-primaria | [Icono Editar] [Icono Eliminar] |\n| Nocturna | Educación para adultos | [Icono Editar] [Icono Eliminar] |\n| Sabatina | Educación para adultos | [Icono Editar] [Icono Eliminar] |\n| Dominical | Educación para adultos | [Icono Editar] [Icono Eliminar] |\n| Fin de semana | Educación para adultos | [Icono Editar] [Icono Eliminar] |\n\n*Columnas exactas:* **Nombre**, **Modelo educativo**\n\n**6) Texto informativo:**\n*   \"registros\" (texto adyacente al selector \"Mostrar\")\n*   \"Mostrando 1 a 7 de 7 registros.\" (Texto de pie de tabla/paginación)\n*   \"2026 © Una aplicación web desarrollada por Colegio en línea\" (Pie de página inferior izquierdo)\n*   \"Tutoriales\" (Enlace en el pie de página inferior derecho)\n*   \"CHAT\" (Etiqueta sobre el botón flotante morado inferior derecho)",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789164256,
+  "id": "20260912060401f111209e20c74ea7",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912060401f111209e20c74ea7",
+  "usage": {
+    "completion_tokens": 726,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3319
+  }
+}

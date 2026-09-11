@@ -25,6 +25,14 @@ import {
   Smartphone,
   LogOut,
   ChevronRight,
+  Boxes,
+  CheckCircle,
+  Wand2,
+  Scale,
+  MapPin,
+  Clock,
+  FileCheck,
+  Variable,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,9 +64,9 @@ import { AcademicoView } from "./views/academico-view";
 import { CustomModuleBuilderView } from "./views/custom-module-builder-view";
 import { CustomModuleRuntimeView } from "./views/custom-module-runtime-view";
 import { ModuleApprovalsView } from "./views/module-approvals-view";
+import { ParamsView } from "./views/params-view";
 import { isCustomModule, getCustomModuleId, customModuleKey } from "@/store/ui-store";
 import { useEffect, useState } from "react";
-import { Boxes, CheckCircle, Wand2 } from "lucide-react";
 
 interface NavItem {
   key: ModuleKey;
@@ -111,6 +119,18 @@ const NAV: NavItem[] = [
   { key: "custom-module-builder", label: "Constructor de módulos", icon: Boxes, group: "Constructor", roles: ["administrativo"] },
   // Aprobación de módulos — rector
   { key: "module-approvals", label: "Aprobar módulos", icon: CheckCircle, group: "Constructor", roles: ["rector"] },
+
+  // Parámetros del sistema (PDF) — rector y administrativo
+  { key: "param-academic-years", label: "Años académicos", icon: Calendar, group: "Parámetros", roles: ["rector", "administrativo"] },
+  { key: "param-institution", label: "Institución", icon: Building2, group: "Parámetros", roles: ["rector", "administrativo"] },
+  { key: "param-subjects", label: "Asignaturas", icon: BookOpen, group: "Parámetros", roles: ["rector", "administrativo"] },
+  { key: "param-evaluation-scales", label: "Escalas valorativas", icon: Scale, group: "Parámetros", roles: ["rector", "administrativo"] },
+  { key: "param-indicator-adjectives", label: "Adjetivos indicadores", icon: FileText, group: "Parámetros", roles: ["rector", "administrativo"] },
+  { key: "param-evaluation-models", label: "Modelos evaluativos", icon: FileCheck, group: "Parámetros", roles: ["rector", "administrativo"] },
+  { key: "param-branches", label: "Sedes", icon: MapPin, group: "Parámetros", roles: ["rector", "administrativo"] },
+  { key: "param-journeys", label: "Jornadas", icon: Clock, group: "Parámetros", roles: ["rector", "administrativo"] },
+  { key: "param-report-templates", label: "Plantillas de reportes", icon: FileText, group: "Parámetros", roles: ["rector", "administrativo"] },
+  { key: "param-report-variables", label: "Variables de reporte", icon: Variable, group: "Parámetros", roles: ["rector", "administrativo"] },
 ];
 
 export function InstitutionalPanel() {
@@ -223,6 +243,26 @@ export function InstitutionalPanel() {
         return <CustomModuleBuilderView />;
       case "module-approvals":
         return <ModuleApprovalsView />;
+      case "param-academic-years":
+        return <ParamsView module="academic-years" />;
+      case "param-subjects":
+        return <ParamsView module="subjects" />;
+      case "param-evaluation-scales":
+        return <ParamsView module="evaluation-scales" />;
+      case "param-indicator-adjectives":
+        return <ParamsView module="indicator-adjectives" />;
+      case "param-evaluation-models":
+        return <ParamsView module="evaluation-models" />;
+      case "param-institution":
+        return <ParamsView module="institution" />;
+      case "param-branches":
+        return <ParamsView module="branches" />;
+      case "param-journeys":
+        return <ParamsView module="journeys" />;
+      case "param-report-templates":
+        return <ParamsView module="report-templates" />;
+      case "param-report-variables":
+        return <ParamsView module="report-variables" />;
       default:
         return <DashboardView />;
     }

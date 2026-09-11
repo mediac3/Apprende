@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n### 1) Título exacto de la pantalla\n**CONFIGURACIÓN DE REPORTE CONSTANCIA DE ESTUDIO**\n\n### 2) Campos de formulario visibles\nSe observan **tres editores de texto enriquecido (WYSIWYG)**, cada uno con su etiqueta y controles asociados:\n\n**Campo 1:**\n*   **Etiqueta:** Encabezado\n*   **Tipo:** Textarea (Editor de texto enriquecido / TinyMCE)\n*   **Controles del editor:**\n    *   Botones de formato: Deshacer, Rehacer, **Negrita**, *Cursiva*, <u>Subrayado</u>, Tachado\n    *   Select: Fuente de dist... (valor visible: **8px**)\n    *   Select: Párrafo (valor por defecto)\n    *   Alineación: Izquierda, Centro, Derecha, Justificar\n    *   Listas: Numerada, Viñetas\n    *   Superíndice, Subíndice\n    *   Vista previa, Código fuente (`<>`)\n*   **Contenido actual del campo:**\n    > REPÚBLICA DE COLOMBIA\n    >\n    > MUNICIPIO DE CAJICÁ\n    >\n    > CENTRO EDUCATIVO UNIÓN 15\n    >\n    > Resolución S. 12782 3/Octubre de 2014 DANE: 205471003587\n    >\n    > NIT. 81101453-1- CÓDIGO ICFES: 051437\n*   **Texto informativo inferior del editor:** `P > SPAN` | `24 PALABRAS CON TECNOLOGÍA DE TINY`\n\n**Campo 2:**\n*   **Etiqueta:** Información legal\n*   **Tipo:** Textarea (Editor de texto enriquecido / TinyMCE)\n*   **Controles del editor:** Idénticos al anterior, con la diferencia en el select de tamaño:\n    *   Select: Fuente de dist... (valor visible: **16px**)\n*   **Contenido actual del campo:** *(Vacío)*\n*   **Texto informativo inferior del editor:** `P` | `23 PALABRAS CON TECNOLOGÍA DE TINY`\n\n**Campo 3:**\n*   **Etiqueta:** Pie de página\n*   **Tipo:** Textarea (Editor de texto enriquecido / TinyMCE)\n*   **Controles del editor:** Idénticos a los anteriores, con tamaño:\n    *   Select: Fuente de dist... (valor visible: **16px**)\n*   **Contenido actual del campo:** *(Vacío, muestra solo \"DIV\" como etiqueta HTML)*\n*   **Texto informativo inferior del editor:** `DIV` | `0 PALABRAS CON TECNOLOGÍA DE TINY`\n\n### 3) Botones visibles\n*   **Volver al listado** (Ubicación: esquina superior derecha, estilo enlace/botón secundario con flecha izquierda `<-`)\n*   **Actualizar** (Ubicación: esquina inferior derecha, botón primario color verde oscuro)\n\n### 4) Tabs o secciones\nNo se observan tabs o pestañas activas en esta vista específica.\n\n### 5) Tablas con sus columnas EXACTAS\nNo se observan tablas de datos en esta pantalla; únicamente los campos de edición descritos arriba.\n\n### 6) Texto informativo\n*   **Barra superior (derecha):** Buscar estudiante...\n*   **Pie de página (centro-izquierda):** 2026 © Una aplicación web desarrollada por Colegio en línea\n*   **Pie de página (derecha):** Tutoriales\n*   **Dentro de los editores (inferior derecho de cada uno):**\n    *   Encabezado: `24 PALABRAS CON TECNOLOGÍA DE TINY`\n    *   Información legal: `23 PALABRAS CON TECNOLOGÍA DE TINY`\n    *   Pie de página: `0 PALABRAS CON TECNOLOGÍA DE TINY`\n*   **Dentro de los editores (inferior izquierdo - etiqueta HTML):**\n    *   Encabezado: `P > SPAN`\n    *   Información legal: `P`\n    *   Pie de página: `DIV`",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789164144,
+  "id": "2026091206020434f374f906164165",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "2026091206020434f374f906164165",
+  "usage": {
+    "completion_tokens": 984,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 3577
+  }
+}

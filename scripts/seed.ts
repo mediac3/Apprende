@@ -768,6 +768,207 @@ async function main() {
     });
   }
 
+  console.log("→ Creando módulos de parámetros del sistema (PDF)...");
+
+  // Limpiar parámetros existentes
+  await db.reportVariable.deleteMany();
+  await db.reportTemplate.deleteMany();
+  await db.journey.deleteMany();
+  await db.branch.deleteMany();
+  await db.evaluationModel.deleteMany();
+  await db.indicatorAdjective.deleteMany();
+  await db.evaluationScale.deleteMany();
+  await db.academicYear.deleteMany();
+
+  // Actualizar Institution con datos del PDF
+  await db.institution.update({
+    where: { id: inst.id },
+    data: {
+      resolution: "S 127082 3/Octubre de 2014",
+      city: "Carepa - Antioquia",
+      icfesCode: "051437",
+      decree: "1075",
+    },
+  });
+
+  // Años académicos
+  const yearsData = [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
+  for (const y of yearsData) {
+    await db.academicYear.create({
+      data: {
+        institutionId: inst.id,
+        year: y,
+        decree: "1075",
+        active: y === 2026,
+        closed: y < 2025,
+      },
+    });
+  }
+
+  // Escalas valorativas
+  const scalesData = [
+    { name: "Bajo", minValue: 0.0, maxValue: 2.9, color: "chip-bajo", sortOrder: 1 },
+    { name: "Básico", minValue: 3.0, maxValue: 3.9, color: "chip-basico", sortOrder: 2 },
+    { name: "Alto", minValue: 4.0, maxValue: 4.5, color: "chip-alto", sortOrder: 3 },
+    { name: "Superior", minValue: 4.6, maxValue: 5.0, color: "chip-superior", sortOrder: 4 },
+  ];
+  for (const s of scalesData) {
+    const scale = await db.evaluationScale.create({ data: { institutionId: inst.id, ...s, active: true } });
+
+    // Adjetivos para cada escala
+    const adjectivesByScale: Record<string, string[]> = {
+      "Bajo": ["Difícilmente", "Nunca", "Rara vez"],
+      "Básico": ["Algunas veces", "Ocasionalmente", "Con dificultad"],
+      "Alto": ["Frecuentemente", "Casi siempre", "Con regularidad"],
+      "Superior": ["Siempre", "Constantemente", "Con excelencia"],
+    };
+    for (const adj of adjectivesByScale[s.name] || []) {
+      await db.indicatorAdjective.create({ data: { institutionId: inst.id, scaleId: scale.id, name: adj } });
+    }
+  }
+
+  // Modelos evaluativos
+  const scales = await db.evaluationScale.findMany({ where: { institutionId: inst.id } });
+  const year2026 = await db.academicYear.findFirst({ where: { institutionId: inst.id, year: 2026 } });
+  const year2025 = await db.academicYear.findFirst({ where: { institutionId: inst.id, year: 2025 } });
+  for (const scale of scales) {
+    await db.evaluationModel.create({
+      data: {
+        institutionId: inst.id,
+        academicYearId: year2026?.id || null,
+        scaleId: scale.id,
+        minNote: scale.minValue,
+        maxNote: scale.maxValue,
+      },
+    });
+    if (year2025) {
+      await db.evaluationModel.create({
+        data: {
+          institutionId: inst.id,
+          academicYearId: year2025.id,
+          scaleId: scale.id,
+          minNote: scale.minValue,
+          maxNote: scale.maxValue,
+        },
+      });
+    }
+  }
+
+  // Actualizar asignaturas existentes con los nuevos campos
+  const existingSubjects = await db.subject.findMany({ where: { institutionId: inst.id } });
+  const abbrMap: Record<string, string> = {
+    "Matemáticas": "MAT", "Lengua Castellana": "LEN", "Ciencias Naturales": "CNA",
+    "Sociales": "SOC", "Inglés": "ING", "Educación Física": "EDF", "Tecnología": "TEC",
+  };
+  for (const s of existingSubjects) {
+    await db.subject.update({
+      where: { id: s.id },
+      data: {
+        abbreviation: abbrMap[s.name] || s.name.slice(0, 3).toUpperCase(),
+        averages: true,
+        active: true,
+      },
+    });
+  }
+
+  // Sedes
+  for (const name of ["Principal", "Sede B - Rural", "Sede C - nocturna"]) {
+    await db.branch.create({ data: { institutionId: inst.id, name, active: true } });
+  }
+
+  // Jornadas
+  const journeysData = [
+    { name: "Mañana", models: ["Educación tradicional", "Escuela nueva", "Post-primaria", "Etnoeducación", "Burbuja", "Caminar por secundaria"] },
+    { name: "Tarde", models: ["Educación tradicional", "Escuela nueva", "Post-primaria", "Etnoeducación", "Burbuja", "Caminar por secundaria"] },
+    { name: "Única", models: ["Educación tradicional", "Escuela nueva", "Post-primaria", "Etnoeducación", "Burbuja", "Caminar por secundaria"] },
+    { name: "Nocturna", models: ["Educación para adultos"] },
+    { name: "Sabatina", models: ["Educación para adultos"] },
+    { name: "Dominical", models: ["Educación para adultos"] },
+    { name: "Fin de semana", models: ["Educación para adultos"] },
+  ];
+  for (const j of journeysData) {
+    await db.journey.create({
+      data: { institutionId: inst.id, name: j.name, educationalModelsJson: JSON.stringify(j.models), active: true },
+    });
+  }
+
+  // Plantillas de reportes
+  const constancia = await db.reportTemplate.create({
+    data: {
+      institutionId: inst.id,
+      name: "Constancia de estudio",
+      slug: "constancia_estudio",
+      type: "constancia",
+      headerHtml: "<div style='text-align:center'><strong>REPÚBLICA DE COLOMBIA</strong><br/>MUNICIPIO DE CAJICÁ<br/><strong>CENTRO EDUCATIVO UNIÓN 15</strong><br/>Resolución S. 12782 3/Octubre de 2014<br/>DANE: 205471003587<br/>NIT. 81101453-1- CÓDIGO ICFES: 051437</div>",
+      bodyHtml: "<p>El suscco rector del Centro Educativo Unión 15, hace constar que el/la estudiante <strong>{{nombre_estudiante}}</strong>, identificado/a con código <strong>{{codigo_estudiante}}</strong>, se encuentra matriculado/a en el grado <strong>{{grado}}</strong> jornada <strong>{{jornada}}</strong> durante el año académico <strong>{{anio}}</strong>.</p>",
+      footerHtml: "<div style='text-align:center;margin-top:40px'>___________________________<br/>Firma del rector<br/><br/>Expedida en Cajicá, el {{fecha_expedicion}}</div>",
+      active: true,
+    },
+  });
+
+  const certificado = await db.reportTemplate.create({
+    data: {
+      institutionId: inst.id,
+      name: "Certificado periódico",
+      slug: "certificado_periodico",
+      type: "certificado",
+      headerHtml: "<div style='text-align:center'><strong>CERTIFICADO PERIÓDICO DE NOTAS</strong></div>",
+      bodyHtml: "<p>Certificamos que el/la estudiante <strong>{{nombre_estudiante}}</strong> del grado <strong>{{grado}}</strong> obtuvo las siguientes calificaciones en el periodo <strong>{{periodo}}</strong>:</p><table>{{tabla_notas}}</table>",
+      footerHtml: "<div>Promedio: {{promedio}}</div>",
+      active: true,
+    },
+  });
+
+  const informe = await db.reportTemplate.create({
+    data: {
+      institutionId: inst.id,
+      name: "Informe valorativo",
+      slug: "informe_valorativo",
+      type: "informe_valorativo",
+      headerHtml: "<div style='text-align:center'><strong>INFORME VALORATIVO INTEGRAL</strong></div>",
+      bodyHtml: "<p>Período: <strong>{{periodo}}</strong> · Año: <strong>{{anio}}</strong></p><p>Estudiante: <strong>{{nombre_estudiante}}</strong> · Grado: <strong>{{grado}}</strong></p>",
+      footerHtml: "<div>Observaciones: {{observaciones}}</div>",
+      active: true,
+    },
+  });
+
+  // Variables para la constancia
+  const constanciaVars = [
+    { variable: "nombre_estudiante", value: "", description: "Nombre completo del estudiante" },
+    { variable: "codigo_estudiante", value: "", description: "Código institucional del estudiante" },
+    { variable: "grado", value: "", description: "Grado en el que está matriculado" },
+    { variable: "jornada", value: "", description: "Jornada (Mañana, Tarde, Única)" },
+    { variable: "anio", value: "2026", description: "Año académico" },
+    { variable: "fecha_expedicion", value: "", description: "Fecha de expedición del documento" },
+  ];
+  for (const v of constanciaVars) {
+    await db.reportVariable.create({ data: { reportTemplateId: constancia.id, ...v } });
+  }
+
+  // Variables para el certificado
+  const certVars = [
+    { variable: "nombre_estudiante", value: "", description: "Nombre del estudiante" },
+    { variable: "grado", value: "", description: "Grado" },
+    { variable: "periodo", value: "", description: "Periodo académico" },
+    { variable: "tabla_notas", value: "", description: "Tabla HTML con las notas por asignatura" },
+    { variable: "promedio", value: "", description: "Promedio del periodo" },
+  ];
+  for (const v of certVars) {
+    await db.reportVariable.create({ data: { reportTemplateId: certificado.id, ...v } });
+  }
+
+  // Variables para el informe valorativo
+  const informeVars = [
+    { variable: "periodo", value: "", description: "Periodo" },
+    { variable: "anio", value: "2026", description: "Año" },
+    { variable: "nombre_estudiante", value: "", description: "Nombre del estudiante" },
+    { variable: "grado", value: "", description: "Grado" },
+    { variable: "observaciones", value: "", description: "Observaciones generales" },
+  ];
+  for (const v of informeVars) {
+    await db.reportVariable.create({ data: { reportTemplateId: informe.id, ...v } });
+  }
+
   console.log("→ Creando auditoría inicial...");
   await db.auditLog.create({
     data: {

@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n### 1) Título exacto de la pantalla\n**EDITAR ADJETIVO PARA INDICADOR**\n\n### 2) Campos de formulario visibles\n\n*   **Etiqueta:** `Escala valorativa *`\n    *   **Tipo:** Select (desplegable)\n    *   **Valor actual/placeholder:** `Bajo`\n    *   **Notas:** Tiene un asterisco rojo (*) indicando que es obligatorio. Presenta una \"x\" para limpiar el campo y una flecha desplegable.\n\n*   **Etiqueta:** `Nombre *`\n    *   **Tipo:** Texto (input)\n    *   **Valor actual/placeholder:** `Difícilmente`\n    *   **Notas:** Tiene un asterisco rojo (*) indicando que es obligatorio.\n\n### 3) Botones visibles\n\n*   **`Volver al listado`** (Ubicación: esquina superior derecha del contenedor principal, estilo enlace/botón secundario con icono de flecha izquierda).\n*   **`Actualizar`** (Ubicación: esquina inferior derecha del formulario, estilo botón primario de color verde oscuro).\n\n### 4) Tabs o secciones\nNo hay tabs ni secciones divisorias visibles en esta pantalla específica (solo un formulario único).\n\n### 5) Tablas con sus columnas EXACTAS\nNo hay tablas visibles en esta pantalla.\n\n### 6) Texto informativo\n\n**En la barra superior (navegación principal):**\n*   `ESTUDIANTES`\n*   `CALIFICACIONES`\n*   `MÓDULOS`\n*   `CONFIGURACIÓN` (parece ser la sección activa)\n*   `REPORTES`\n*   `Buscar estudiante...` (texto placeholder en el campo de búsqueda)\n*   Logo: `iPro`\n\n**En el pie de página (footer):**\n*   `2026 © Una aplicación web desarrollada por Colegio en línea`\n*   `Tutoriales` (enlace a la derecha)\n\n**En el lateral izquierdo (menú de iconos):**\n*   Iconos representando: Menú/lista, Usuarios, Clipboard/Lista, Configuración/Engranaje, Carpetas, Grupos, Documentos, Gráficos, Calculadora, Salir.\n\n**Elemento flotante:**\n*   Botón circular morado con el texto `CHAT`.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789163913,
+  "id": "202609120558221dec61124fd74ee5",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609120558221dec61124fd74ee5",
+  "usage": {
+    "completion_tokens": 536,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3129
+  }
+}

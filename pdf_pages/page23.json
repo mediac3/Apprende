@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n### 1) Título exacto de la pantalla\n**CREAR JORNADA**\n\n### 2) Campos de formulario visibles\n\n*   **Etiqueta:** Modelo educativo *\n    *   **Tipo:** Select (desplegable)\n    *   **Placeholder/Valor por defecto:** Seleccione\n    *   **Opciones visibles en el desplegable:**\n        1.  Educación tradicional\n        2.  Escuela nueva\n        3.  Post-primaria\n        4.  Etnoeducación\n        5.  Aceleración del aprendizaje\n        6.  Educación para adultos\n        7.  Burbuja\n        8.  Caminar por secundaria\n\n*   **Etiqueta:** Nombre *\n    *   **Tipo:** Texto (campo de entrada de texto)\n    *   **Nota:** El campo se encuentra parcialmente oculto detrás del menú desplegable desplegado del campo anterior.\n\n### 3) Botones visibles\n\n*   **Volver al listado** (Ubicación: esquina superior derecha, estilo enlace con icono de flecha izquierda)\n*   **Guardar** (Ubicación: lado derecho del formulario, color verde oscuro)\n\n### 4) Tabs o secciones\nNo hay tabs o secciones divisorias visibles en esta pantalla específica.\n\n### 5) Tablas con sus columnas EXACTAS\nNo hay tablas visibles en esta pantalla.\n\n### 6) Texto informativo\n\n*   **Pie de página (izquierda):** \"2026 © Una aplicación web desarrollada por G...\" (el resto del texto está cortado/oculto).\n*   **Pie de página (derecha):** \"Tutoriales\"\n*   **Botón flotante (esquina inferior derecha):** Contiene un icono de chat y el texto \"Chat\" dentro de un círculo morado.\n\n**Elementos adicionales del contexto (Navegación):**\n*   **Menú superior:** ESTUDIANTES | CALIFICACIONES | MÓDULOS | CONFIGURACIÓN (activo) | REPORTES\n*   **Barra de búsqueda:** \"Buscar estudiante...\"\n*   **Icono de notificaciones** y **Avatar de usuario** en la esquina superior derecha.\n*   **Menú lateral izquierdo:** Iconos de menú, usuarios, calendario, configuración, carpetas, grupos, portapapeles, gráficos, calculadora y salida.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789164239,
+  "id": "20260912060342e604e0ef8c8e4c5c",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912060342e604e0ef8c8e4c5c",
+  "usage": {
+    "completion_tokens": 553,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3146
+  }
+}

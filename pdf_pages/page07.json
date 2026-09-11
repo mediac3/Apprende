@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n**1) Título exacto de la pantalla**\n`CREAR ADJETIVO PARA INDICADOR`\n\n**2) Campos de formulario visibles**\n\n*   **Etiqueta:** `Escala valorativa *`\n    *   **Tipo:** Select (desplegable)\n    *   **Placeholder/Valor por defecto:** `Seleccione`\n    *   **Opciones visibles en el dropdown:**\n        1.  `Bajo`\n        2.  `Básico`\n        3.  `Alto`\n        4.  `Superior`\n\n*   **Etiqueta:** `Nombre *`\n    *   **Tipo:** Texto (campo de entrada de texto simple)\n\n**3) Botones visibles**\n\n*   **Botón principal (derecha del formulario):**\n    *   **Texto:** `Guardar`\n    *   **Estilo:** Verde oscuro, texto blanco\n\n*   **Botón de navegación (esquina superior derecha):**\n    *   **Texto:** `← Volver al listado`\n    *   **Estilo:** Fondo verde claro, texto verde oscuro\n\n**4) Tabs o secciones**\nNo hay tabs ni secciones divisibles visibles en esta pantalla específica.\n\n**5) Tablas con sus columnas EXACTAS**\nNo hay tablas de datos visibles en esta vista.\n\n**6) Texto informativo**\n\n*   **Pie de página (izquierda):** `2026 © Una aplicación web desarrollada por Conejo en línea`\n*   **Pie de página (derecha):** `Tutoriales`\n*   **Barra superior (centro-derecha, campo de búsqueda):** Placeholder `Buscar estudiante...`\n*   **Barra de navegación principal (elementos de menú):** `ESTUDIANTES`, `CALIFICACIONES`, `MÓDULOS`, `CONFIGURACIÓN` (activo/resaltado), `REPORTES`\n*   **Elemento flotante (esquina inferior derecha):** Icono circular morado con el texto `CHAT`",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789163985,
+  "id": "2026091205593046d77d6b32b54f85",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "2026091205593046d77d6b32b54f85",
+  "usage": {
+    "completion_tokens": 455,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 3048
+  }
+}

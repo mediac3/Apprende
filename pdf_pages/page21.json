@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n### 1) Título exacto de la pantalla\n**SEDES**\n\n### 2) Campos de formulario visibles\n\n*   **Campo 1:**\n    *   **Etiqueta exacta:** `Mostrar`\n    *   **Tipo:** Select (desplegable)\n    *   **Opciones visibles:** `10` (seleccionado)\n    *   **Texto adyacente:** `registros`\n\n*   **Campo 2:**\n    *   **Etiqueta exacta:** `Buscar:`\n    *   **Tipo:** Texto (campo de búsqueda/input)\n\n*   **Campo 3 (en barra superior):**\n    *   **Etiqueta/Placeholder:** `Buscar estudiante...`\n    *   **Tipo:** Texto (input de búsqueda global)\n\n### 3) Botones visibles\n\n*   **Botón principal:** `Nuevo Registro` (color verde, con icono de círculo con signo más)\n*   **Botón de acción en fila (Editar):** Icono de lápiz/editar (✏️)\n*   **Botón de acción en fila (Eliminar):** Icono de papelera/basura (🗑️)\n*   **Botón de paginación:** `<` (anterior), `1` (página actual, resaltada), `>` (siguiente)\n*   **Botón flotante (esquina inferior derecha):** Icono circular morado con texto `CHAT` y un ícono de burbuja de diálogo\n\n### 4) Tabs o secciones\n**Menú de navegación principal (barra superior):**\n*   `ESTUDIANTES`\n*   `CALIFICACIONES`\n*   `MÓDULOS`\n*   `CONFIGURACIÓN` (parece ser la sección activa o relacionada)\n*   `REPORTES`\n\n**Menú lateral izquierdo (iconos verticales):**\n*   Icono de menú/lista\n*   Icono de usuario/persona\n*   Icono de portapapeles/checklist\n*   Icono de engranaje/ajustes\n*   Icono de carpeta\n*   Icono de grupo de personas\n*   Icono de documento/archivo\n*   Icono de gráfico estadístico\n*   Icono de calculadora\n*   Icono de salida/cerrar sesión\n\n### 5) Tabla con columnas EXACTAS\n\n| Columna 1 | Columna 2 | Columna 3 (implícita/Acciones) |\n| :--- | :--- | :--- |\n| **Nombre** | **Estado** | *(Sin etiqueta, contiene iconos)* |\n| Principal | `Activo` (badge verde) | ✏️ 🗑️ |\n\n**Información de paginación de la tabla:** `Mostrando 1 a 1 de 1 registros`\n\n### 6) Texto informativo\n\n*   **Pie de página (izquierda):** `2026 © Una aplicación web desarrollada por Colegio en línea`\n*   **Pie de página (derecha):** `Tutoriales`",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789164208,
+  "id": "20260912060314291f25e84aee49bf",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912060314291f25e84aee49bf",
+  "usage": {
+    "completion_tokens": 685,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3278
+  }
+}

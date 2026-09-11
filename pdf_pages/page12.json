@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n**1) Título exacto de la pantalla**\nNo se observa un título de encabezado principal visible en la parte superior de la interfaz (la zona superior está recortada o en blanco).\n\n**2) Campos de formulario visibles**\nNo hay campos de formulario (inputs, selects, etc.) visibles en esta vista. La pantalla muestra exclusivamente una tabla de datos existentes.\n\n**3) Botones visibles**\n*   **Icono de edición (lápiz):** Verde, ubicado en la última columna de cada fila de la tabla.\n*   **Icono de eliminación (papelera):** Rojo, ubicado en la última columna de cada fila de la tabla, junto al icono de edición.\n*   **Botón de paginación anterior:** Icono de flecha izquierda (`<`), ubicado en la parte inferior derecha.\n*   **Botón de página activa:** Botón verde oscuro con el número `1`, ubicado en la parte inferior derecha.\n*   **Botón de paginación siguiente:** Icono de flecha derecha (`>`), ubicado en la parte inferior derecha.\n*   **Enlace \"Tutoriales\":** Texto ubicado en la esquina inferior derecha del pie de página.\n\n**4) Tabs o secciones**\nNo hay tabs o secciones diferenciadas visibles en la imagen.\n\n**5) Tablas con sus columnas EXACTAS**\nSe visualiza una única tabla con las siguientes columnas (sin encabezados explícitos visibles, inferidas por el contenido):\n\n*   **Columna 1:** Año (valores numéricos: 2014, 2013, 2012, 2010)\n*   **Columna 2:** Nivel/Categoría (valores de texto: Superior, Bajo, Básico, Alto)\n*   **Columna 3:** Valor numérico decimal (valores: 4,50 / 0,00 / 3,00 / 4,00)\n*   **Columna 4:** Valor numérico decimal (valores: 5,00 / 2,90 / 3,90 / 4,40)\n*   **Columna 5:** Acciones (contiene los iconos de editar y eliminar)\n\n**Filas de datos visibles (transcripción literal):**\n1.  2014 | Superior | 4,50 | 5,00 | [Editar] [Eliminar]\n2.  2014 | Bajo | 0,00 | 2,90 | [Editar] [Eliminar]\n3.  2014 | Básico | 3,00 | 3,90 | [Editar] [Eliminar]\n4.  2014 | Alto | 4,00 | 4,40 | [Editar] [Eliminar]\n5.  2013 | Bajo | 0,00 | 2,90 | [Editar] [Eliminar]\n6.  2013 | Básico | 3,00 | 3,90 | [Editar] [Eliminar]\n7.  2013 | Alto | 4,00 | 4,40 | [Editar] [Eliminar]\n8.  2013 | Superior | 4,50 | 5,00 | [Editar] [Eliminar]\n9.  2012 | Bajo | 0,00 | 2,90 | [Editar] [Eliminar]\n10. 2012 | Básico | 3,00 | 3,90 | [Editar] [Eliminar]\n11. 2012 | Superior | 4,50 | 5,00 | [Editar] [Eliminar]\n12. 2012 | Alto | 4,00 | 4,40 | [Editar] [Eliminar]\n13. 2010 | Bajo | 0,00 | 2,90 | [Editar] [Eliminar]\n14. 2010 | Superior | 4,50 | 5,00 | [Editar] [Eliminar]\n15. 2010 | Alto | 4,00 | 4,40 | [Editar] [Eliminar]\n16. 2010 | Básico | 3,00 | 3,90 | [Editar] [Eliminar]\n\n**6) Texto informativo**\n*   **De paginación (abajo izquierda de la tabla):** `Mostrando 1 a 64 de 64 registros`\n*   **De pie de página (centrado abajo):** `2026 © Una aplicación web desarrollada por Colegio en Línea`\n*   **De pie de página (esquina inferior derecha):** `Tutoriales`",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789164075,
+  "id": "202609120600489b5a58c9b5b5485e",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609120600489b5a58c9b5b5485e",
+  "usage": {
+    "completion_tokens": 1005,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3598
+  }
+}

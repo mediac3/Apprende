@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n### 1) Título exacto de la pantalla\n**REPORTES**\n\n### 2) Campos de formulario visibles\n*   **Mostrar** (Tipo: *select*) — Opción visible: \"All\"\n*   **Buscar:** (Tipo: *texto*)\n\n### 3) Botones visibles\n*   **Nuevo Registro** (Botón principal, color verde, ubicado en la esquina superior derecha del contenido)\n*   **Acciones** (Botón desplegable/dropdown, repetido en cada fila de la tabla)\n    *   *(Nota: Cada botón \"Acciones\" tiene un icono de herramientas/tornillo y llave a la izquierda y una flecha hacia abajo a la derecha indicando menú)*\n*   **<** (Botón de paginación: anterior)\n*   **1** (Botón de paginación: página actual activa)\n*   **>** (Botón de paginación: siguiente)\n\n### 4) Tabs o secciones\nNo hay tabs visibles en esta pantalla. La navegación principal se realiza mediante el menú superior horizontal.\n\n### 5) Tabla con sus columnas EXACTAS\nLa tabla contiene **2 columnas**:\n\n| Columna 1 | Columna 2 |\n| :--- | :--- |\n| **Nombre** | *(Vacía/Actions)* |\n\n**Filas de datos (contenido exacto de la columna \"Nombre\"):**\n1.  Constancia de estudio\n2.  Certificado periódico\n3.  Certificado final\n4.  Informe valorativo\n5.  Libro de calificaciones\n6.  Ficha observador\n7.  Cuadro de promoción\n8.  Informe final\n9.  Informe final semestralizado\n10. Planilla parcial\n11. Acta promoción anticipada\n12. Certificado de notas parciales\n\n*(Cada fila tiene un botón \"Acciones\" en la segunda columna)*\n\n### 6) Texto informativo\n*   **\"registros\"** (texto junto al selector \"Mostrar\")\n*   **\"Mostrando 1 a 12 de 12 registros\"** (texto de pie de tabla/paginación)\n*   **\"2026 © Una aplicación web desarrollada por Colegio en línea\"** (pie de página inferior izquierdo)\n*   **\"Tutoriales\"** (enlace/texto en el pie de página inferior derecho)\n*   **\"Buscar estudiante...\"** (placeholder dentro del campo de búsqueda de la barra superior)\n*   **\"iPro\"** (logo/nombre de la aplicación en la barra superior izquierda)",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789164165,
+  "id": "20260912060235dc19f56141c44e59",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912060235dc19f56141c44e59",
+  "usage": {
+    "completion_tokens": 585,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3178
+  }
+}

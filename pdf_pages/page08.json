@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n### 1) Título exacto de la pantalla\n**ADJETIVOS PARA LOS INDICADORES**\n\n### 2) Campos de formulario visibles\n\n*   **Campo de búsqueda global (barra superior):**\n    *   Etiqueta: *Buscar estudiante...* (placeholder)\n    *   Tipo: **texto**\n\n*   **Filtro \"Mostrar\":**\n    *   Etiqueta: **Mostrar**\n    *   Tipo: **select** (desplegable)\n    *   Opción visible seleccionada: **All**\n\n*   **Filtro de búsqueda de tabla:**\n    *   Etiqueta: **Buscar:**\n    *   Tipo: **texto** (campo de entrada vacío)\n\n### 3) Botones visibles\n\n*   **Botón principal (esquina superior derecha del contenido):**\n    *   Texto: **Nuevo Registro**\n    *   Icono: Círculo con signo más (+)\n\n*   **Botones de acción por fila (en la tabla, repetidos en cada registro):**\n    *   Botón de edición (icono lápiz/bolígrafo verde)\n    *   Botón de eliminación (icono papelera roja)\n\n*   **Botones de paginación (parte inferior):**\n    *   Flecha izquierda (**<**)\n    *   Número de página activa: **1**\n    *   Flecha derecha (**>**)\n\n### 4) Tabs o secciones\nNo hay tabs visibles en esta pantalla. Sin embargo, en la barra de navegación superior global se observan las siguientes secciones:\n*   ESTUDIANTES\n*   CALIFICACIONES\n*   MÓDULOS\n*   CONFIGURACIÓN (sección activa/resaltada)\n*   REPORTES\n\n### 5) Tabla con sus columnas EXACTAS\n\n**Estructura de la tabla:**\n\n| Columna 1 | Columna 2 | Columna 3 |\n| :--- | :--- | :--- |\n| **Nombre** | **Escala valorativa** | *(Acciones)* |\n\n**Registros/filas exactos mostrados (1 a 20):**\n\n| Nombre | Escala valorativa |\n| :--- | :--- |\n| Difícilmente | Bajo |\n| No | Bajo |\n| Con dificultad | Bajo |\n| Insuficientemente | Bajo |\n| Raramente | Bajo |\n| Algunas veces | Básico |\n| Eventualmente | Básico |\n| Ocasionalmente | Básico |\n| Frecuentemente | Básico |\n| Esporádicamente | Básico |\n| Coherentemente | Alto |\n| Adecuadamente | Alto |\n| Diestramente | Alto |\n| Fácilmente | Alto |\n| Ágilmente | Alto |\n| Eficazmente | Superior |\n| Evidentemente | Superior |\n| Hábilmente | Superior |\n| Notablemente | Superior |\n| Constantemente | Superior |\n\n### 6) Texto informativo\n\n*   **Texto junto al filtro \"Mostrar\":** `registros`\n*   **Texto de paginación (abajo de la tabla):** `Mostrando 1 a 20 de 20 registros`\n*   **Texto de pie de página (copyright):** `2026 © Una aplicación web desarrollada por Colegio en línea`\n*   **Texto de pie de página (enlace):** `Tutoriales`\n*   **Texto en botón flotante (esquina inferior derecha):** `chat` (dentro de un círculo púrpura con icono de burbuja de diálogo)",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789164003,
+  "id": "2026091205594716f8cba36d304d2b",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "2026091205594716f8cba36d304d2b",
+  "usage": {
+    "completion_tokens": 800,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3393
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n**1) Título exacto de la pantalla**\n`CREAR SEDE`\n\n**2) TODOS los campos de formulario visibles**\n\n*   **Etiqueta:** `Nombre *`\n    *   **Tipo:** texto (input de texto)\n*   **Etiqueta:** `Estado`\n    *   **Tipo:** toggle/switch (interruptor de activación/desactivación, mostrado en posición activa/encendida)\n\n**3) Botones visibles**\n\n*   `Volver al listado` (botón de navegación, ubicado en la esquina superior derecha del contenedor principal)\n*   `Guardar` (botón de acción principal, color verde, ubicado en la parte inferior derecha del formulario)\n\n**4) Tabs o secciones**\n\n*   Barra de navegación superior (menú principal): `ESTUDIANTES`, `CALIFICACIONES`, `MÓDULOS`, `CONFIGURACIÓN` (sección activa), `REPORTES`\n\n**5) Tablas con sus columnas EXACTAS**\n\n*   No hay tablas visibles en esta pantalla.\n\n**6) Texto informativo**\n\n*   **Pie de página izquierdo:** `2026 © Una aplicación web desarrollada por Colegio en línea`\n*   **Pie de página derecho:** `Tutoriales`\n*   **Barra superior derecha (placeholder):** `Buscar estudiante...`\n*   **Icono flotante inferior derecho:** `CHAT` (dentro de un círculo morado)",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789164192,
+  "id": "20260912060301306fba3466424cbf",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912060301306fba3466424cbf",
+  "usage": {
+    "completion_tokens": 337,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2930
+  }
+}

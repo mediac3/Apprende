@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis literal y detallado de la captura de pantalla:\n\n**1) Título exacto de la pantalla:**\n`CREAR ASIGNATURA`\n\n**2) Campos de formulario visibles (etiqueta exacta, tipo y opciones):**\n\n*   **Etiqueta:** `Nombre *`\n    *   **Tipo:** Texto\n    *   **Opciones:** N/A\n*   **Etiqueta:** `abreviatura *`\n    *   **Tipo:** Texto\n    *   **Opciones:** N/A\n*   **Etiqueta:** `Promedia`\n    *   **Tipo:** Toggle/Checkbox (interruptor de activación)\n    *   **Opciones:** Activado/Desactivado (visualmente aparece en estado \"Activado\" o \"On\")\n*   **Etiqueta:** `Estado`\n    *   **Tipo:** Toggle/Checkbox (interruptor de activación)\n    *   **Opciones:** Activado/Desactivado (visualmente aparece en estado \"Activado\" o \"On\")\n\n**3) Botones visibles:**\n\n*   `Volver al listado` (Ubicado en la esquina superior derecha del contenedor blanco, con un icono de flecha hacia la izquierda).\n*   `Guardar` (Botón de acción principal, color verde oscuro, ubicado en la parte inferior derecha del formulario).\n\n**4) Tabs o secciones:**\nNo hay pestañas (tabs) visibles en esta pantalla específica. Sin embargo, en la barra de navegación superior se observan las siguientes secciones principales del sistema:\n*   `ESTUDIANTES`\n*   `CALIFICACIONES`\n*   `MÓDULOS`\n*   `CONFIGURACIÓN` (Parece ser la sección activa actual)\n*   `REPORTES`\n\n**5) Tablas con sus columnas EXACTAS:**\nNo hay tablas de datos visibles en esta pantalla.\n\n**6) Texto informativo:**\n\n*   **En el pie de página (centrado):** `2026 © Una aplicación web desarrollada por Colegio en línea`\n*   **En el pie de página (derecha):** `Tutoriales`\n*   **En la barra de búsqueda (placeholder):** `Buscar estudiante...`\n*   **En el botón flotante (esquina inferior derecha):** `CHAT` (dentro de un círculo púrpura/rosa).",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789163930,
+  "id": "20260912055838fb5b3595ae274605",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912055838fb5b3595ae274605",
+  "usage": {
+    "completion_tokens": 522,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2593,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3115
+  }
+}
