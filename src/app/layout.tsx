@@ -1,29 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Lora } from "next/font/google";
+import { Open_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const loraSerif = Lora({
-  variable: "--font-serif-display",
-  subsets: ["latin"],
+const openSans = Open_Sans({
+  variable: "--font-open-sans",
+  subsets: ["latin", "latin-ext"],
+  weight: ["300", "400", "500", "600", "700", "800"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Aulnea — Plataforma educativa modular",
+  title: "Apprende — Plataforma educativa modular",
   description:
     "Transforme su institución con tecnología educativa modular, intuitiva y legalmente respaldada. Gestión académica, administrativa, comunicación y reportes desde un solo lugar.",
   keywords: [
@@ -34,21 +23,22 @@ export const metadata: Metadata = {
     "actas institucionales",
     "comunidad escolar",
     "PWA educativa",
+    "Apprende",
   ],
-  authors: [{ name: "Aulnea" }],
+  authors: [{ name: "Apprende" }],
   manifest: "/manifest.webmanifest",
-  applicationName: "Aulnea",
+  applicationName: "Apprende",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Aulnea",
+    title: "Apprende",
   },
   icons: {
     icon: "/icon.svg",
     apple: "/icon.svg",
   },
   openGraph: {
-    title: "Aulnea — Plataforma educativa modular",
+    title: "Apprende — Plataforma educativa modular",
     description:
       "Gestión académica, administrativa, comunicación y reportes. Modular, intuitiva y legalmente respaldada.",
     type: "website",
@@ -57,7 +47,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FAFAFA" },
+    { media: "(prefers-color-scheme: light)", color: "#FAFBFC" },
     { media: "(prefers-color-scheme: dark)", color: "#0F1115" },
   ],
   width: "device-width",
@@ -78,7 +68,7 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var stored = localStorage.getItem('aulnea-theme');
+                  var stored = localStorage.getItem('apprende-theme') || localStorage.getItem('aulnea-theme');
                   var theme = stored || 'sereno';
                   document.documentElement.setAttribute('data-theme', theme);
                 } catch (e) {
@@ -90,7 +80,8 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${loraSerif.variable} antialiased`}
+        className={`${openSans.variable} antialiased`}
+        style={{ fontFamily: "var(--font-open-sans), ui-sans-serif, system-ui, sans-serif" }}
       >
         {children}
         <Toaster />

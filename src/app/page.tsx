@@ -58,7 +58,7 @@ function PWAInstallNudge() {
       e.preventDefault();
       setDeferredPrompt(e);
       // Solo mostrar después de 8s y si no se ha cerrado antes
-      const dismissed = localStorage.getItem("aulnea-pwa-dismissed");
+      const dismissed = localStorage.getItem("apprende-pwa-dismissed") || localStorage.getItem("aulnea-pwa-dismissed");
       if (!dismissed) {
         setTimeout(() => setShowNudge(true), 8000);
       }
@@ -73,11 +73,11 @@ function PWAInstallNudge() {
     <div className="fixed bottom-4 right-4 z-50 max-w-xs animate-slide-in-right">
       <div className="hairline rounded-lg bg-[var(--app-card)] p-4 shadow-lg">
         <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-md bg-primary text-primary-foreground grid place-items-center flex-shrink-0 text-xs font-semibold">
-            Au
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground grid place-items-center flex-shrink-0 text-xs font-extrabold shadow-sm">
+            Ap
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium">Instalar Aulnea</div>
+            <div className="text-sm font-medium">Instalar Apprende</div>
             <div className="text-xs text-muted-foreground mt-0.5 leading-snug">
               Acceso rápido desde su escritorio. Funciona offline.
             </div>
@@ -96,7 +96,7 @@ function PWAInstallNudge() {
                 className="text-xs px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground"
                 onClick={() => {
                   setShowNudge(false);
-                  localStorage.setItem("aulnea-pwa-dismissed", "1");
+                  localStorage.setItem("apprende-pwa-dismissed", "1");
                 }}
               >
                 Ahora no

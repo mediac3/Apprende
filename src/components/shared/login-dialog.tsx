@@ -68,13 +68,13 @@ export function LoginDialog({
         <div className="p-6">
           <DialogHeader className="space-y-3">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary text-primary-foreground grid place-items-center">
-                <GraduationCap className="h-5 w-5" />
+              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground grid place-items-center font-extrabold text-base shadow-sm">
+                Ap
               </div>
               <div>
                 <DialogTitle className="text-xl">Acceso institucional</DialogTitle>
                 <DialogDescription className="mt-1">
-                  Aulnea — Plataforma educativa modular
+                  Apprende — Plataforma educativa modular
                 </DialogDescription>
               </div>
             </div>

@@ -4,9 +4,9 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ============================================================
-   AULNEA — Design Tokens
-   Colores sobrios institucionales. 3 estilos visuales conmutables.
-   Cada tema redefinide SOLO tokens vía data-theme en <html>.
+   APPRENDE — Design Tokens
+   Estilos modernos inspirados en FluentCommunity.
+   Fuente: Open Sans. 3 estilos visuales conmutables.
    ============================================================ */
 
 @theme inline {
@@ -49,69 +49,73 @@
   --color-perf-basico: var(--perf-basico);
   --color-perf-bajo: var(--perf-bajo);
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-serif: var(--font-serif-display), Georgia, "Times New Roman", serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+  --font-sans: var(--font-open-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-heading: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
-  --radius-sm: calc(var(--app-radius) - 4px);
+  --radius-sm: calc(var(--app-radius) - 6px);
   --radius-md: calc(var(--app-radius) - 2px);
   --radius-lg: var(--app-radius);
-  --radius-xl: calc(var(--app-radius) + 4px);
+  --radius-xl: calc(var(--app-radius) + 6px);
+  --radius-2xl: calc(var(--app-radius) + 10px);
 
   --shadow-xs: 0 1px 2px 0 var(--app-shadow-color);
   --shadow-sm: 0 1px 3px 0 var(--app-shadow-color), 0 1px 2px -1px var(--app-shadow-color);
   --shadow-md: 0 4px 6px -1px var(--app-shadow-color), 0 2px 4px -2px var(--app-shadow-color);
   --shadow-lg: 0 10px 15px -3px var(--app-shadow-color), 0 4px 6px -4px var(--app-shadow-color);
+  --shadow-xl: 0 20px 25px -5px var(--app-shadow-color), 0 8px 10px -6px var(--app-shadow-color);
+  --shadow-2xl: 0 25px 50px -12px var(--app-shadow-color);
+  --shadow-glow: 0 0 0 3px color-mix(in srgb, var(--app-primary) 18%, transparent);
 }
 
 /* ============================================================
-   TEMA 1 — Institucional Sereno
-   Fondo #FAFAFA, tarjetas blancas, bordes hairline, sans geométrica,
-   radios 12px, sombras muy tenues. Lectura ejecutiva.
+   TEMA 1 — Institucional Sereno (moderno, tipo FluentCommunity)
+   Fondo #FAFBFC, tarjetas blancas con sombras suaves, bordes redondeados,
+   Open Sans, radios 16px, hover states con elevación.
    ============================================================ */
 :root,
 [data-theme="sereno"] {
-  --app-bg: #FAFAFA;
-  --app-fg: #0F1115;
+  --app-bg: #FAFBFC;
+  --app-fg: #0F1419;
   --app-card: #FFFFFF;
-  --app-card-fg: #0F1115;
+  --app-card-fg: #0F1419;
   --app-popover: #FFFFFF;
-  --app-popover-fg: #0F1115;
+  --app-popover-fg: #0F1419;
   --app-primary: #2F4A6D;
   --app-primary-fg: #FFFFFF;
-  --app-secondary: #F4F5F7;
+  --app-secondary: #F0F2F5;
   --app-secondary-fg: #1A1D23;
-  --app-muted: #F4F5F7;
-  --app-muted-fg: #6B7280;
-  --app-accent: #EEF2F7;
+  --app-muted: #F0F2F5;
+  --app-muted-fg: #65676B;
+  --app-accent: #E7F0F8;
   --app-accent-fg: #2F4A6D;
-  --app-error: #A34A3F;
-  --app-success: #3F7D5C;
-  --app-warning: #B08A3E;
+  --app-error: #C44545;
+  --app-success: #2E7D5C;
+  --app-warning: #B8860B;
   --app-info: #4A6B8A;
   --app-brass: #A98B5D;
-  --app-border: #E5E7EB;
-  --app-input: #E5E7EB;
+  --app-border: #E4E6EB;
+  --app-input: #E4E6EB;
   --app-ring: #2F4A6D;
   --app-sidebar: #FFFFFF;
   --app-sidebar-fg: #1A1D23;
 
-  --perf-superior: #2F5D50;
+  --perf-superior: #2E7D5C;
   --perf-alto: #3C6E71;
-  --perf-basico: #B08A3E;
-  --perf-bajo: #A34A3F;
+  --perf-basico: #B8860B;
+  --perf-bajo: #C44545;
 
-  --app-radius: 12px;
-  --app-shadow-color: rgba(15, 17, 21, 0.06);
+  --app-radius: 16px;
+  --app-shadow-color: rgba(15, 20, 25, 0.08);
 
-  --app-font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --app-font-body: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --app-font-heading: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
+  --app-font-body: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* ============================================================
    TEMA 2 — Editorial Académico
-   Fondo hueso #F4F1EC, titulares serif con buen contraste, cuerpo sans,
-   reglas horizontales visibles, radios 4px, sin sombras. Tono memorando.
+   Fondo hueso #F4F1EC, titulares Open Sans semibold, cuerpo Open Sans,
+   reglas horizontales visibles, radios 6px, sin sombras. Tono memorando.
    ============================================================ */
 [data-theme="editorial"] {
   --app-bg: #F4F1EC;
@@ -144,17 +148,17 @@
   --perf-basico: #B08A3E;
   --perf-bajo: #A34A3F;
 
-  --app-radius: 4px;
+  --app-radius: 6px;
   --app-shadow-color: rgba(26, 26, 26, 0);
 
-  --app-font-heading: var(--font-serif-display), Georgia, "Times New Roman", serif;
-  --app-font-body: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --app-font-heading: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
+  --app-font-body: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* ============================================================
-   TEMA 3 — Nocturno Sobrio
+   TEMA 3 — Nocturno Sobrio (moderno)
    Base grafito #0F1115, superficies #1A1D23, acento latón #A98B5D,
-   sans de alto contraste, radios 8px, elevación por borde.
+   Open Sans de alto contraste, radios 12px, sombras profundas.
    ============================================================ */
 [data-theme="nocturno"] {
   --app-bg: #0F1115;
@@ -163,35 +167,35 @@
   --app-card-fg: #F4F5F7;
   --app-popover: #1A1D23;
   --app-popover-fg: #F4F5F7;
-  --app-primary: #A98B5D;
+  --app-primary: #C9A979;
   --app-primary-fg: #0F1115;
   --app-secondary: #2A2F37;
   --app-secondary-fg: #F4F5F7;
   --app-muted: #2A2F37;
   --app-muted-fg: #9CA3AF;
   --app-accent: #2A2F37;
-  --app-accent-fg: #A98B5D;
-  --app-error: #C7615A;
-  --app-success: #5A9E78;
-  --app-warning: #D4A856;
-  --app-info: #6E92B5;
-  --app-brass: #A98B5D;
-  --app-border: #2A2F37;
-  --app-input: #2A2F37;
-  --app-ring: #A98B5D;
-  --app-sidebar: #1A1D23;
+  --app-accent-fg: #C9A979;
+  --app-error: #E06565;
+  --app-success: #6BBA8A;
+  --app-warning: #E5B567;
+  --app-info: #7FAAD6;
+  --app-brass: #C9A979;
+  --app-border: #2D3239;
+  --app-input: #2D3239;
+  --app-ring: #C9A979;
+  --app-sidebar: #16191F;
   --app-sidebar-fg: #F4F5F7;
 
-  --perf-superior: #5A9E78;
-  --perf-alto: #6E92B5;
-  --perf-basico: #D4A856;
-  --perf-bajo: #C7615A;
+  --perf-superior: #6BBA8A;
+  --perf-alto: #7FAAD6;
+  --perf-basico: #E5B567;
+  --perf-bajo: #E06565;
 
-  --app-radius: 8px;
-  --app-shadow-color: rgba(0, 0, 0, 0.4);
+  --app-radius: 12px;
+  --app-shadow-color: rgba(0, 0, 0, 0.5);
 
-  --app-font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --app-font-body: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --app-font-heading: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
+  --app-font-body: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
@@ -204,21 +208,131 @@
   body {
     background-color: var(--app-bg);
     color: var(--app-fg);
-    font-feature-settings: "cv11", "ss01";
+    font-feature-settings: "cv11", "ss01", "kern";
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--app-font-heading);
-    letter-spacing: -0.01em;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
   ::selection {
     background-color: color-mix(in srgb, var(--app-primary) 25%, transparent);
   }
+  /* Botones y elementos interactivos: transición suave global */
+  button, a, input, select, textarea, [role="button"] {
+    transition: background-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+                color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1),
+                transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+/* ============================================================
+   UTILIDADES MODERNAS (inspiradas en FluentCommunity)
+   ============================================================ */
+
+/* Avatar circular con gradiente */
+.avatar-circle {
+  border-radius: 9999px;
+  background: linear-gradient(135deg, var(--app-primary), color-mix(in srgb, var(--app-primary) 70%, var(--app-brass)));
+  color: var(--app-primary-fg);
+  display: inline-grid;
+  place-items: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Tarjeta moderna con sombra suave y hover lift */
+.card-modern {
+  background: var(--app-card);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: 0 1px 2px var(--app-shadow-color);
+  transition: box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1),
+              transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.card-modern:hover {
+  box-shadow: 0 4px 12px var(--app-shadow-color), 0 2px 4px var(--app-shadow-color);
+  transform: translateY(-1px);
+}
+
+/* Botón primario moderno con gradiente sutil */
+.btn-modern {
+  background: linear-gradient(135deg, var(--app-primary), color-mix(in srgb, var(--app-primary) 85%, black));
+  color: var(--app-primary-fg);
+  border-radius: calc(var(--app-radius) - 4px);
+  font-weight: 600;
+  box-shadow: 0 1px 2px var(--app-shadow-color);
+  transition: all 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.btn-modern:hover {
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--app-primary) 30%, transparent), 0 2px 4px var(--app-shadow-color);
+  transform: translateY(-1px);
+}
+.btn-modern:active {
+  transform: translateY(0);
+}
+
+/* Glassmorphism suave para headers sticky */
+.glass-header {
+  background: color-mix(in srgb, var(--app-card) 80%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--app-border);
+}
+
+/* Badge moderno tipo pill */
+.pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Hover state para items de lista */
+.list-item-hover {
+  transition: background-color 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.list-item-hover:hover {
+  background-color: color-mix(in srgb, var(--app-primary) 6%, transparent);
+}
+
+/* Composer sticky tipo FluentCommunity */
+.sticky-composer {
+  position: sticky;
+  bottom: 0;
+  background: var(--app-card);
+  border-top: 1px solid var(--app-border);
+  padding: 12px;
+  z-index: 10;
+}
+
+/* Input moderno con foco glow */
+.input-modern {
+  background: var(--app-card);
+  border: 1px solid var(--app-border);
+  border-radius: calc(var(--app-radius) - 4px);
+  transition: border-color 180ms, box-shadow 180ms;
+}
+.input-modern:focus {
+  border-color: var(--app-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-primary) 15%, transparent);
+  outline: none;
 }
 
 /* Utilidades de tema */
 .font-heading {
   font-family: var(--app-font-heading);
+  font-weight: 700;
 }
 .font-body {
   font-family: var(--app-font-body);

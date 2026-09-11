@@ -270,23 +270,23 @@ export function InstitutionalPanel() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--app-bg)]">
-      {/* Topbar */}
-      <header className="sticky top-0 z-30 hairline-b bg-[var(--app-card)]/90 backdrop-blur-md">
-        <div className="px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+      {/* Topbar moderno con glassmorphism */}
+      <header className="sticky top-0 z-30 glass-header">
+        <div className="px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <button
-              className="lg:hidden p-1.5 -ml-1.5 rounded-md hover:bg-secondary"
+              className="lg:hidden p-2 -ml-1 rounded-lg hover:bg-secondary transition-colors"
               onClick={() => setSidebar(true)}
               aria-label="Abrir menú"
             >
               <LayoutDashboard className="h-5 w-5" />
             </button>
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="h-7 w-7 rounded-md bg-primary text-primary-foreground grid place-items-center font-heading font-semibold text-xs flex-shrink-0">
-                Au
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="avatar-circle h-9 w-9 text-xs shadow-sm">
+                Ap
               </div>
               <div className="hidden sm:block min-w-0">
-                <div className="text-sm font-medium truncate">{user.institution.name}</div>
+                <div className="text-sm font-semibold truncate">{user.institution.name}</div>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
                   Año {user.institution.academicYear} · {roleLabel(user.role)}
                 </div>
@@ -294,13 +294,13 @@ export function InstitutionalPanel() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="hidden sm:flex gap-2" aria-label="Notificaciones">
+            <Button variant="ghost" size="sm" className="hidden sm:flex gap-2 rounded-lg" aria-label="Notificaciones">
               <Bell className="h-4 w-4" />
               <Badge variant="secondary" className="text-[10px] h-4 px-1">3</Badge>
             </Button>
             <ThemeSwitcher compact />
-            <div className="hidden sm:flex items-center gap-2 pl-2 hairline-l">
-              <div className="h-8 w-8 rounded-full bg-secondary grid place-items-center text-xs font-semibold">
+            <div className="hidden sm:flex items-center gap-2 pl-3 ml-1 hairline-l">
+              <div className="avatar-circle h-9 w-9 text-xs">
                 {user.fullName.charAt(0)}
               </div>
               <div className="text-xs leading-tight hidden md:block">

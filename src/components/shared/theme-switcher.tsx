@@ -17,20 +17,20 @@ const THEMES: { key: ThemeName; name: string; desc: string; swatch: [string, str
   {
     key: "sereno",
     name: "Institucional Sereno",
-    desc: "Lectura ejecutiva, tarjetas blancas, sans geométrica.",
-    swatch: ["#FAFAFA", "#FFFFFF", "#2F4A6D"],
+    desc: "Moderno, tarjetas blancas, sombras suaves, bordes redondeados.",
+    swatch: ["#FAFBFC", "#FFFFFF", "#2F4A6D"],
   },
   {
     key: "editorial",
     name: "Editorial Académico",
-    desc: "Tono memorando, titulares serif, reglas visibles.",
+    desc: "Tono memorando, fondo hueso, reglas horizontales visibles.",
     swatch: ["#F4F1EC", "#FBF9F5", "#2F4A6D"],
   },
   {
     key: "nocturno",
     name: "Nocturno Sobrio",
-    desc: "Grafito y latón, salas de profesores, alto contraste.",
-    swatch: ["#0F1115", "#1A1D23", "#A98B5D"],
+    desc: "Grafito y latón, alto contraste, ideal para sesiones nocturnas.",
+    swatch: ["#0F1115", "#1A1D23", "#C9A979"],
   },
 ];
 

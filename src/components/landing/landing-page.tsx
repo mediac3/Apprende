@@ -112,14 +112,14 @@ export function LandingPage({ onLogin }: { onLogin: () => void }) {
 
 function LandingHeader({ onLogin }: { onLogin: () => void }) {
   return (
-    <header className="sticky top-0 z-40 hairline-b bg-[var(--app-card)]/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 glass-header">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground grid place-items-center font-heading font-semibold text-sm">
-            Au
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground grid place-items-center font-extrabold text-sm shadow-sm">
+            Ap
           </div>
           <div>
-            <div className="font-heading font-semibold leading-none">Aulnea</div>
+            <div className="font-extrabold leading-none tracking-tight">Apprende</div>
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-0.5">
               Plataforma educativa
             </div>
@@ -586,7 +586,7 @@ function PersonalizationSection() {
                 </div>
               </div>
               <div className="text-center text-xs text-muted-foreground">
-                <div>Aulnea · Documento institucional</div>
+                <div>Apprende · Documento institucional</div>
                 <div className="mt-1 font-mono text-[10px] opacity-60">
                   hash: a3f4...8b9c
                 </div>
@@ -837,10 +837,10 @@ function LandingFooter() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2.5 mb-3">
-              <div className="h-7 w-7 rounded-md bg-primary text-primary-foreground grid place-items-center font-heading font-semibold text-xs">
-                Au
+              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary to-primary/80 text-primary-foreground grid place-items-center font-extrabold text-xs flex-shrink-0">
+                Ap
               </div>
-              <span className="font-heading font-semibold">Aulnea</span>
+              <span className="font-extrabold tracking-tight">Apprende</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Plataforma educativa modular, intuitiva y legalmente respaldada.
@@ -880,7 +880,7 @@ function LandingFooter() {
           </div>
         </div>
         <div className="mt-8 pt-6 hairline-t flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <div>© {new Date().getFullYear()} Aulnea. MIT License.</div>
+          <div>© {new Date().getFullYear()} Apprende. MIT License.</div>
           <div className="flex items-center gap-4">
             <span>Hecho con intención institucional.</span>
           </div>
