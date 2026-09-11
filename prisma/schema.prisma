@@ -1,0 +1,447 @@
+// Aulnea — Plataforma educativa modular
+// Schema: instituciones, usuarios, módulos académicos, convivencia, comunidad
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Institution {
+  id            String   @id @default(cuid())
+  name          String
+  shortName     String?
+  nit           String?
+  dane          String?
+  logoUrl       String?
+  address       String?
+  phone         String?
+  email         String?
+  academicYear  String   @default("2025")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  users         User[]
+  spaces        Space[]
+  posts         Post[]
+  students      Student[]
+  groups        Group[]
+  subjects      Subject[]
+  periods       Period[]
+  meetings      Meeting[]
+  enrollments   Enrollment[]
+  audits        AuditLog[]
+}
+
+// UserRole values: rector, coordinador, director_grupo, docente, orientador, acudiente, estudiante, administrativo
+
+model User {
+  id              String   @id @default(cuid())
+  institutionId   String
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  username        String   @unique
+  email           String?
+  phone           String?
+  passwordHash    String
+  fullName        String
+  role            String   @default("docente") // UserRole values
+  avatarUrl       String?
+  jobTitle        String?
+  active          Boolean  @default(true)
+  lastLoginAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  posts           Post[]
+  comments        Comment[]
+  reactions       Reaction[]
+  messagesSent    Message[]       @relation("MessageSender")
+  messagesReceived Message[]      @relation("MessageReceiver")
+  notifications   Notification[]
+  audits          AuditLog[]
+  grades          Grade[]         @relation("GradeTeacher")
+  attendances     Attendance[]
+  observations    Observation[]
+  meetings        MeetingSigner[]
+  orientations    Orientation[]
+  badges          UserBadge[]
+  syncOps         SyncOp[]
+  enrollments     Enrollment[]    @relation("ProcessedBy")
+  assignments     SubjectAssignment[] @relation("Teacher")
+  spaceMemberships SpaceMember[]
+  headedGroups    Group[]             @relation("GroupHeadTeacher")
+}
+
+model Group {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name          String   // e.g. "8°A"
+  grade         String   // e.g. "8"
+  section       String?
+  headTeacherId String?  // director de grupo
+  createdAt     DateTime @default(now())
+
+  headTeacher   User?    @relation("GroupHeadTeacher", fields: [headTeacherId], references: [id], onDelete: SetNull)
+  students      Student[]
+  assignments   SubjectAssignment[]
+  attendances   Attendance[]
+}
+
+model Student {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  groupId       String?
+  group         Group?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  code          String   // código institucional
+  firstName     String
+  lastName      String
+  birthDate     DateTime?
+  gender        String?
+  address       String?
+  guardianName  String?
+  guardianPhone String?
+  guardianEmail String?
+  guardianRelation String?
+  status        String   @default("activo") // activo, retirado, suspendido
+  enrollmentDate DateTime?
+  createdAt     DateTime @default(now())
+
+  grades        Grade[]
+  attendances   Attendance[]
+  observations  Observation[]
+  orientations  Orientation[]
+}
+
+model Subject {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name          String
+  code          String?
+  area          String?
+  createdAt     DateTime @default(now())
+
+  assignments   SubjectAssignment[]
+  grades        Grade[]
+  workshops     Workshop[]
+}
+
+model SubjectAssignment {
+  id            String   @id @default(cuid())
+  institutionId String
+  groupId       String
+  subjectId     String
+  teacherId     String?
+  weeklyHours   Int      @default(1)
+  createdAt     DateTime @default(now())
+
+  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher       User?    @relation("Teacher", fields: [teacherId], references: [id], onDelete: SetNull)
+}
+
+model Period {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name          String   // Periodo 1, 2, 3, 4
+  startDate     DateTime
+  endDate       DateTime
+  weight        Float    @default(25) // porcentaje
+  active        Boolean  @default(false)
+  closed        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  grades        Grade[]
+}
+
+model Grade {
+  id            String   @id @default(cuid())
+  studentId     String
+  subjectId     String
+  periodId      String
+  teacherId     String?
+  value         Float    // 0 - 100 o escala institucional
+  performance   String?  // bajo, basico, alto, superior
+  observations  String?
+  isSelfEval    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  period        Period   @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  teacher       User?    @relation("GradeTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+}
+
+model Workshop {
+  id            String   @id @default(cuid())
+  institutionId String
+  subjectId     String?
+  title         String
+  description   String?
+  level         String?  // grado objetivo
+  duration      Int?     // minutos
+  attachmentUrl String?
+  tags          String?
+  createdAt     DateTime @default(now())
+
+  subject       Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+}
+
+model Attendance {
+  id            String   @id @default(cuid())
+  studentId     String
+  groupId       String
+  date          DateTime
+  status        String   // presente, ausente, tarde, excusa
+  excuseReason  String?
+  recordedById  String?
+  notifiedAt    DateTime?
+  createdAt     DateTime @default(now())
+
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  recordedBy    User?    @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+}
+
+model Observation {
+  id            String   @id @default(cuid())
+  studentId     String
+  recordedById  String?
+  date          DateTime
+  category      String   // academico, convivencia, asistencia
+  type          String?  // Tipo I, II, III (para convivencia)
+  description   String
+  severity      String?  // baja, media, alta
+  studentReply  String?  // descargos del estudiante
+  followUp      String?
+  status        String   @default("abierta") // abierta, en_seguimiento, cerrada
+  createdAt     DateTime @default(now())
+
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  recordedBy    User?    @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+}
+
+model Orientation {
+  id            String   @id @default(cuid())
+  studentId     String?
+  orientedById  String?
+  date          DateTime
+  modality      String   // individual, grupal
+  reason        String
+  notes         String?
+  referral      String?  // remisión externa
+  followUp      String?
+  status        String   @default("abierta")
+  createdAt     DateTime @default(now())
+
+  student       Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  orientedBy    User?    @relation(fields: [orientedById], references: [id], onDelete: SetNull)
+}
+
+model Meeting {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  title         String
+  type          String   // comité, evaluación, directivo, otro
+  date          DateTime
+  location      String?
+  agenda        String?
+  minutes       String?  // acta desarrollada
+  signed        Boolean  @default(false)
+  signedAt      DateTime?
+  signedBy      String?
+  hash          String?  // sello criptográfico
+  createdAt     DateTime @default(now())
+
+  signers       MeetingSigner[]
+}
+
+model MeetingSigner {
+  id            String   @id @default(cuid())
+  meetingId     String
+  userId        String
+  signatureData String?  // base64 del canvas
+  signedAt      DateTime @default(now())
+
+  meeting       Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Enrollment {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  applicantName String
+  applicantBirthDate DateTime?
+  applicantGrade String  // grado solicitado
+  guardianName  String
+  guardianPhone String
+  guardianEmail String?
+  status        String   @default("solicitada") // solicitada, en_revision, aprobada, rechazada, matriculado
+  type          String   @default("matricula") // matricula, pre_matricula
+  processedById String?
+  documentsJson String?  // documentos cargados (JSON)
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  processedBy   User?    @relation("ProcessedBy", fields: [processedById], references: [id], onDelete: SetNull)
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action        String   // create, update, delete, login, sign, etc.
+  module        String   // modulo afectado
+  entityId      String?
+  entityType    String?
+  details       String?  // JSON
+  ip            String?
+  hash          String?
+  createdAt     DateTime @default(now())
+}
+
+// === Comunidad (FluentCommunity-like) ===
+
+model Space {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name          String
+  slug          String
+  description   String?
+  type          String   @default("group") // grade, area, committee, parents, project, group
+  visibility    String   @default("public") // public, private
+  memberCount   Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  posts         Post[]
+  members       SpaceMember[]
+}
+
+model SpaceMember {
+  id            String   @id @default(cuid())
+  spaceId       String
+  userId        String
+  role          String   @default("member") // admin, moderator, member
+  joinedAt      DateTime @default(now())
+
+  space         Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Post {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  spaceId       String?
+  authorId      String
+  content       String
+  attachmentsJson String? // [{type, url, name}]
+  pollQuestion  String?
+  pollOptionsJson String?
+  mentionsJson  String?   // ["@userId"]
+  tagsJson      String?
+  pinned        Boolean  @default(false)
+  edited        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  space         Space?   @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  author        User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments      Comment[]
+  reactions     Reaction[]
+}
+
+model Comment {
+  id            String   @id @default(cuid())
+  postId        String
+  authorId      String
+  parentId      String?  // para anidados
+  content       String
+  createdAt     DateTime @default(now())
+
+  post          Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author        User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model Reaction {
+  id            String   @id @default(cuid())
+  postId        String
+  userId        String
+  emoji         String   // like, love, celebrate, insightful
+  createdAt     DateTime @default(now())
+
+  post          Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id            String   @id @default(cuid())
+  senderId      String
+  receiverId    String?
+  groupId       String?  // para mensajes grupales
+  content       String
+  attachmentsJson String?
+  readAt        DateTime?
+  createdAt     DateTime @default(now())
+
+  sender        User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver      User?    @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: SetNull)
+}
+
+model Notification {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          String   // mention, reply, attendance, period_close, vote, system
+  title         String
+  body          String?
+  link          String?
+  channel       String   @default("in_app") // in_app, email, sms, push
+  read          Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
+
+model Badge {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  iconUrl       String?
+  criteria      String?
+  users         UserBadge[]
+}
+
+model UserBadge {
+  id            String   @id @default(cuid())
+  userId        String
+  badgeId       String
+  awardedAt     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge         Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+}
+
+// Operaciones de sincronización offline
+model SyncOp {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entityType    String   // grade, attendance, post, observation
+  entityId      String?
+  operation     String   // create, update, delete
+  payload       String   // JSON
+  status        String   @default("pending") // pending, synced, failed
+  createdAt     DateTime @default(now())
+  syncedAt      DateTime?
+}

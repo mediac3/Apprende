@@ -1,0 +1,372 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   AULNEA — Design Tokens
+   Colores sobrios institucionales. 3 estilos visuales conmutables.
+   Cada tema redefinide SOLO tokens vía data-theme en <html>.
+   ============================================================ */
+
+@theme inline {
+  --color-background: var(--app-bg);
+  --color-foreground: var(--app-fg);
+  --color-card: var(--app-card);
+  --color-card-foreground: var(--app-card-fg);
+  --color-popover: var(--app-popover);
+  --color-popover-foreground: var(--app-popover-fg);
+  --color-primary: var(--app-primary);
+  --color-primary-foreground: var(--app-primary-fg);
+  --color-secondary: var(--app-secondary);
+  --color-secondary-foreground: var(--app-secondary-fg);
+  --color-muted: var(--app-muted);
+  --color-muted-foreground: var(--app-muted-fg);
+  --color-accent: var(--app-accent);
+  --color-accent-foreground: var(--app-accent-fg);
+  --color-destructive: var(--app-error);
+  --color-destructive-foreground: #ffffff;
+  --color-border: var(--app-border);
+  --color-input: var(--app-input);
+  --color-ring: var(--app-ring);
+  --color-sidebar: var(--app-sidebar);
+  --color-sidebar-foreground: var(--app-sidebar-fg);
+  --color-sidebar-primary: var(--app-primary);
+  --color-sidebar-primary-foreground: var(--app-primary-fg);
+  --color-sidebar-accent: var(--app-accent);
+  --color-sidebar-accent-foreground: var(--app-accent-fg);
+  --color-sidebar-border: var(--app-border);
+  --color-sidebar-ring: var(--app-ring);
+
+  --color-success: var(--app-success);
+  --color-warning: var(--app-warning);
+  --color-info: var(--app-info);
+  --color-brass: var(--app-brass);
+
+  /* Semántica académica */
+  --color-perf-superior: var(--perf-superior);
+  --color-perf-alto: var(--perf-alto);
+  --color-perf-basico: var(--perf-basico);
+  --color-perf-bajo: var(--perf-bajo);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: var(--font-serif-display), Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+
+  --radius-sm: calc(var(--app-radius) - 4px);
+  --radius-md: calc(var(--app-radius) - 2px);
+  --radius-lg: var(--app-radius);
+  --radius-xl: calc(var(--app-radius) + 4px);
+
+  --shadow-xs: 0 1px 2px 0 var(--app-shadow-color);
+  --shadow-sm: 0 1px 3px 0 var(--app-shadow-color), 0 1px 2px -1px var(--app-shadow-color);
+  --shadow-md: 0 4px 6px -1px var(--app-shadow-color), 0 2px 4px -2px var(--app-shadow-color);
+  --shadow-lg: 0 10px 15px -3px var(--app-shadow-color), 0 4px 6px -4px var(--app-shadow-color);
+}
+
+/* ============================================================
+   TEMA 1 — Institucional Sereno
+   Fondo #FAFAFA, tarjetas blancas, bordes hairline, sans geométrica,
+   radios 12px, sombras muy tenues. Lectura ejecutiva.
+   ============================================================ */
+:root,
+[data-theme="sereno"] {
+  --app-bg: #FAFAFA;
+  --app-fg: #0F1115;
+  --app-card: #FFFFFF;
+  --app-card-fg: #0F1115;
+  --app-popover: #FFFFFF;
+  --app-popover-fg: #0F1115;
+  --app-primary: #2F4A6D;
+  --app-primary-fg: #FFFFFF;
+  --app-secondary: #F4F5F7;
+  --app-secondary-fg: #1A1D23;
+  --app-muted: #F4F5F7;
+  --app-muted-fg: #6B7280;
+  --app-accent: #EEF2F7;
+  --app-accent-fg: #2F4A6D;
+  --app-error: #A34A3F;
+  --app-success: #3F7D5C;
+  --app-warning: #B08A3E;
+  --app-info: #4A6B8A;
+  --app-brass: #A98B5D;
+  --app-border: #E5E7EB;
+  --app-input: #E5E7EB;
+  --app-ring: #2F4A6D;
+  --app-sidebar: #FFFFFF;
+  --app-sidebar-fg: #1A1D23;
+
+  --perf-superior: #2F5D50;
+  --perf-alto: #3C6E71;
+  --perf-basico: #B08A3E;
+  --perf-bajo: #A34A3F;
+
+  --app-radius: 12px;
+  --app-shadow-color: rgba(15, 17, 21, 0.06);
+
+  --app-font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --app-font-body: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ============================================================
+   TEMA 2 — Editorial Académico
+   Fondo hueso #F4F1EC, titulares serif con buen contraste, cuerpo sans,
+   reglas horizontales visibles, radios 4px, sin sombras. Tono memorando.
+   ============================================================ */
+[data-theme="editorial"] {
+  --app-bg: #F4F1EC;
+  --app-fg: #1A1A1A;
+  --app-card: #FBF9F5;
+  --app-card-fg: #1A1A1A;
+  --app-popover: #FBF9F5;
+  --app-popover-fg: #1A1A1A;
+  --app-primary: #2F4A6D;
+  --app-primary-fg: #FBF9F5;
+  --app-secondary: #EAE4D8;
+  --app-secondary-fg: #2A2F37;
+  --app-muted: #EAE4D8;
+  --app-muted-fg: #5B554A;
+  --app-accent: #E4DCC9;
+  --app-accent-fg: #2F4A6D;
+  --app-error: #A34A3F;
+  --app-success: #3F7D5C;
+  --app-warning: #B08A3E;
+  --app-info: #4A6B8A;
+  --app-brass: #A98B5D;
+  --app-border: #D7CFBF;
+  --app-input: #D7CFBF;
+  --app-ring: #2F4A6D;
+  --app-sidebar: #FBF9F5;
+  --app-sidebar-fg: #1A1A1A;
+
+  --perf-superior: #2F5D50;
+  --perf-alto: #3C6E71;
+  --perf-basico: #B08A3E;
+  --perf-bajo: #A34A3F;
+
+  --app-radius: 4px;
+  --app-shadow-color: rgba(26, 26, 26, 0);
+
+  --app-font-heading: var(--font-serif-display), Georgia, "Times New Roman", serif;
+  --app-font-body: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ============================================================
+   TEMA 3 — Nocturno Sobrio
+   Base grafito #0F1115, superficies #1A1D23, acento latón #A98B5D,
+   sans de alto contraste, radios 8px, elevación por borde.
+   ============================================================ */
+[data-theme="nocturno"] {
+  --app-bg: #0F1115;
+  --app-fg: #F4F5F7;
+  --app-card: #1A1D23;
+  --app-card-fg: #F4F5F7;
+  --app-popover: #1A1D23;
+  --app-popover-fg: #F4F5F7;
+  --app-primary: #A98B5D;
+  --app-primary-fg: #0F1115;
+  --app-secondary: #2A2F37;
+  --app-secondary-fg: #F4F5F7;
+  --app-muted: #2A2F37;
+  --app-muted-fg: #9CA3AF;
+  --app-accent: #2A2F37;
+  --app-accent-fg: #A98B5D;
+  --app-error: #C7615A;
+  --app-success: #5A9E78;
+  --app-warning: #D4A856;
+  --app-info: #6E92B5;
+  --app-brass: #A98B5D;
+  --app-border: #2A2F37;
+  --app-input: #2A2F37;
+  --app-ring: #A98B5D;
+  --app-sidebar: #1A1D23;
+  --app-sidebar-fg: #F4F5F7;
+
+  --perf-superior: #5A9E78;
+  --perf-alto: #6E92B5;
+  --perf-basico: #D4A856;
+  --perf-bajo: #C7615A;
+
+  --app-radius: 8px;
+  --app-shadow-color: rgba(0, 0, 0, 0.4);
+
+  --app-font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --app-font-body: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    font-family: var(--app-font-body);
+  }
+  body {
+    background-color: var(--app-bg);
+    color: var(--app-fg);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--app-font-heading);
+    letter-spacing: -0.01em;
+  }
+  ::selection {
+    background-color: color-mix(in srgb, var(--app-primary) 25%, transparent);
+  }
+}
+
+/* Utilidades de tema */
+.font-heading {
+  font-family: var(--app-font-heading);
+}
+.font-body {
+  font-family: var(--app-font-body);
+}
+
+/* Scrollbar sobrio */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--app-border) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--app-border);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--app-muted-fg);
+}
+
+/* Glow contenido al hover (catálogo de módulos) */
+.module-glow {
+  position: relative;
+  transition: all 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.module-glow::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--app-primary) 35%, transparent),
+              0 0 22px -4px color-mix(in srgb, var(--app-primary) 35%, transparent);
+}
+.module-glow:hover::after,
+.module-glow:focus-visible::after {
+  opacity: 1;
+}
+
+/* Hairline border helper */
+.hairline {
+  border: 1px solid var(--app-border);
+}
+.hairline-b {
+  border-bottom: 1px solid var(--app-border);
+}
+.hairline-t {
+  border-top: 1px solid var(--app-border);
+}
+
+/* Focus visible consistente */
+:focus-visible {
+  outline: 2px solid var(--app-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Skeleton reutilizable */
+.skeleton-pulse {
+  background: linear-gradient(
+    90deg,
+    var(--app-muted) 0%,
+    color-mix(in srgb, var(--app-muted) 60%, var(--app-card)) 50%,
+    var(--app-muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Slide-in lateral (confirmación demo) */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Quote drawing animation (casos de éxito) */
+@keyframes draw-quote {
+  from { stroke-dashoffset: 60; opacity: 0; }
+  to { stroke-dashoffset: 0; opacity: 1; }
+}
+.draw-quote path {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: draw-quote 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Parallax hero (desactivado en táctil y reduced-motion) */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .parallax-hero {
+    will-change: transform;
+    transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .parallax-hero {
+    transform: none !important;
+  }
+}
+
+/* Tabs indicator */
+.tab-underline {
+  position: relative;
+}
+.tab-underline::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: var(--app-primary);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.tab-underline[data-active="true"]::after {
+  transform: scaleX(1);
+}
+
+/* Performance chips académica */
+.chip-superior { background: color-mix(in srgb, var(--perf-superior) 14%, transparent); color: var(--perf-superior); }
+.chip-alto { background: color-mix(in srgb, var(--perf-alto) 14%, transparent); color: var(--perf-alto); }
+.chip-basico { background: color-mix(in srgb, var(--perf-basico) 14%, transparent); color: var(--perf-basico); }
+.chip-bajo { background: color-mix(in srgb, var(--perf-bajo) 14%, transparent); color: var(--perf-bajo); }
+
+[data-theme="nocturno"] .chip-superior { color: var(--perf-superior); }
+[data-theme="nocturno"] .chip-alto { color: var(--perf-alto); }
+[data-theme="nocturno"] .chip-basico { color: var(--perf-basico); }
+[data-theme="nocturno"] .chip-bajo { color: var(--perf-bajo); }

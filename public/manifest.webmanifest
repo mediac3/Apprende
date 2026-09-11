@@ -1,0 +1,38 @@
+{
+  "name": "Aulnea — Plataforma educativa modular",
+  "short_name": "Aulnea",
+  "description": "Gestión académica, administrativa, comunicación y reportes. Modular, intuitiva y legalmente respaldada.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#FAFAFA",
+  "theme_color": "#2F4A6D",
+  "categories": ["education", "productivity", "business"],
+  "lang": "es-CO",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Planeador de clases",
+      "short_name": "Planeador",
+      "url": "/?module=planeador"
+    },
+    {
+      "name": "Planilla de notas",
+      "short_name": "Notas",
+      "url": "/?module=notas"
+    },
+    {
+      "name": "Comunidad",
+      "short_name": "Comunidad",
+      "url": "/?module=comunidad"
+    }
+  ]
+}
