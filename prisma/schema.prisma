@@ -34,6 +34,8 @@ model Institution {
   meetings      Meeting[]
   enrollments   Enrollment[]
   audits        AuditLog[]
+  customModules CustomModule[]
+  customRecords CustomModuleRecord[]
 }
 
 // UserRole values: rector, coordinador, director_grupo, docente, orientador, acudiente, estudiante, administrativo
@@ -444,4 +446,60 @@ model SyncOp {
   status        String   @default("pending") // pending, synced, failed
   createdAt     DateTime @default(now())
   syncedAt      DateTime?
+}
+
+// ============================================================
+// MÓDULOS PERSONALIZADOS (constructor estilo FluentForms)
+// ============================================================
+
+model CustomModule {
+  id              String   @id @default(cuid())
+  institutionId   String
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name            String
+  slug            String
+  description     String?
+  icon            String   @default("FileText") // nombre de icono lucide
+  area            String   @default("Personalizado") // Académico, Convivencia, Comunidad, Administración, Personalizado
+  menuLabel       String?
+  tabOrientation  String   @default("horizontal") // horizontal, vertical
+  tabLabelsJson   String   @default("[\"Registros\",\"Nuevo\"]") // etiquetas de los 2 tabs
+  fieldsJson      String   // JSON con definición de campos (ver docs)
+  settingsJson    String?  // configuración extra: mensajes, notificaciones, etc.
+  successMessage  String   @default("Registro enviado correctamente.")
+  errorMessage    String   @default("Ocurrió un error. Verifique los datos.")
+  published       Boolean  @default(false) // el rector debe aprobar
+  publishedAt     DateTime?
+  publishedById   String?
+  status          String   @default("draft") // draft, pending_review, published, rejected
+  rejectionReason String?
+  visibleRolesJson    String @default("[\"docente\",\"director_grupo\",\"coordinador\",\"rector\",\"orientador\",\"acudiente\",\"estudiante\",\"administrativo\"]")
+  canCreateRolesJson  String @default("[\"docente\",\"director_grupo\",\"coordinador\",\"rector\",\"orientador\",\"acudiente\",\"estudiante\",\"administrativo\"]")
+  canEditRolesJson    String @default("[\"rector\",\"administrativo\"]")
+  canDeleteRolesJson  String @default("[\"rector\",\"administrativo\"]")
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  records         CustomModuleRecord[]
+  @@unique([institutionId, slug])
+}
+
+model CustomModuleRecord {
+  id            String   @id @default(cuid())
+  moduleId      String
+  module        CustomModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  userId        String?  // quien creó el registro
+  dataJson      String   // JSON con los valores del formulario
+  status        String   @default("submitted") // submitted, reviewed, approved, rejected
+  reviewedById  String?
+  reviewedAt    DateTime?
+  reviewNotes   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([moduleId])
+  @@index([institutionId])
 }

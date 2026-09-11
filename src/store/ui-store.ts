@@ -30,7 +30,13 @@ export type ModuleKey =
   | "comunidad"
   | "mensajeria"
   | "mi-acudido"
-  | "indicadores";
+  | "indicadores"
+  // Constructor de módulos personalizados (rol admin)
+  | "custom-module-builder"
+  // Aprobación de módulos (rol rector)
+  | "module-approvals"
+  // Módulos personalizados publicados — se usa el prefijo `custom:<moduleId>`
+  | string; // permite cualquier string para soportar custom:<id>
 
 interface UIState {
   activeModule: ModuleKey;
@@ -49,3 +55,17 @@ export const useUIStore = create<UIState>((set) => ({
   demoSheetOpen: false,
   setDemoSheet: (demoSheetOpen) => set({ demoSheetOpen }),
 }));
+
+// Helper para detectar módulos personalizados y extraer su ID
+export function isCustomModule(key: string): boolean {
+  return key.startsWith("custom:");
+}
+
+export function getCustomModuleId(key: string): string | null {
+  if (!isCustomModule(key)) return null;
+  return key.slice("custom:".length);
+}
+
+export function customModuleKey(moduleId: string): string {
+  return `custom:${moduleId}`;
+}

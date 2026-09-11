@@ -53,6 +53,12 @@ import { SupervisionView } from "./views/supervision-view";
 import { GroupDirectionView } from "./views/group-direction-view";
 import { MessagesView } from "./views/messages-view";
 import { AcademicoView } from "./views/academico-view";
+import { CustomModuleBuilderView } from "./views/custom-module-builder-view";
+import { CustomModuleRuntimeView } from "./views/custom-module-runtime-view";
+import { ModuleApprovalsView } from "./views/module-approvals-view";
+import { isCustomModule, getCustomModuleId, customModuleKey } from "@/store/ui-store";
+import { useEffect, useState } from "react";
+import { Boxes, CheckCircle, Wand2 } from "lucide-react";
 
 interface NavItem {
   key: ModuleKey;
@@ -100,12 +106,35 @@ const NAV: NavItem[] = [
   { key: "talento-humano", label: "Talento Humano", icon: Users, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "auditoria", label: "Auditoría", icon: ScrollText, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "configuracion", label: "Configuración", icon: Settings, group: "Administración", roles: ["rector", "administrativo"] },
+
+  // Constructor de módulos — admin
+  { key: "custom-module-builder", label: "Constructor de módulos", icon: Boxes, group: "Constructor", roles: ["administrativo"] },
+  // Aprobación de módulos — rector
+  { key: "module-approvals", label: "Aprobar módulos", icon: CheckCircle, group: "Constructor", roles: ["rector"] },
 ];
 
 export function InstitutionalPanel() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { activeModule, setModule, sidebarOpen, setSidebar } = useUIStore();
+  const [customModules, setCustomModules] = useState<any[]>([]);
+
+  // Cargar módulos personalizados publicados
+  useEffect(() => {
+    if (!user) return;
+    fetch(`/api/custom-modules?institutionId=${user.institution.id}&status=published`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.ok) {
+          // Filtrar por roles visibles para este usuario
+          const visible = d.modules.filter((m: any) =>
+            m.visibleRoles.includes(user.role)
+          );
+          setCustomModules(visible);
+        }
+      })
+      .catch(() => {});
+  }, [user]);
 
   // Filtrar navegación por rol
   const filteredNav = useMemo(() => {
@@ -120,12 +149,28 @@ export function InstitutionalPanel() {
       if (!g[n.group]) g[n.group] = [];
       g[n.group].push(n);
     });
+    // Añadir módulos personalizados a su área (o a "Personalizado" por defecto)
+    customModules.forEach((m) => {
+      const area = m.area || "Personalizado";
+      if (!g[area]) g[area] = [];
+      g[area].push({
+        key: customModuleKey(m.id) as any,
+        label: m.menuLabel || m.name,
+        icon: Wand2,
+        group: area,
+      });
+    });
     return g;
-  }, [filteredNav]);
+  }, [filteredNav, customModules]);
 
   if (!user) return null;
 
   function renderModule() {
+    // Módulo personalizado en runtime
+    if (isCustomModule(activeModule)) {
+      const modId = getCustomModuleId(activeModule);
+      if (modId) return <CustomModuleRuntimeView moduleId={modId} />;
+    }
     switch (activeModule) {
       case "dashboard":
         return <DashboardView />;
@@ -174,6 +219,10 @@ export function InstitutionalPanel() {
       case "inscripcion":
       case "pre-matricula":
         return <EnrollmentsView module={activeModule} />;
+      case "custom-module-builder":
+        return <CustomModuleBuilderView />;
+      case "module-approvals":
+        return <ModuleApprovalsView />;
       default:
         return <DashboardView />;
     }

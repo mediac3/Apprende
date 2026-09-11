@@ -168,7 +168,7 @@ async function main() {
       role: "administrativo",
       email: "svillegas@ieaulnea.edu.co",
       phone: "+57 310 555 1007",
-      jobTitle: "Secretaría Académica",
+      jobTitle: "Constructor de módulos y sistemas",
     },
   })
 
@@ -598,6 +598,174 @@ async function main() {
         type: rnd(["matricula", "pre_matricula"]),
       },
     })
+  }
+
+  console.log("→ Creando módulos personalizados de demostración...");
+
+  // Limpiar módulos custom existentes
+  await db.customModuleRecord.deleteMany();
+  await db.customModule.deleteMany();
+
+  // Módulo 1: Permiso de salida estudiantil
+  const mod1 = await db.customModule.create({
+    data: {
+      institutionId: inst.id,
+      createdById: administrativo.id,
+      name: "Permiso de salida estudiantil",
+      slug: "permiso_salida",
+      description: "Solicitud formal de permiso para que un estudiante salga del colegio durante la jornada escolar.",
+      icon: "FileText",
+      area: "Convivencia",
+      menuLabel: "Permiso de salida",
+      tabOrientation: "horizontal",
+      tabLabelsJson: JSON.stringify(["Permisos solicitados", "Solicitar permiso"]),
+      fieldsJson: JSON.stringify([
+        { id: "f1", name: "estudiante", label: "Estudiante", type: "student", required: true, width: "half", helpText: "Seleccione al estudiante de la lista." },
+        { id: "f2", name: "fecha_salida", label: "Fecha y hora de salida", type: "date", required: true, width: "half" },
+        { id: "f3", name: "motivo", label: "Motivo del permiso", type: "select", required: true, width: "half", options: [
+          { label: "Cita médica", value: "cita_medica" },
+          { label: "Calamidad doméstica", value: "calamidad" },
+          { label: "Trámite personal", value: "tramite" },
+          { label: "Otro", value: "otro" },
+        ]},
+        { id: "f4", name: "acompañante", label: "Persona que recoge al estudiante", type: "text", required: true, width: "half", placeholder: "Nombre completo del acudiente o autorizado" },
+        { id: "f5", name: "detalle", label: "Detalle del motivo", type: "textarea", required: true, width: "full", rows: 3, placeholder: "Explique brevemente el motivo del permiso." },
+        { id: "f6", name: "regreso", label: "¿El estudiante regresa al colegio el mismo día?", type: "radio", required: true, width: "half", options: [
+          { label: "Sí, regresa hoy", value: "si" },
+          { label: "No, no regresa", value: "no" },
+        ]},
+        { id: "f7", name: "contacto", label: "Teléfono de contacto durante la salida", type: "tel", required: true, width: "half" },
+        { id: "f8", name: "firma", label: "Firma del acudiente", type: "signature", required: true, width: "full" },
+      ]),
+      successMessage: "Permiso registrado. El coordinador revisará la solicitud en las próximas 2 horas.",
+      errorMessage: "No se pudo registrar el permiso. Verifique los campos obligatorios.",
+      published: true,
+      publishedAt: new Date(),
+      publishedById: rector.id,
+      status: "published",
+      visibleRolesJson: JSON.stringify(["director_grupo", "coordinador", "rector", "acudiente", "administrativo"]),
+      canCreateRolesJson: JSON.stringify(["director_grupo", "coordinador", "acudiente"]),
+      canEditRolesJson: JSON.stringify(["coordinador", "rector"]),
+      canDeleteRolesJson: JSON.stringify(["rector", "administrativo"]),
+    },
+  });
+
+  // Módulo 2: Solicitud de cita con orientación
+  const mod2 = await db.customModule.create({
+    data: {
+      institutionId: inst.id,
+      createdById: administrativo.id,
+      name: "Solicitud de cita con orientación",
+      slug: "cita_orientacion",
+      description: "Solicite una cita con el departamento de orientación escolar para atención individual o grupal.",
+      icon: "HeartHandshake",
+      area: "Convivencia",
+      menuLabel: "Cita con orientación",
+      tabOrientation: "vertical",
+      tabLabelsJson: JSON.stringify(["Citas solicitadas", "Solicitar cita"]),
+      fieldsJson: JSON.stringify([
+        { id: "c1", name: "solicitante", label: "Solicita la cita", type: "radio", required: true, width: "full", options: [
+          { label: "Estudiante", value: "estudiante" },
+          { label: "Acudiente", value: "acudiente" },
+          { label: "Docente", value: "docente" },
+          { label: "Directivo", value: "directivo" },
+        ]},
+        { id: "c2", name: "estudiante", label: "Estudiante involucrado", type: "student", required: true, width: "full", helpText: "Estudiante que recibirá la atención." },
+        { id: "c3", name: "modalidad", label: "Modalidad", type: "radio", required: true, width: "half", options: [
+          { label: "Individual", value: "individual" },
+          { label: "Grupal", value: "grupal" },
+          { label: "Familiar", value: "familiar" },
+        ]},
+        { id: "c4", name: "urgencia", label: "Nivel de urgencia", type: "rating", required: true, width: "half", max: 5, helpText: "1 = baja · 5 = crítica" },
+        { id: "c5", name: "motivo", label: "Motivo de la cita", type: "select", required: true, width: "full", options: [
+          { label: "Dificultades académicas", value: "academicas" },
+          { label: "Manejo de emociones", value: "emociones" },
+          { label: "Conflicto con pares", value: "conflicto" },
+          { label: "Proceso de inclusión", value: "inclusion" },
+          { label: "Charla sobre hábitos", value: "habitos" },
+          { label: "Otro", value: "otro" },
+        ]},
+        { id: "c6", name: "descripcion", label: "Descripción detallada", type: "textarea", required: true, width: "full", rows: 4, placeholder: "Cuéntenos brevemente la situación que requiere atención." },
+        { id: "c7", name: "preferencia_horaria", label: "Preferencia horaria", type: "checkbox", required: false, width: "full", options: [
+          { label: "Mañana (7-10am)", value: "manana" },
+          { label: "Mediodía (10am-12pm)", value: "mediodia" },
+          { label: "Tarde (12-2pm)", value: "tarde" },
+          { label: "Tarde tardía (2-4pm)", value: "tarde_tardia" },
+        ]},
+        { id: "c8", name: "contacto", label: "Teléfono de contacto", type: "tel", required: true, width: "half" },
+        { id: "c9", name: "email", label: "Correo electrónico", type: "email", required: false, width: "half" },
+      ]),
+      successMessage: "Solicitud recibida. Orientación escolar confirmará la cita en un máximo de 24 horas hábiles.",
+      errorMessage: "No se pudo registrar la solicitud. Verifique los datos.",
+      published: true,
+      publishedAt: new Date(),
+      publishedById: rector.id,
+      status: "published",
+      visibleRolesJson: JSON.stringify(["docente", "director_grupo", "coordinador", "rector", "orientador", "acudiente", "administrativo"]),
+      canCreateRolesJson: JSON.stringify(["docente", "director_grupo", "coordinador", "acudiente"]),
+      canEditRolesJson: JSON.stringify(["orientador", "coordinador", "rector"]),
+      canDeleteRolesJson: JSON.stringify(["rector", "administrativo"]),
+    },
+  });
+
+  // Crear algunos registros demo para el módulo 2
+  const someStudents = await db.student.findMany({ where: { institutionId: inst.id }, take: 6 });
+  const someUsers = [docente, director, acudiente, coordinador];
+  const motivosData = [
+    { descripcion: "El estudiante presenta dificultades para concentrarse en clase y necesita apoyo.", motivo: "academicas", urgencia: 3 },
+    { descripcion: "Solicitamos acompañamiento por conflicto reciente con compañeros.", motivo: "conflicto", urgencia: 4 },
+    { descripcion: "Charla grupal sobre manejo de emociones para el grupo 8°A.", motivo: "habitos", urgencia: 2 },
+    { descripcion: "Atención individual por situación familiar compleja.", motivo: "emociones", urgencia: 5 },
+    { descripcion: "Evaluación de proceso de inclusión y ajustes pedagógicos.", motivo: "inclusion", urgencia: 3 },
+  ];
+  for (let i = 0; i < motivosData.length; i++) {
+    const m = motivosData[i];
+    const s = someStudents[i % someStudents.length];
+    const u = someUsers[i % someUsers.length];
+    await db.customModuleRecord.create({
+      data: {
+        moduleId: mod2.id,
+        institutionId: inst.id,
+        userId: u.id,
+        dataJson: JSON.stringify({
+          c1: i % 2 === 0 ? "docente" : "acudiente",
+          c2: s.id,
+          c3: i === 2 ? "grupal" : "individual",
+          c4: m.urgencia,
+          c5: m.motivo,
+          c6: m.descripcion,
+          c7: i % 2 === 0 ? ["manana"] : ["tarde"],
+          c8: u.phone || "+57 300 000 0000",
+          c9: u.email || "",
+        }),
+        status: i < 2 ? "approved" : i === 2 ? "reviewed" : "submitted",
+        reviewedById: i < 2 ? orientador.id : null,
+        reviewedAt: i < 2 ? new Date(Date.now() - i * 86400000) : null,
+      },
+    });
+  }
+
+  // Crear 3 registros demo para el módulo 1
+  for (let i = 0; i < 3; i++) {
+    const s = someStudents[i];
+    await db.customModuleRecord.create({
+      data: {
+        moduleId: mod1.id,
+        institutionId: inst.id,
+        userId: acudiente.id,
+        dataJson: JSON.stringify({
+          f1: s.id,
+          f2: new Date(Date.now() + (i + 1) * 86400000).toISOString().slice(0, 10),
+          f3: ["cita_medica", "calamidad", "tramite"][i],
+          f4: acudiente.fullName,
+          f5: ["Cita con odontólogo a las 2pm.", "Calamidad doméstica, requiere acompañar a familiar.", "Trámite de documento en notaría."][i],
+          f6: i === 2 ? "no" : "si",
+          f7: acudiente.phone,
+          f8: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+        }),
+        status: i === 0 ? "approved" : "submitted",
+      },
+    });
   }
 
   console.log("→ Creando auditoría inicial...");
