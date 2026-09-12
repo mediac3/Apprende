@@ -15,13 +15,15 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { CurriculumView } from "./curriculum-view";
 import {
-  Plus, Edit, Trash2, Calendar, FileText, Scale, BookOpen, Building2, MapPin, Clock, FileCheck, Variable, Save, X, ArrowLeft,
+  Plus, Edit, Trash2, Calendar, FileText, Scale, BookOpen, Building2, MapPin, Clock, FileCheck, Variable, Save, X, ArrowLeft, ListTree,
 } from "lucide-react";
 
 type ModuleType =
   | "academic-years"
   | "subjects"
+  | "curriculum-plans"
   | "evaluation-scales"
   | "indicator-adjectives"
   | "evaluation-models"
@@ -38,6 +40,7 @@ interface Props {
 const MODULE_CONFIG: Record<ModuleType, { title: string; description: string; icon: any; apiBase: string }> = {
   "academic-years": { title: "Años académicos", description: "Gestión de años académicos con creación del siguiente año y migración de indicadores.", icon: Calendar, apiBase: "/api/academic-years" },
   "subjects": { title: "Asignaturas", description: "Asignaturas con abreviatura, promedia y estado.", icon: BookOpen, apiBase: "/api/subjects" },
+  "curriculum-plans": { title: "Plan de estudios", description: "Estructura curricular por grado con intensidad horaria y áreas del conocimiento.", icon: ListTree, apiBase: "/api/curriculum-plans" },
   "evaluation-scales": { title: "Escalas valorativas", description: "Escalas como Bajo, Básico, Alto, Superior con rangos numéricos.", icon: Scale, apiBase: "/api/evaluation-scales" },
   "indicator-adjectives": { title: "Adjetivos para indicadores", description: "Adjetivos asociados a cada escala valorativa.", icon: FileText, apiBase: "/api/indicator-adjectives" },
   "evaluation-models": { title: "Modelos evaluativos", description: "Combinación año + escala + notas mín/máx.", icon: FileCheck, apiBase: "/api/evaluation-models" },
@@ -71,6 +74,11 @@ export function ParamsView({ module }: Props) {
 
   if (module === "report-variables") {
     return <ReportVariablesView />;
+  }
+
+  // Plan de estudios: módulo con pestañas (planes / grados / áreas)
+  if (module === "curriculum-plans") {
+    return <CurriculumView />;
   }
 
   return (
@@ -285,8 +293,17 @@ function AcademicYearsView() {
 function SubjectsView() {
   const user = useAuthStore((s) => s.user)!;
   const { items: subjects, loading, search, setSearch, load } = useCrudList<any>("/api/subjects", user.institution.id);
+  const [areas, setAreas] = useState<any[]>([]);
   const [editing, setEditing] = useState<any | null>(null);
   const [showForm, setShowForm] = useState(false);
+
+  const loadAreas = useCallback(() => {
+    fetch(`/api/knowledge-areas?institutionId=${user.institution.id}`).then((r) => r.json()).then((d) => {
+      if (d.ok) setAreas(d.areas);
+    });
+  }, [user]);
+
+  useEffect(() => { loadAreas(); }, [loadAreas]);
 
   const filtered = search ? subjects.filter((s) => (s.name + s.area + s.abbreviation).toLowerCase().includes(search.toLowerCase())) : subjects;
 
@@ -345,7 +362,7 @@ function SubjectsView() {
                       <td className="py-2 pr-3 font-mono text-xs">{s.abbreviation || "—"}</td>
                       <td className="py-2 pr-3">{s.averages ? <Badge className="chip-superior text-[10px]">Sí</Badge> : <Badge variant="outline" className="hairline text-[10px]">No</Badge>}</td>
                       <td className="py-2 pr-3">{s.active ? <Badge className="chip-superior text-[10px]">Activo</Badge> : <Badge variant="outline" className="hairline text-[10px]">Inactivo</Badge>}</td>
-                      <td className="py-2 pr-3 text-right">
+                      <td className="py-2 pr-3">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditing(s); setShowForm(true); }}><Edit className="h-3.5 w-3.5" /></Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => del(s)}><Trash2 className="h-3.5 w-3.5" /></Button>
                       </td>
@@ -358,14 +375,14 @@ function SubjectsView() {
         </CardContent>
       </Card>
 
-      <SubjectForm open={showForm} onOpenChange={setShowForm} subject={editing} onSave={save} />
+      <SubjectForm open={showForm} onOpenChange={setShowForm} subject={editing} areas={areas} onSave={save} />
     </>
   );
 }
 
-function SubjectForm({ open, onOpenChange, subject, onSave }: { open: boolean; onOpenChange: (v: boolean) => void; subject: any | null; onSave: (data: any) => void }) {
+function SubjectForm({ open, onOpenChange, subject, areas, onSave }: { open: boolean; onOpenChange: (v: boolean) => void; subject: any | null; areas: any[]; onSave: (data: any) => void }) {
   const [name, setName] = useState("");
-  const [area, setArea] = useState("");
+  const [areaId, setAreaId] = useState("");
   const [abbreviation, setAbbreviation] = useState("");
   const [averages, setAverages] = useState(true);
   const [active, setActive] = useState(true);
@@ -373,12 +390,12 @@ function SubjectForm({ open, onOpenChange, subject, onSave }: { open: boolean; o
   useEffect(() => {
     if (subject) {
       setName(subject.name || "");
-      setArea(subject.area || "");
+      setAreaId(subject.areaId || "none");
       setAbbreviation(subject.abbreviation || "");
       setAverages(subject.averages !== false);
       setActive(subject.active !== false);
     } else {
-      setName(""); setArea(""); setAbbreviation(""); setAverages(true); setActive(true);
+      setName(""); setAreaId("none"); setAbbreviation(""); setAverages(true); setActive(true);
     }
   }, [subject, open]);
 
@@ -390,14 +407,24 @@ function SubjectForm({ open, onOpenChange, subject, onSave }: { open: boolean; o
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div><Label>Nombre *</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
-          <div><Label>Área</Label><Input value={area} onChange={(e) => setArea(e.target.value)} placeholder="Ciencias, Humanidades..." /></div>
+          <div>
+            <Label>Área</Label>
+            <Select value={areaId || "none"} onValueChange={setAreaId}>
+              <SelectTrigger><SelectValue placeholder="Sin área" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin área</SelectItem>
+                {areas.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">Las áreas se administran en Plan de estudios → Áreas.</p>
+          </div>
           <div><Label>Abreviatura</Label><Input value={abbreviation} onChange={(e) => setAbbreviation(e.target.value)} placeholder="MAT, LEN..." className="font-mono" /></div>
           <div className="flex items-center gap-2"><Switch checked={averages} onCheckedChange={setAverages} id="avg" /><Label htmlFor="avg" className="cursor-pointer">Promedia (cuenta para el promedio)</Label></div>
           <div className="flex items-center gap-2"><Switch checked={active} onCheckedChange={setActive} id="act" /><Label htmlFor="act" className="cursor-pointer">Estado activo</Label></div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => onSave({ name, area: area || null, abbreviation: abbreviation || null, averages, active })} disabled={!name} className="gap-1.5"><Save className="h-3.5 w-3.5" /> Guardar</Button>
+          <Button onClick={() => onSave({ name, areaId: areaId === "none" ? null : areaId, abbreviation: abbreviation || null, averages, active })} disabled={!name} className="gap-1.5"><Save className="h-3.5 w-3.5" /> Guardar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

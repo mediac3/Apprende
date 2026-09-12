@@ -55,10 +55,14 @@ async function main() {
   await db.workshop.deleteMany()
   await db.grade.deleteMany()
   await db.period.deleteMany()
+  await db.curriculumPlanItem.deleteMany()
+  await db.curriculumPlan.deleteMany()
   await db.subjectAssignment.deleteMany()
   await db.subject.deleteMany()
+  await db.knowledgeArea.deleteMany()
   await db.student.deleteMany()
   await db.group.deleteMany()
+  await db.gradeLevel.deleteMany()
   await db.auditLog.deleteMany()
   await db.user.deleteMany()
   await db.institution.deleteMany()
@@ -173,14 +177,52 @@ async function main() {
   })
 
   console.log("→ Creando grupos, asignaturas, periodos...");
+
+  // Catálogo de áreas del conocimiento (normalizado)
+  console.log("→ Creando áreas del conocimiento...");
+  const areaDefs = [
+    { name: "Humanidades", abbreviation: "HUM" },
+    { name: "Ciencias Naturales y Educación Ambiental", abbreviation: "CNA" },
+    { name: "Matemáticas", abbreviation: "MAT" },
+    { name: "Educación Física y Deportes", abbreviation: "EDF" },
+    { name: "Tecnología e Informática", abbreviation: "TEC" },
+    { name: "Artes", abbreviation: "ART" },
+  ];
+  const areaByName = new Map<string, string>();
+  for (let i = 0; i < areaDefs.length; i++) {
+    const a = await db.knowledgeArea.create({
+      data: { institutionId: inst.id, ...areaDefs[i], sortOrder: i + 1 },
+    });
+    areaByName.set(a.name, a.id);
+  }
+
+  // Catálogo de grados (normalizado)
+  console.log("→ Creando grados...");
+  const levelByCode = new Map<string, string>();
+  const gradeDefs = [
+    { code: "PJ", name: "Prejardín" },
+    { code: "J", name: "Jardín" },
+    { code: "T", name: "Transición" },
+    ...Array.from({ length: 11 }, (_, i) => ({
+      code: String(i + 1),
+      name: `Grado ${i + 1}°`,
+    })),
+  ];
+  for (let i = 0; i < gradeDefs.length; i++) {
+    const g = await db.gradeLevel.create({
+      data: { institutionId: inst.id, ...gradeDefs[i], sortOrder: i + 1 },
+    });
+    levelByCode.set(g.code, g.id);
+  }
+
   const groups = []
   for (const g of ["6°A", "6°B", "7°A", "8°A", "8°B", "9°A", "10°A", "11°A"]) {
-    const grade = g.replace(/[°AB]/g, "")
+    const gradeCode = g.replace(/[°AB]/g, "")
     const group = await db.group.create({
       data: {
         institutionId: inst.id,
         name: g,
-        grade,
+        gradeLevelId: levelByCode.get(gradeCode)!,
         section: g.includes("A") ? "A" : "B",
         headTeacherId: g === "8°A" ? director.id : docente.id,
       },
@@ -190,21 +232,51 @@ async function main() {
 
   const subjects = []
   for (const s of [
-    { name: "Matemáticas", code: "MAT", area: "Ciencias" },
-    { name: "Lengua Castellana", code: "LEN", area: "Humanidades" },
-    { name: "Ciencias Naturales", code: "CNA", area: "Ciencias" },
-    { name: "Sociales", code: "SOC", area: "Humanidades" },
-    { name: "Inglés", code: "ING", area: "Humanidades" },
-    { name: "Educación Física", code: "EDF", area: "Artes" },
-    { name: "Tecnología", code: "TEC", area: "Tecnología" },
+    { name: "Matemáticas", code: "MAT", area: "Matemáticas", abbreviation: "MAT" },
+    { name: "Lengua Castellana", code: "LEN", area: "Humanidades", abbreviation: "LEN" },
+    { name: "Ciencias Naturales", code: "CNA", area: "Ciencias Naturales y Educación Ambiental", abbreviation: "CNA" },
+    { name: "Sociales", code: "SOC", area: "Humanidades", abbreviation: "SOC" },
+    { name: "Inglés", code: "ING", area: "Humanidades", abbreviation: "ING" },
+    { name: "Educación Física", code: "EDF", area: "Educación Física y Deportes", abbreviation: "EDF" },
+    { name: "Tecnología", code: "TEC", area: "Tecnología e Informática", abbreviation: "TEC" },
   ]) {
     const subject = await db.subject.create({
       data: {
         institutionId: inst.id,
-        ...s,
+        name: s.name,
+        code: s.code,
+        abbreviation: s.abbreviation,
+        areaId: areaByName.get(s.area)!,
       },
     })
     subjects.push(subject)
+  }
+
+  // Plan de estudios (asignatura × grado con intensidad horaria)
+  console.log("→ Creando plan de estudios...");
+  const plan = await db.curriculumPlan.create({
+    data: {
+      institutionId: inst.id,
+      name: "Plan de estudios general",
+      description: "Plan general de la institución. Estructura preservada entre años académicos.",
+      active: true,
+    },
+  });
+  const hoursByCode: Record<string, number> = { MAT: 4, LEN: 4, CNA: 3, SOC: 3, ING: 3, EDF: 2, TEC: 2 };
+  for (const code of ["6", "7", "8", "9", "10", "11"]) {
+    let planOrder = 0;
+    for (const s of subjects) {
+      planOrder++;
+      await db.curriculumPlanItem.create({
+        data: {
+          planId: plan.id,
+          subjectId: s.id,
+          gradeLevelId: levelByCode.get(code)!,
+          weeklyHours: hoursByCode[s.code!] ?? 3,
+          sortOrder: planOrder,
+        },
+      });
+    }
   }
 
   // Periodos académicos (4 periodos)
@@ -248,18 +320,22 @@ async function main() {
   const lastNames = ["Gómez", "Rodríguez", "Martínez", "López", "García", "Pérez", "Torres", "Ramírez", "Vargas", "Castro"]
 
   const allStudents = []
+  // código corto del grado por grupo (catálogo GradeLevel)
+  const codeByLevel = new Map<string, string>()
+  for (const [code, id] of levelByCode) codeByLevel.set(id, code)
   for (const g of groups) {
+    const gradeCode = codeByLevel.get(g.gradeLevelId!) ?? "0"
     for (let i = 0; i < 18; i++) {
       const isF = Math.random() > 0.5
       const fn = isF ? rnd(firstNamesF) : rnd(firstNamesM)
       const ln1 = rnd(lastNames)
       const ln2 = rnd(lastNames)
-      const birthYear = 2025 - parseInt(g.grade) - 5
+      const birthYear = 2025 - parseInt(gradeCode) - 5
       const student = await db.student.create({
         data: {
           institutionId: inst.id,
           groupId: g.id,
-          code: `${g.grade}${g.section}${String(i + 1).padStart(2, "0")}-2025`,
+          code: `${gradeCode}${g.section}${String(i + 1).padStart(2, "0")}-2025`,
           firstName: fn,
           lastName: `${ln1} ${ln2}`,
           birthDate: new Date(birthYear, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1),

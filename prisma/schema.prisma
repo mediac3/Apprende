@@ -46,6 +46,9 @@ model Institution {
   evalModels    EvaluationModel[]
   reportTemplates ReportTemplate[]
   academicYears AcademicYear[]
+  knowledgeAreas  KnowledgeArea[]
+  gradeLevels     GradeLevel[]
+  curriculumPlans CurriculumPlan[]
 }
 
 // UserRole values: rector, coordinador, director_grupo, docente, orientador, acudiente, estudiante, administrativo
@@ -92,11 +95,12 @@ model Group {
   institutionId String
   institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   name          String   // e.g. "8°A"
-  grade         String   // e.g. "8"
   section       String?
   headTeacherId String?  // director de grupo
   createdAt     DateTime @default(now())
 
+  gradeLevelId  String?  // grado (catálogo GradeLevel)
+  gradeLevel    GradeLevel? @relation(fields: [gradeLevelId], references: [id], onDelete: SetNull)
   headTeacher   User?    @relation("GroupHeadTeacher", fields: [headTeacherId], references: [id], onDelete: SetNull)
   students      Student[]
   assignments   SubjectAssignment[]
@@ -135,15 +139,17 @@ model Subject {
   institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   name          String
   code          String?
-  area          String?
   abbreviation  String?  // Abreviatura (PDF pág 3-4)
   averages      Boolean  @default(true)  // Promedia (PDF pág 3-4) - si cuenta para el promedio
   active        Boolean  @default(true)  // Estado (PDF pág 3-4)
   createdAt     DateTime @default(now())
 
+  areaId        String?  // área del conocimiento (catálogo KnowledgeArea)
+  area          KnowledgeArea? @relation("SubjectArea", fields: [areaId], references: [id], onDelete: SetNull)
   assignments   SubjectAssignment[]
   grades        Grade[]
   workshops     Workshop[]
+  planItems     CurriculumPlanItem[]
 }
 
 model SubjectAssignment {
@@ -648,4 +654,80 @@ model ReportVariable {
   createdAt     DateTime @default(now())
 
   @@unique([reportTemplateId, variable])
+}
+
+// ============================================================
+// PLAN DE ESTUDIOS (normalizado)
+// Áreas y grados como catálogos (eliminan texto libre redundante),
+// planes de estudios y su detalle asignatura × grado con intensidad horaria.
+// ============================================================
+
+// --- Áreas del conocimiento (catálogo, normaliza Subject.area) ---
+model KnowledgeArea {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name          String   // "Ciencias Naturales", "Humanidades"...
+  abbreviation  String?  // "C.NAT", "HUM"...
+  sortOrder     Int      @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  subjects      Subject[] @relation("SubjectArea")
+
+  @@unique([institutionId, name])
+}
+
+// --- Grados (catálogo, normaliza Group.grade) ---
+model GradeLevel {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  code          String   // "PJ", "J", "T", "1"..."11" — clave corta
+  name          String   // "Prejardín", "Grado 6°"...
+  sortOrder     Int      @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  groups        Group[]
+  planItems     CurriculumPlanItem[]
+
+  @@unique([institutionId, code])
+}
+
+// --- Plan de estudios (encabezado) ---
+// La estructura se preserva entre años (PDF pág 1: al crear el siguiente
+// año se copia la misma estructura de grupos, periodos y plan de estudio).
+model CurriculumPlan {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name          String   // "Plan de estudios 2026", "Plan básica secundaria"...
+  description   String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items         CurriculumPlanItem[]
+
+  @@unique([institutionId, name])
+}
+
+// --- Detalle del plan: asignatura × grado con intensidad horaria ---
+model CurriculumPlanItem {
+  id            String   @id @default(cuid())
+  planId        String
+  plan          CurriculumPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  subjectId     String
+  subject       Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  gradeLevelId  String
+  gradeLevel    GradeLevel @relation(fields: [gradeLevelId], references: [id], onDelete: Cascade)
+  weeklyHours   Float    @default(1)  // intensidad horaria semanal
+  sortOrder     Int      @default(0)  // orden en boletín / planilla
+  createdAt     DateTime @default(now())
+
+  @@unique([planId, subjectId, gradeLevelId])
+  @@index([planId])
+  @@index([subjectId])
+  @@index([gradeLevelId])
 }

@@ -37,7 +37,9 @@ export type ModuleKey =
   | "module-approvals"
   // Módulos de parámetros del sistema (PDF)
   | "param-academic-years"
+  | "param-institution"
   | "param-subjects"
+  | "param-curriculum-plans"
   | "param-evaluation-scales"
   | "param-indicator-adjectives"
   | "param-evaluation-models"

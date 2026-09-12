@@ -19,15 +19,17 @@ export async function GET(req: NextRequest) {
         headTeacher: {
           select: { id: true, fullName: true, avatarUrl: true, username: true, jobTitle: true },
         },
+        gradeLevel: true,
         _count: { select: { students: true } },
       },
-      orderBy: [{ grade: "asc" }, { name: "asc" }],
+      orderBy: [{ gradeLevel: { sortOrder: "asc" } }, { name: "asc" }],
     });
 
     const result = groups.map((g) => ({
       id: g.id,
       name: g.name,
-      grade: g.grade,
+      grade: g.gradeLevel?.code ?? null, // compat: código del grado (catálogo GradeLevel)
+      gradeLevel: g.gradeLevel,
       section: g.section,
       headTeacherId: g.headTeacherId,
       headTeacher: g.headTeacher,

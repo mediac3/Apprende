@@ -33,6 +33,7 @@ import {
   Clock,
   FileCheck,
   Variable,
+  ListTree,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -124,6 +125,7 @@ const NAV: NavItem[] = [
   { key: "param-academic-years", label: "Años académicos", icon: Calendar, group: "Parámetros", roles: ["rector", "administrativo"] },
   { key: "param-institution", label: "Institución", icon: Building2, group: "Parámetros", roles: ["rector", "administrativo"] },
   { key: "param-subjects", label: "Asignaturas", icon: BookOpen, group: "Parámetros", roles: ["rector", "administrativo"] },
+  { key: "param-curriculum-plans", label: "Plan de estudios", icon: ListTree, group: "Parámetros", roles: ["rector", "administrativo"] },
   { key: "param-evaluation-scales", label: "Escalas valorativas", icon: Scale, group: "Parámetros", roles: ["rector", "administrativo"] },
   { key: "param-indicator-adjectives", label: "Adjetivos indicadores", icon: FileText, group: "Parámetros", roles: ["rector", "administrativo"] },
   { key: "param-evaluation-models", label: "Modelos evaluativos", icon: FileCheck, group: "Parámetros", roles: ["rector", "administrativo"] },
@@ -247,6 +249,8 @@ export function InstitutionalPanel() {
         return <ParamsView module="academic-years" />;
       case "param-subjects":
         return <ParamsView module="subjects" />;
+      case "param-curriculum-plans":
+        return <ParamsView module="curriculum-plans" />;
       case "param-evaluation-scales":
         return <ParamsView module="evaluation-scales" />;
       case "param-indicator-adjectives":

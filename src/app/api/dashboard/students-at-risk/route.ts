@@ -40,11 +40,11 @@ export async function GET(req: NextRequest) {
     const students = await db.student.findMany({
       where,
       include: {
-        group: { select: { id: true, name: true, grade: true, section: true } },
+        group: { select: { id: true, name: true, section: true, gradeLevel: { select: { code: true, name: true } } } },
         grades: {
           where: { periodId: activePeriod.id },
           include: {
-            subject: { select: { id: true, name: true, area: true } },
+            subject: { select: { id: true, name: true, area: { select: { name: true } } } },
           },
         },
       },
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
       const failingSubjects = failing.map((g) => ({
         subjectId: g.subjectId,
         subjectName: g.subject.name,
-        subjectArea: g.subject.area,
+        subjectArea: g.subject.area?.name ?? null,
         value: g.value,
         performance: g.performance,
       }));
