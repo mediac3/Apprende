@@ -35,6 +35,14 @@ mkdir -p "$BUILD_DIR"
 echo "📦 安装依赖..."
 bun install
 
+# Forzar la regeneración del cliente Prisma desde el esquema actual.
+# bun install puede omitir postinstall cuando node_modules ya está cacheado
+# en el sandbox; sin esto, el paquete puede llevar un cliente generado con
+# un esquema viejo y la app nueva falla en producción con
+# "Unknown field ... for include statement" (validación del cliente).
+echo "🏭 Regenerando cliente Prisma desde prisma/schema.prisma..."
+bunx prisma generate
+
 # 构建 Next.js 应用
 echo "🔨 构建 Next.js 应用..."
 bun run build
