@@ -108,6 +108,18 @@ model Group {
   gradeLevelId  String?  // grado (catálogo GradeLevel)
   gradeLevel    GradeLevel? @relation(fields: [gradeLevelId], references: [id], onDelete: SetNull)
   headTeacher   User?    @relation("GroupHeadTeacher", fields: [headTeacherId], references: [id], onDelete: SetNull)
+
+  // Gestión de Grupos (PDF Módulo Grupos) — FKs a catálogos existentes (sin redundancia)
+  academicYearId String?  // año académico (catálogo AcademicYear)
+  academicYear   AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
+  branchId       String?  // sede (catálogo Branch)
+  branch         Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  journeyId      String?  // jornada (catálogo Journey)
+  journey        Journey? @relation(fields: [journeyId], references: [id], onDelete: SetNull)
+  periodsCount   Int?     // tipo de periodos: 2 (semestral), 3 (trimestral), 4 (cuatrimestral/anual)
+  semesterized   Boolean  @default(false) // Semestralizado: Sí/No
+  semester       Int?     // 1 o 2 (columna Semestre; null = grupo anual)
+
   students      Student[]
   assignments   SubjectAssignment[]
   attendances   Attendance[]
@@ -547,6 +559,7 @@ model AcademicYear {
   createdAt     DateTime @default(now())
 
   evalModels    EvaluationModel[]
+  groups        Group[]
 
   @@unique([institutionId, year])
 }
@@ -611,6 +624,8 @@ model Branch {
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
 
+  groups        Group[]
+
   @@unique([institutionId, name])
 }
 
@@ -623,6 +638,8 @@ model Journey {
   educationalModelsJson String?  // JSON array: ["Educación tradicional", "Escuela nueva", ...]
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
+
+  groups        Group[]
 
   @@unique([institutionId, name])
 }
