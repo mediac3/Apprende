@@ -66,6 +66,25 @@ if [ -d "/app/python-runtime/site-packages" ]; then
     echo "🐍 已启用部署包内 Python runtime: $(python --version 2>&1)"
 fi
 
+# ============================================================
+# Inicialización de BD de producción (ADITIVA, no destructiva)
+# - Sincroniza solo tablas/columnas NUEVAS (nunca elimina nada)
+# - Normaliza el catálogo de roles de forma idempotente
+# - Siembra datos iniciales SOLO si la BD está vacía
+# - Respeta DATABASE_URL externa (producción persistente);
+#   sin ella usa la BD empaquetada (esquema + datos iniciales)
+# ============================================================
+if [ -f "./scripts/prod-db-init.ts" ] && command -v bun >/dev/null 2>&1; then
+    echo "🗄️  Sincronizando base de datos (aditivo, sin tocar datos)..."
+    if bun ./scripts/prod-db-init.ts; then
+        echo "✅ Base de datos verificada"
+    else
+        echo "⚠️  prod-db-init reportó problemas — se continúa con la BD existente"
+    fi
+else
+    echo "ℹ️  scripts/prod-db-init.ts no disponible, se omite la sincronización"
+fi
+
 # 启动 Next.js 服务器
 if [ -f "./next-service-dist/server.js" ]; then
     echo "🚀 启动 Next.js 服务器..."
