@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
       },
       include: {
         institution: true,
+        userRoles: { include: { role: true } },
       },
     });
 
@@ -53,11 +54,20 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Roles del usuario (N:M normalizado) ordenados por prioridad del catálogo
+    const roles = user.userRoles
+      ? user.userRoles
+          .slice()
+          .sort((a: any, b: any) => a.role.sortOrder - b.role.sortOrder)
+          .map((ur: any) => ur.role.code)
+      : undefined;
+
     const safe = {
       id: user.id,
       username: user.username,
       fullName: user.fullName,
       role: user.role,
+      roles: roles && roles.length > 0 ? roles : [user.role],
       email: user.email,
       phone: user.phone,
       jobTitle: user.jobTitle,

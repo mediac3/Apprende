@@ -64,6 +64,8 @@ async function main() {
   await db.group.deleteMany()
   await db.gradeLevel.deleteMany()
   await db.auditLog.deleteMany()
+  await db.userRole.deleteMany()
+  await db.role.deleteMany()
   await db.user.deleteMany()
   await db.institution.deleteMany()
 
@@ -83,97 +85,109 @@ async function main() {
   })
 
   console.log("→ Creando usuarios por rol...");
+  // Catálogo de roles (normalizado — módulo Usuarios)
+  const roleDefs = [
+    { code: "rector", name: "Rector", sortOrder: 1 },
+    { code: "coordinador", name: "Coordinador", sortOrder: 2 },
+    { code: "director_grupo", name: "Director de grupo", sortOrder: 3 },
+    { code: "docente", name: "Docente", sortOrder: 4 },
+    { code: "orientador", name: "PSI - Docente Orientador", sortOrder: 5 },
+    { code: "acudiente", name: "Contacto familiar", sortOrder: 6 },
+    { code: "estudiante", name: "Estudiante", sortOrder: 7 },
+    { code: "administrativo", name: "Administrador", sortOrder: 8 },
+    { code: "supervisor", name: "Supervisor", sortOrder: 9 },
+    { code: "auxiliar_principal", name: "Auxiliar principal", sortOrder: 10 },
+    { code: "asistente_matricula", name: "Asistente de matrícula", sortOrder: 11 },
+    { code: "tesoreria", name: "Tesorería", sortOrder: 12 },
+    { code: "pta_docente_tutor", name: "PTA - Docente tutor", sortOrder: 13 },
+    { code: "escuela_nueva", name: "Escuela nueva", sortOrder: 14 },
+    { code: "tercero", name: "Tercero", sortOrder: 15 },
+  ];
+  const roleIdByCode = new Map<string, string>();
+  for (const r of roleDefs) {
+    const role = await db.role.create({ data: { institutionId: inst.id, ...r } });
+    roleIdByCode.set(r.code, role.id);
+  }
+  // Helper: usuario + asignación de rol en la relación N:M
+  async function createUser(data: { username: string; password: string; fullName: string; role: string; email?: string; phone?: string; jobTitle?: string }) {
+    const { role: roleCode, password, ...rest } = data;
+    const u = await db.user.create({
+      data: { ...rest, institutionId: inst.id, passwordHash: hashPassword(password), role: roleCode },
+    });
+    const roleId = roleIdByCode.get(roleCode);
+    if (roleId) await db.userRole.create({ data: { userId: u.id, roleId } });
+    return u;
+  }
+
   // Admin rector con credenciales 1155218177 / 1155218177
-  const rector = await db.user.create({
-    data: {
-      institutionId: inst.id,
-      username: "1155218177",
-      passwordHash: hashPassword("1155218177"),
-      fullName: "Gloria Inés Restrepo Marín",
-      role: "rector",
-      email: "grestrepo@ieaulnea.edu.co",
-      phone: "+57 310 555 1001",
-      jobTitle: "Rectora",
-      active: true,
-    },
+  const rector = await createUser({
+    username: "1155218177",
+    password: "1155218177",
+    fullName: "Gloria Inés Restrepo Marín",
+    role: "rector",
+    email: "grestrepo@ieaulnea.edu.co",
+    phone: "+57 310 555 1001",
+    jobTitle: "Rectora",
   })
 
-  const coordinador = await db.user.create({
-    data: {
-      institutionId: inst.id,
-      username: "coordinacion",
-      passwordHash: hashPassword("aulnea123"),
-      fullName: "Carlos Andrés Gómez Pineda",
-      role: "coordinador",
-      email: "cgomez@ieaulnea.edu.co",
-      phone: "+57 310 555 1002",
-      jobTitle: "Coordinador Académico",
-    },
+  const coordinador = await createUser({
+    username: "coordinacion",
+    password: "aulnea123",
+    fullName: "Carlos Andrés Gómez Pineda",
+    role: "coordinador",
+    email: "cgomez@ieaulnea.edu.co",
+    phone: "+57 310 555 1002",
+    jobTitle: "Coordinador Académico",
   })
 
-  const director = await db.user.create({
-    data: {
-      institutionId: inst.id,
-      username: "director",
-      passwordHash: hashPassword("aulnea123"),
-      fullName: "María Camila Torres Vega",
-      role: "director_grupo",
-      email: "mtorres@ieaulnea.edu.co",
-      phone: "+57 310 555 1003",
-      jobTitle: "Docente - Director 8°A",
-    },
+  const director = await createUser({
+    username: "director",
+    password: "aulnea123",
+    fullName: "María Camila Torres Vega",
+    role: "director_grupo",
+    email: "mtorres@ieaulnea.edu.co",
+    phone: "+57 310 555 1003",
+    jobTitle: "Docente - Director 8°A",
   })
 
-  const docente = await db.user.create({
-    data: {
-      institutionId: inst.id,
-      username: "docente",
-      passwordHash: hashPassword("aulnea123"),
-      fullName: "Javier Esteban Ruiz Cardona",
-      role: "docente",
-      email: "jruiz@ieaulnea.edu.co",
-      phone: "+57 310 555 1004",
-      jobTitle: "Docente Matemáticas",
-    },
+  const docente = await createUser({
+    username: "docente",
+    password: "aulnea123",
+    fullName: "Javier Esteban Ruiz Cardona",
+    role: "docente",
+    email: "jruiz@ieaulnea.edu.co",
+    phone: "+57 310 555 1004",
+    jobTitle: "Docente Matemáticas",
   })
 
-  const orientador = await db.user.create({
-    data: {
-      institutionId: inst.id,
-      username: "orientacion",
-      passwordHash: hashPassword("aulnea123"),
-      fullName: "Diana Marcela Quintero Soto",
-      role: "orientador",
-      email: "dquintero@ieaulnea.edu.co",
-      phone: "+57 310 555 1005",
-      jobTitle: "Psicóloga / Orientadora Escolar",
-    },
+  const orientador = await createUser({
+    username: "orientacion",
+    password: "aulnea123",
+    fullName: "Diana Marcela Quintero Soto",
+    role: "orientador",
+    email: "dquintero@ieaulnea.edu.co",
+    phone: "+57 310 555 1005",
+    jobTitle: "Psicóloga / Orientadora Escolar",
   })
 
-  const acudiente = await db.user.create({
-    data: {
-      institutionId: inst.id,
-      username: "acudiente",
-      passwordHash: hashPassword("aulnea123"),
-      fullName: "Luis Alberto Moreno Ortiz",
-      role: "acudiente",
-      email: "lmoreno@gmail.com",
-      phone: "+57 311 678 9012",
-      jobTitle: "Acudiente",
-    },
+  const acudiente = await createUser({
+    username: "acudiente",
+    password: "aulnea123",
+    fullName: "Luis Alberto Moreno Ortiz",
+    role: "acudiente",
+    email: "lmoreno@gmail.com",
+    phone: "+57 311 678 9012",
+    jobTitle: "Acudiente",
   })
 
-  const administrativo = await db.user.create({
-    data: {
-      institutionId: inst.id,
-      username: "administrativo",
-      passwordHash: hashPassword("aulnea123"),
-      fullName: "Sandra Patricia Villegas Loaiza",
-      role: "administrativo",
-      email: "svillegas@ieaulnea.edu.co",
-      phone: "+57 310 555 1007",
-      jobTitle: "Constructor de módulos y sistemas",
-    },
+  const administrativo = await createUser({
+    username: "administrativo",
+    password: "aulnea123",
+    fullName: "Sandra Patricia Villegas Loaiza",
+    role: "administrativo",
+    email: "svillegas@ieaulnea.edu.co",
+    phone: "+57 310 555 1007",
+    jobTitle: "Constructor de módulos y sistemas",
   })
 
   console.log("→ Creando grupos, asignaturas, periodos...");

@@ -5,7 +5,8 @@ export interface SessionUser {
   id: string;
   username: string;
   fullName: string;
-  role: string;
+  role: string; // rol principal (compatibilidad)
+  roles?: string[]; // todos los roles asignados (N:M); fallback: [role]
   email?: string | null;
   phone?: string | null;
   jobTitle?: string | null;

@@ -29,6 +29,7 @@ model Institution {
   updatedAt     DateTime @updatedAt
 
   users         User[]
+  roles         Role[]
   spaces        Space[]
   posts         Post[]
   students      Student[]
@@ -51,7 +52,11 @@ model Institution {
   curriculumPlans CurriculumPlan[]
 }
 
-// UserRole values: rector, coordinador, director_grupo, docente, orientador, acudiente, estudiante, administrativo
+// UserRole (códigos del catálogo Role): rector, coordinador, director_grupo,
+// docente, orientador, acudiente, estudiante, administrativo + roles adicionales
+// del módulo de usuarios (tesoreria, asistente_matricula, tercero...).
+// User.role conserva el rol principal (menor sortOrder) sincronizado desde
+// UserRole para compatibilidad con la sesión y el filtrado del menú.
 
 model User {
   id              String   @id @default(cuid())
@@ -62,7 +67,7 @@ model User {
   phone           String?
   passwordHash    String
   fullName        String
-  role            String   @default("docente") // UserRole values
+  role            String   @default("docente") // rol principal (sincronizado desde UserRole)
   avatarUrl       String?
   jobTitle        String?
   active          Boolean  @default(true)
@@ -88,6 +93,7 @@ model User {
   assignments     SubjectAssignment[] @relation("Teacher")
   spaceMemberships SpaceMember[]
   headedGroups    Group[]             @relation("GroupHeadTeacher")
+  userRoles       UserRole[]
 }
 
 model Group {
@@ -730,4 +736,42 @@ model CurriculumPlanItem {
   @@index([planId])
   @@index([subjectId])
   @@index([gradeLevelId])
+}
+
+// ============================================================
+// GESTIÓN DE USUARIOS (normalizado)
+// Roles como catálogo por institución + relación N:M usuario↔rol.
+// Elimina la redundancia del rol como texto libre de cardinalidad 1:1
+// (un usuario puede ejercer varios roles; PDF módulo Usuarios).
+// ============================================================
+
+// --- Catálogo de roles por institución ---
+model Role {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  code          String   // rector, coordinador, docente, tesoreria...
+  name          String   // "Rectoría", "Docente", "Tesorería"...
+  description   String?
+  sortOrder     Int      @default(0)  // orden en el modal de roles; el menor define el rol principal
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  users         UserRole[]
+
+  @@unique([institutionId, code])
+}
+
+// --- Unión usuario ↔ rol (soporta múltiples roles por usuario) ---
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
 }

@@ -34,6 +34,7 @@ import {
   FileCheck,
   Variable,
   ListTree,
+  UserCog,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +67,7 @@ import { CustomModuleBuilderView } from "./views/custom-module-builder-view";
 import { CustomModuleRuntimeView } from "./views/custom-module-runtime-view";
 import { ModuleApprovalsView } from "./views/module-approvals-view";
 import { ParamsView } from "./views/params-view";
+import { UsersView } from "./views/users-view";
 import { isCustomModule, getCustomModuleId, customModuleKey } from "@/store/ui-store";
 import { useEffect, useState } from "react";
 
@@ -107,6 +109,7 @@ const NAV: NavItem[] = [
   { key: "pre-matricula", label: "Pre-Matrícula", icon: Users, group: "Comunidad", roles: ["administrativo", "rector", "acudiente"] },
 
   // Administración
+  { key: "usuarios", label: "Usuarios", icon: UserCog, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "libros", label: "Libros reglamentarios", icon: BookOpen, group: "Administración", roles: ["rector", "administrativo", "coordinador"] },
   { key: "actas", label: "Actas institucionales", icon: FileText, group: "Administración", roles: ["rector", "coordinador", "administrativo"] },
   { key: "matricula", label: "Matrícula", icon: ClipboardCheck, group: "Administración", roles: ["rector", "administrativo"] },
@@ -144,13 +147,14 @@ export function InstitutionalPanel() {
   // Cargar módulos personalizados publicados
   useEffect(() => {
     if (!user) return;
+    const myRoles = user.roles?.length ? user.roles : [user.role];
     fetch(`/api/custom-modules?institutionId=${user.institution.id}&status=published`)
       .then((r) => r.json())
       .then((d) => {
         if (d.ok) {
-          // Filtrar por roles visibles para este usuario
+          // Filtrar por roles visibles para este usuario (cualquiera de sus roles)
           const visible = d.modules.filter((m: any) =>
-            m.visibleRoles.includes(user.role)
+            m.visibleRoles.some((r: string) => myRoles.includes(r))
           );
           setCustomModules(visible);
         }
@@ -158,11 +162,12 @@ export function InstitutionalPanel() {
       .catch(() => {});
   }, [user]);
 
-  // Filtrar navegación por rol
+  // Filtrar navegación por rol (un ítem es visible si corresponde a cualquiera de los roles del usuario)
   const filteredNav = useMemo(() => {
     if (!user) return [];
-    return NAV.filter((n) => !n.roles || n.roles.includes(user.role));
-  }, [user?.role]);
+    const myRoles = user.roles?.length ? user.roles : [user.role];
+    return NAV.filter((n) => !n.roles || n.roles.some((r) => myRoles.includes(r)));
+  }, [user]);
 
   // Agrupar
   const groups = useMemo(() => {
@@ -222,6 +227,8 @@ export function InstitutionalPanel() {
         return <AcademicoView module={activeModule} />;
       case "auditoria":
         return <AuditView />;
+      case "usuarios":
+        return <UsersView />;
       case "talleres":
         return <WorkshopsView />;
       case "estudiantes":
