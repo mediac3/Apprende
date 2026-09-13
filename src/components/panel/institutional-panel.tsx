@@ -25,6 +25,7 @@ import {
   Smartphone,
   LogOut,
   ChevronRight,
+  ChevronDown,
   Boxes,
   CheckCircle,
   Wand2,
@@ -68,6 +69,12 @@ import { CustomModuleRuntimeView } from "./views/custom-module-runtime-view";
 import { ModuleApprovalsView } from "./views/module-approvals-view";
 import { ParamsView } from "./views/params-view";
 import { UsersView } from "./views/users-view";
+import { GroupsView } from "./views/groups-view";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { isCustomModule, getCustomModuleId, customModuleKey } from "@/store/ui-store";
 import { useEffect, useState } from "react";
 
@@ -110,6 +117,7 @@ const NAV: NavItem[] = [
 
   // Administración
   { key: "usuarios", label: "Usuarios", icon: UserCog, group: "Administración", roles: ["rector", "administrativo"] },
+  { key: "gestion-grupos", label: "Gestión de Grupos", icon: Users, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "libros", label: "Libros reglamentarios", icon: BookOpen, group: "Administración", roles: ["rector", "administrativo", "coordinador"] },
   { key: "actas", label: "Actas institucionales", icon: FileText, group: "Administración", roles: ["rector", "coordinador", "administrativo"] },
   { key: "matricula", label: "Matrícula", icon: ClipboardCheck, group: "Administración", roles: ["rector", "administrativo"] },
@@ -229,6 +237,8 @@ export function InstitutionalPanel() {
         return <AuditView />;
       case "usuarios":
         return <UsersView />;
+      case "gestion-grupos":
+        return <GroupsView />;
       case "talleres":
         return <WorkshopsView />;
       case "estudiantes":
@@ -386,35 +396,40 @@ function SidebarContent({
 }) {
   return (
     <nav className="p-3 space-y-5">
-      {Object.entries(groups).map(([group, items]) => (
-        <div key={group}>
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground px-2 mb-1.5 font-medium">
-            {group}
-          </div>
-          <ul className="space-y-0.5">
-            {items.map((item) => {
-              const Icon = item.icon;
-              const isActive = active === item.key;
-              return (
-                <li key={item.key}>
-                  <button
-                    onClick={() => onNavigate(item.key)}
-                    className={cn(
-                      "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm transition-colors text-left",
-                      isActive
-                        ? "bg-primary/10 text-primary font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                    )}
-                  >
-                    <Icon className={cn("h-4 w-4 flex-shrink-0", isActive && "text-primary")} />
-                    <span className="flex-1 truncate">{item.label}</span>
-                    {isActive && <ChevronRight className="h-3.5 w-3.5 text-primary" />}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+      {Object.entries(groups).map(([group, items], groupIndex) => (
+        <Collapsible key={group} defaultOpen={groupIndex > 0}>
+          <CollapsibleTrigger className="group w-full flex items-center justify-between px-2 mb-1.5">
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">
+              {group}
+            </span>
+            <ChevronDown className="h-3 w-3 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <ul className="space-y-0.5">
+              {items.map((item) => {
+                const Icon = item.icon;
+                const isActive = active === item.key;
+                return (
+                  <li key={item.key}>
+                    <button
+                      onClick={() => onNavigate(item.key)}
+                      className={cn(
+                        "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm transition-colors text-left",
+                        isActive
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                      )}
+                    >
+                      <Icon className={cn("h-4 w-4 flex-shrink-0", isActive && "text-primary")} />
+                      <span className="flex-1 truncate">{item.label}</span>
+                      {isActive && <ChevronRight className="h-3.5 w-3.5 text-primary" />}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </CollapsibleContent>
+        </Collapsible>
       ))}
     </nav>
   );

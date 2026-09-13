@@ -27,6 +27,7 @@ export type ModuleKey =
   | "configuracion"
   | "talento-humano"
   | "usuarios"
+  | "gestion-grupos"
   | "auditoria"
   | "comunidad"
   | "mensajeria"
