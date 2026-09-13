@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     const students = await db.student.findMany({
       where,
       include: {
-        group: { select: { id: true, name: true, section: true, gradeLevel: { select: { code: true, name: true } } } },
+        group: { select: { id: true, name: true, section: true, branch: { select: { id: true, name: true } }, gradeLevel: { select: { code: true, name: true } } } },
         grades: {
           where: activePeriod ? { periodId: activePeriod.id } : undefined,
           include: {
