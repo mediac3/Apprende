@@ -145,3 +145,94 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }
+
+// Gestión de Estudiantes (PDF) — actualización parcial de la ficha del estudiante.
+// Solo aplica los campos presentes en el body; no altera el comportamiento de GET/POST.
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, institutionId, userId } = body;
+    if (!id || !institutionId) {
+      return NextResponse.json({ ok: false, error: "id e institutionId requeridos" }, { status: 400 });
+    }
+
+    const data: any = {};
+    const textFields = [
+      "firstName", "lastName", "gender", "address",
+      "documentType", "documentNumber", "birthPlace",
+      "photoUrl", "identityDocUrl",
+      "simatEstrato", "simatEps", "simatMunicipioExp",
+      "guardianName", "guardianPhone", "guardianEmail", "guardianRelation",
+      "status", "code",
+    ];
+    const dateFields = ["birthDate", "enrollmentDate"];
+    const boolFields = ["baptized", "overage"];
+
+    for (const f of textFields) if (f in body) data[f] = body[f] === "" ? null : body[f];
+    for (const f of dateFields) if (f in body) data[f] = body[f] ? new Date(body[f]) : null;
+    for (const f of boolFields) if (f in body) data[f] = body[f] === null ? null : Boolean(body[f]);
+    if ("groupId" in body) data.groupId = body.groupId || null;
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ ok: false, error: "Nada que actualizar" }, { status: 400 });
+    }
+
+    const student = await db.student.update({
+      where: { id },
+      data,
+      include: { group: { select: { id: true, name: true } } },
+    });
+
+    await db.auditLog.create({
+      data: {
+        institutionId,
+        userId: userId || null,
+        action: "update",
+        module: "students",
+        entityType: "Student",
+        entityId: id,
+        details: JSON.stringify({ fields: Object.keys(data) }),
+        hash: crypto.randomUUID().replace(/-/g, "").slice(0, 32),
+      },
+    });
+
+    return NextResponse.json({ ok: true, student });
+  } catch (e) {
+    console.error("[students.update]", e);
+    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
+  }
+}
+
+// Gestión de Estudiantes (PDF) — eliminar estudiante (borrado en cascada de sus registros)
+export async function DELETE(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+  const institutionId = searchParams.get("institutionId");
+  const userId = searchParams.get("userId");
+
+  if (!id || !institutionId) {
+    return NextResponse.json({ ok: false, error: "id e institutionId requeridos" }, { status: 400 });
+  }
+
+  try {
+    const student = await db.student.delete({ where: { id } });
+
+    await db.auditLog.create({
+      data: {
+        institutionId,
+        userId: userId || null,
+        action: "delete",
+        module: "students",
+        entityType: "Student",
+        entityId: id,
+        details: JSON.stringify({ code: student.code, firstName: student.firstName, lastName: student.lastName }),
+        hash: crypto.randomUUID().replace(/-/g, "").slice(0, 32),
+      },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("[students.delete]", e);
+    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
+  }
+}
