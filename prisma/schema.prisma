@@ -50,6 +50,10 @@ model Institution {
   knowledgeAreas  KnowledgeArea[]
   gradeLevels     GradeLevel[]
   curriculumPlans CurriculumPlan[]
+  studentEnrollments   StudentEnrollment[]
+  studentContacts      StudentContact[]
+  studentRequirements  StudentRequirement[]
+  externalCertificates ExternalCertificate[]
 }
 
 // UserRole (códigos del catálogo Role): rector, coordinador, director_grupo,
@@ -123,6 +127,7 @@ model Group {
   students      Student[]
   assignments   SubjectAssignment[]
   attendances   Attendance[]
+  studentEnrollments StudentEnrollment[] // Gestión de Estudiantes (matrícula por año)
 }
 
 model Student {
@@ -143,12 +148,28 @@ model Student {
   guardianRelation String?
   status        String   @default("activo") // activo, retirado, suspendido
   enrollmentDate DateTime?
-  createdAt     DateTime @default(now())
+  // Gestión de Estudiantes (PDF Módulo Gestionar Estudiante) — columnas aditivas
+  documentType    String?  // RC, TI, CC, CE, PE
+  documentNumber  String?  // número de documento (T.I.)
+  birthPlace      String?  // lugar de nacimiento (PDF pág 10)
+  baptized        Boolean? // BAP: certificado de bautismo presentado (PDF pág 3)
+  overage         Boolean? // EX/ED: extraedad (PDF pág 3)
+  photoUrl        String?  // foto del estudiante (data URL, PDF pág 9)
+  identityDocUrl  String?  // documento de identidad (data URL, PDF pág 9)
+  // Datos SIMAT (PDF pág 10)
+  simatEstrato       String? // 1-6
+  simatEps           String? // entidad promotora de salud
+  simatMunicipioExp  String? // municipio de expedición del documento
+  createdAt      DateTime @default(now())
 
   grades        Grade[]
   attendances   Attendance[]
   observations  Observation[]
   orientations  Orientation[]
+  enrollments        StudentEnrollment[]
+  contacts           StudentContact[]
+  requirements       StudentRequirement[]
+  externalCertificates ExternalCertificate[]
 }
 
 model Subject {
@@ -254,6 +275,7 @@ model Observation {
   studentId     String
   recordedById  String?
   date          DateTime
+  title         String?  // título corto del caso (Gestión de Estudiantes - Convivencia, PDF pág 1)
   category      String   // academico, convivencia, asistencia
   type          String?  // Tipo I, II, III (para convivencia)
   description   String
@@ -560,6 +582,7 @@ model AcademicYear {
 
   evalModels    EvaluationModel[]
   groups        Group[]
+  studentEnrollments StudentEnrollment[]
 
   @@unique([institutionId, year])
 }
@@ -791,4 +814,97 @@ model UserRole {
 
   @@unique([userId, roleId])
   @@index([roleId])
+}
+
+// === Gestión de Estudiantes (PDF Módulo Gestionar Estudiante) ===
+// Matrícula por año del estudiante (fichas por folio, renovaciones).
+// Nota: `Enrollment` (línea ~317) son solicitudes de admisión — semántica distinta.
+model StudentEnrollment {
+  id              String    @id @default(cuid())
+  institutionId   String
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  academicYearId  String?
+  academicYear    AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
+  groupId         String?
+  group           Group?    @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  status          String    @default("matriculado") // matriculado, renovado, retirado, sin_formalizar
+  libro           Int?      // libro de matrícula (PDF pág 5/11)
+  folio           Int?      // folio (PDF pág 5/11)
+  code            String?   // código de matrícula — DEPRECADO, solo lectura (PDF pág 5/11)
+  enrolledAt      DateTime? // fecha de matrícula
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  events          EnrollmentEvent[]
+
+  @@index([institutionId, academicYearId])
+  @@index([studentId])
+}
+
+// Novedades de matrícula (retiro, traslado, repitente...) — PDF pág 11
+model EnrollmentEvent {
+  id            String   @id @default(cuid())
+  enrollmentId  String
+  enrollment    StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  type          String   // retiro, traslado, repitente, nuevo, otra
+  reason        String?  // motivo
+  date          DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@index([enrollmentId])
+}
+
+// Contactos familiares del estudiante — PDF pág 6/12
+model StudentContact {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  fullName      String
+  relationship  String   // madre, padre, acudiente, otro
+  phone         String?
+  email         String?
+  occupation    String?  // ocupación (PDF pág 12)
+  isPrimary     Boolean  @default(false) // badge "Principal" (PDF pág 12)
+  createdAt     DateTime @default(now())
+
+  @@index([studentId])
+}
+
+// Checklist de requisitos pendientes de matrícula — PDF pág 7
+model StudentRequirement {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  name          String   // nombre del requisito
+  notes         String?  // descripción/detalle opcional
+  fulfilled     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([studentId])
+}
+
+// Certificados de otras instituciones — PDF pág 8
+model ExternalCertificate {
+  id              String   @id @default(cuid())
+  institutionId   String
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  year            Int      // año del certificado
+  gradeLevel      String?  // grado (texto, ej. "5°")
+  institutionName String   // establecimiento educativo
+  city            String?
+  observation     String?
+  fileName        String?  // nombre del archivo adjunto
+  fileType        String?  // pdf, jpg, png
+  fileData        String?  // contenido como data URL (base64)
+  createdAt       DateTime @default(now())
+
+  @@index([studentId])
 }
