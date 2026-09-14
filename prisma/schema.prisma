@@ -218,6 +218,9 @@ model Period {
   active        Boolean  @default(false)
   closed        Boolean  @default(false)
   createdAt     DateTime @default(now())
+  educationalModelId String?
+  educationalModel EducationalModel? @relation(fields: [educationalModelId], references: [id], onDelete: SetNull)
+  order         Int?     // posición dentro del modelo educativo (1..periodCount)
 
   grades        Grade[]
 }
@@ -648,10 +651,13 @@ model EducationalModel {
   institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   name          String   // "Escuela nueva", "Educación tradicional", ...
   active        Boolean  @default(true)
+  periodCount   Int      @default(4) // cantidad de periodos académicos del modelo
+  details       String?  // HTML del editor rich text (Tiptap)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   concepts      EvaluativeConcept[]
+  periods       Period[]
 
   @@unique([institutionId, name])
 }
@@ -667,6 +673,7 @@ model EvaluativeConcept {
   educationalModel EducationalModel @relation(fields: [educationalModelId], references: [id], onDelete: Cascade)
   name          String   // "Ser", "Saber", "Hacer", "Autoevaluación" (nombre libre)
   percentage    Int      // 0-100
+  order         Int      @default(0) // posición dentro del modelo educativo
   open          Boolean  @default(true) // Estado: Abierto (true) / Cerrado (false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

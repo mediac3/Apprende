@@ -37,6 +37,7 @@ import {
   ListTree,
   UserCog,
   ClipboardList,
+  School,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +73,7 @@ import { ParamsView } from "./views/params-view";
 import { UsersView } from "./views/users-view";
 import { GroupsView } from "./views/groups-view";
 import { ConceptsListView } from "./views/evaluative-concepts/concepts-list-view";
+import { ModelsListView } from "./views/educational-models/models-list-view";
 import { StudentsListView } from "./views/students/students-list-view";
 import {
   Collapsible,
@@ -87,6 +89,7 @@ interface NavItem {
   icon: any;
   roles?: string[]; // si no se especifica, todos
   group: string;
+  hidden?: boolean; // deprecado: se oculta del menú sin borrar la clave ni la vista
 }
 
 const NAV: NavItem[] = [
@@ -122,12 +125,13 @@ const NAV: NavItem[] = [
   { key: "usuarios", label: "Usuarios", icon: UserCog, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "gestion-grupos", label: "Gestión de Grupos", icon: Users, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "gestion-estudiantes", label: "Gestión de Estudiantes", icon: GraduationCap, group: "Administración", roles: ["rector", "administrativo"] },
-  { key: "conceptos-evaluativos", label: "Conceptos evaluativos", icon: ClipboardList, group: "Administración", roles: ["rector", "administrativo"] },
+  { key: "modelos-educativos", label: "Modelos educativos", icon: School, group: "Administración", roles: ["rector", "coordinador", "administrativo"] },
+  { key: "conceptos-evaluativos", label: "Conceptos evaluativos", icon: ClipboardList, group: "Administración", roles: ["rector", "administrativo"], hidden: true },
   { key: "libros", label: "Libros reglamentarios", icon: BookOpen, group: "Administración", roles: ["rector", "administrativo", "coordinador"] },
   { key: "actas", label: "Actas institucionales", icon: FileText, group: "Administración", roles: ["rector", "coordinador", "administrativo"] },
   { key: "matricula", label: "Matrícula", icon: ClipboardCheck, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "asignacion", label: "Asignación académica", icon: Building2, group: "Administración", roles: ["rector", "coordinador", "administrativo"] },
-  { key: "periodos", label: "Periodos académicos", icon: Calendar, group: "Administración", roles: ["rector", "coordinador", "administrativo"] },
+  { key: "periodos", label: "Periodos académicos", icon: Calendar, group: "Administración", roles: ["rector", "coordinador", "administrativo"], hidden: true },
   { key: "talento-humano", label: "Talento Humano", icon: Users, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "auditoria", label: "Auditoría", icon: ScrollText, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "configuracion", label: "Configuración", icon: Settings, group: "Administración", roles: ["rector", "administrativo"] },
@@ -179,7 +183,7 @@ export function InstitutionalPanel() {
   const filteredNav = useMemo(() => {
     if (!user) return [];
     const myRoles = user.roles?.length ? user.roles : [user.role];
-    return NAV.filter((n) => !n.roles || n.roles.some((r) => myRoles.includes(r)));
+    return NAV.filter((n) => !n.hidden && (!n.roles || n.roles.some((r) => myRoles.includes(r))));
   }, [user]);
 
   // Agrupar
@@ -246,6 +250,8 @@ export function InstitutionalPanel() {
         return <GroupsView />;
       case "gestion-estudiantes":
         return <StudentsListView />;
+      case "modelos-educativos":
+        return <ModelsListView />;
       case "conceptos-evaluativos":
         return <ConceptsListView />;
       case "talleres":

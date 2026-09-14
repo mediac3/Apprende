@@ -30,6 +30,7 @@ export type ModuleKey =
   | "gestion-grupos"
   | "gestion-estudiantes"
   | "conceptos-evaluativos"
+  | "modelos-educativos"
   | "auditoria"
   | "comunidad"
   | "mensajeria"
