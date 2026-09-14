@@ -29,6 +29,7 @@ export type ModuleKey =
   | "usuarios"
   | "gestion-grupos"
   | "gestion-estudiantes"
+  | "conceptos-evaluativos"
   | "auditoria"
   | "comunidad"
   | "mensajeria"

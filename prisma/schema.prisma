@@ -54,6 +54,8 @@ model Institution {
   studentContacts      StudentContact[]
   studentRequirements  StudentRequirement[]
   externalCertificates ExternalCertificate[]
+  educationalModels    EducationalModel[]
+  evaluativeConcepts   EvaluativeConcept[]
 }
 
 // UserRole (códigos del catálogo Role): rector, coordinador, director_grupo,
@@ -636,6 +638,40 @@ model EvaluationModel {
   createdAt     DateTime @default(now())
 
   @@unique([institutionId, academicYearId, scaleId])
+}
+
+// --- Modelos educativos / pedagógicos (PDF: Conceptos evaluativos) ---
+// Modelos como "Escuela nueva", "Educación tradicional", etc.
+model EducationalModel {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name          String   // "Escuela nueva", "Educación tradicional", ...
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  concepts      EvaluativeConcept[]
+
+  @@unique([institutionId, name])
+}
+
+// --- Conceptos evaluativos (PDF: Conceptos evaluativos) ---
+// Conceptos como Ser, Saber, Hacer, Autoevaluación con porcentaje por modelo.
+// La misma estructura puede repetirse entre distintos modelos (patrón del dominio).
+model EvaluativeConcept {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  educationalModelId String
+  educationalModel EducationalModel @relation(fields: [educationalModelId], references: [id], onDelete: Cascade)
+  name          String   // "Ser", "Saber", "Hacer", "Autoevaluación" (nombre libre)
+  percentage    Int      // 0-100
+  open          Boolean  @default(true) // Estado: Abierto (true) / Cerrado (false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([educationalModelId, name])
 }
 
 // --- Sedes (PDF pág 19-21) ---

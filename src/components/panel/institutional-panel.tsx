@@ -36,6 +36,7 @@ import {
   Variable,
   ListTree,
   UserCog,
+  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,6 +71,7 @@ import { ModuleApprovalsView } from "./views/module-approvals-view";
 import { ParamsView } from "./views/params-view";
 import { UsersView } from "./views/users-view";
 import { GroupsView } from "./views/groups-view";
+import { ConceptsListView } from "./views/evaluative-concepts/concepts-list-view";
 import { StudentsListView } from "./views/students/students-list-view";
 import {
   Collapsible,
@@ -120,6 +122,7 @@ const NAV: NavItem[] = [
   { key: "usuarios", label: "Usuarios", icon: UserCog, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "gestion-grupos", label: "Gestión de Grupos", icon: Users, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "gestion-estudiantes", label: "Gestión de Estudiantes", icon: GraduationCap, group: "Administración", roles: ["rector", "administrativo"] },
+  { key: "conceptos-evaluativos", label: "Conceptos evaluativos", icon: ClipboardList, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "libros", label: "Libros reglamentarios", icon: BookOpen, group: "Administración", roles: ["rector", "administrativo", "coordinador"] },
   { key: "actas", label: "Actas institucionales", icon: FileText, group: "Administración", roles: ["rector", "coordinador", "administrativo"] },
   { key: "matricula", label: "Matrícula", icon: ClipboardCheck, group: "Administración", roles: ["rector", "administrativo"] },
@@ -243,6 +246,8 @@ export function InstitutionalPanel() {
         return <GroupsView />;
       case "gestion-estudiantes":
         return <StudentsListView />;
+      case "conceptos-evaluativos":
+        return <ConceptsListView />;
       case "talleres":
         return <WorkshopsView />;
       case "estudiantes":
