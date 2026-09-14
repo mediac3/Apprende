@@ -207,13 +207,16 @@ export function ContactsTab({ student }: { student: StudentRow }) {
               />
             </div>
             <div className="flex items-end justify-between gap-3">
-              <label className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-2 text-xs">
                 <Checkbox
+                  id="contact-primary-checkbox"
                   checked={form.isPrimary}
                   onCheckedChange={(v) => setForm({ ...form, isPrimary: v === true })}
                 />
-                Contacto principal
-              </label>
+                <label htmlFor="contact-primary-checkbox" className="cursor-pointer">
+                  Contacto principal
+                </label>
+              </div>
               <Button size="sm" onClick={save}>
                 {editingId ? "Actualizar contacto" : "Guardar contacto"}
               </Button>
