@@ -1,13 +1,18 @@
 /**
  * Seed completo de Aulnea:
  *  - Institución demo
- *  - Admin 1155218177/1155218177 (rector)
+ *  - Admin rector (credenciales en variables de entorno)
  *  - Usuarios de cada rol (docente, coordinador, director, orientador, acudiente)
  *  - Grupos, asignaturas, periodos, estudiantes
  *  - Spaces, posts, comentarios, reacciones
  *  - Talleres, observaciones, atenciones de orientación
  *  - Reuniones / actas
  *  - Badges
+ *
+ * Credenciales de siembra (NUNCA hardcodeadas): definir en .env
+ *   SEED_ADMIN_PASSWORD  → contraseña del usuario rector
+ *   SEED_PASSWORD        → contraseña de los demás usuarios demo
+ * Ejecutar cargando .env:  npx tsx --env-file=.env scripts/seed.ts
  */
 import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
@@ -17,6 +22,15 @@ const db = new PrismaClient();
 function hashPassword(p: string): string {
   return crypto.createHash("sha256").update(p).digest("hex");
 }
+
+function needEnv(key: string): string {
+  const v = process.env[key];
+  if (!v) throw new Error(`Falta la variable de entorno ${key} (defínela en .env antes de sembrar)`);
+  return v;
+}
+
+const SEED_ADMIN_PASSWORD = needEnv("SEED_ADMIN_PASSWORD");
+const SEED_PASSWORD = needEnv("SEED_PASSWORD");
 
 function rnd(arr: string[]) {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -119,10 +133,10 @@ async function main() {
     return u;
   }
 
-  // Admin rector con credenciales 1155218177 / 1155218177
+  // Admin rector: credenciales en SEED_ADMIN_PASSWORD / username documental
   const rector = await createUser({
     username: "1155218177",
-    password: "1155218177",
+    password: SEED_ADMIN_PASSWORD,
     fullName: "Gloria Inés Restrepo Marín",
     role: "rector",
     email: "grestrepo@ieaulnea.edu.co",
@@ -132,7 +146,7 @@ async function main() {
 
   const coordinador = await createUser({
     username: "coordinacion",
-    password: "aulnea123",
+    password: SEED_PASSWORD,
     fullName: "Carlos Andrés Gómez Pineda",
     role: "coordinador",
     email: "cgomez@ieaulnea.edu.co",
@@ -142,7 +156,7 @@ async function main() {
 
   const director = await createUser({
     username: "director",
-    password: "aulnea123",
+    password: SEED_PASSWORD,
     fullName: "María Camila Torres Vega",
     role: "director_grupo",
     email: "mtorres@ieaulnea.edu.co",
@@ -152,7 +166,7 @@ async function main() {
 
   const docente = await createUser({
     username: "docente",
-    password: "aulnea123",
+    password: SEED_PASSWORD,
     fullName: "Javier Esteban Ruiz Cardona",
     role: "docente",
     email: "jruiz@ieaulnea.edu.co",
@@ -162,7 +176,7 @@ async function main() {
 
   const orientador = await createUser({
     username: "orientacion",
-    password: "aulnea123",
+    password: SEED_PASSWORD,
     fullName: "Diana Marcela Quintero Soto",
     role: "orientador",
     email: "dquintero@ieaulnea.edu.co",
@@ -172,7 +186,7 @@ async function main() {
 
   const acudiente = await createUser({
     username: "acudiente",
-    password: "aulnea123",
+    password: SEED_PASSWORD,
     fullName: "Luis Alberto Moreno Ortiz",
     role: "acudiente",
     email: "lmoreno@gmail.com",
@@ -182,7 +196,7 @@ async function main() {
 
   const administrativo = await createUser({
     username: "administrativo",
-    password: "aulnea123",
+    password: SEED_PASSWORD,
     fullName: "Sandra Patricia Villegas Loaiza",
     role: "administrativo",
     email: "svillegas@ieaulnea.edu.co",
@@ -1075,14 +1089,14 @@ async function main() {
 
   console.log("\n✅ Seed completo.")
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-  console.log("Credenciales de acceso:")
-  console.log("  ▸ Rector / Admin: 1155218177 / 1155218177")
-  console.log("  ▸ Coordinador:    coordinacion / aulnea123")
-  console.log("  ▸ Director grupo: director / aulnea123")
-  console.log("  ▸ Docente:        docente / aulnea123")
-  console.log("  ▸ Orientador:     orientacion / aulnea123")
-  console.log("  ▸ Acudiente:      acudiente / aulnea123")
-  console.log("  ▸ Administrativo: administrativo / aulnea123")
+  console.log("Credenciales de acceso (contraseñas definidas en .env: SEED_ADMIN_PASSWORD / SEED_PASSWORD):")
+  console.log("  ▸ Rector / Admin: 1155218177 / $SEED_ADMIN_PASSWORD")
+  console.log("  ▸ Coordinador:    coordinacion / $SEED_PASSWORD")
+  console.log("  ▸ Director grupo: director / $SEED_PASSWORD")
+  console.log("  ▸ Docente:        docente / $SEED_PASSWORD")
+  console.log("  ▸ Orientador:     orientacion / $SEED_PASSWORD")
+  console.log("  ▸ Acudiente:      acudiente / $SEED_PASSWORD")
+  console.log("  ▸ Administrativo: administrativo / $SEED_PASSWORD")
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 }
 
