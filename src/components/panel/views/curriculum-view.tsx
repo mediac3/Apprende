@@ -9,6 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
+import { PercentageBar } from "@/components/ui/percentage-bar";
+import { getAreaColor } from "@/lib/area-colors";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -32,7 +36,7 @@ interface PlanItem {
   gradeLevelId: string;
   weeklyHours: number;
   sortOrder: number;
-  subject: { id: string; name: string; abbreviation: string | null; averages: boolean; area: { name: string } | null };
+  subject: { id: string; name: string; abbreviation: string | null; averages: boolean; percentage: number; area: { id: string; name: string; abbreviation: string | null } | null };
   gradeLevel: { id: string; code: string; name: string; sortOrder: number };
 }
 
@@ -60,17 +64,42 @@ interface GradeLevelRow {
   _count?: { groups: number; planItems: number };
 }
 
+interface AreaSubject {
+  id: string;
+  name: string;
+  abbreviation: string | null;
+  averages: boolean;
+  active: boolean;
+  percentage: number;
+}
+
+interface SubjectFormRow {
+  key: string;
+  id?: string;
+  name: string;
+  abbreviation: string;
+  averages: boolean;
+  active: boolean;
+  percentage: number;
+}
+
 interface AreaRow {
   id: string;
   name: string;
   abbreviation: string | null;
   sortOrder: number;
   active: boolean;
+  subjects?: AreaSubject[];
   _count?: { subjects: number };
 }
 
 export function CurriculumView() {
   const [tab, setTab] = useState("planes");
+
+  // Al cambiar de tab interna (Planes/Grados/Áreas), volver al top del contenido
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [tab]);
 
   return (
     <motion.div
@@ -395,8 +424,16 @@ function PlanDetail({ planId, onBack, onNeedGrades }: { planId: string; onBack: 
                         <tr key={it.id} className="hairline-b">
                           <td className="py-2 pr-3 font-mono text-xs">{it.sortOrder}</td>
                           <td className="py-2 pr-3">
-                            {it.subject.name}
-                            {it.subject.abbreviation && <span className="ml-1.5 font-mono text-[10px] text-muted-foreground">{it.subject.abbreviation}</span>}
+                            <div className="flex flex-col gap-1">
+                              <span>
+                                {it.subject.name}
+                                {it.subject.abbreviation && <span className="ml-1.5 rounded bg-secondary px-1 font-mono text-[10px] text-muted-foreground">{it.subject.abbreviation}</span>}
+                              </span>
+                              <PercentageBar
+                                value={it.subject.percentage ?? 0}
+                                color={getAreaColor(it.subject.area?.id ?? it.subject.area?.abbreviation ?? "")}
+                              />
+                            </div>
                           </td>
                           <td className="py-2 pr-3 text-muted-foreground">{it.subject.area?.name ?? "—"}</td>
                           <td className="py-2 pr-3">{it.subject.averages ? <Badge className="chip-superior text-[10px]">Sí</Badge> : <Badge variant="outline" className="hairline text-[10px]">No</Badge>}</td>
@@ -685,6 +722,39 @@ function KnowledgeAreasTab() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<AreaRow | null>(null);
   const [form, setForm] = useState({ name: "", abbreviation: "", sortOrder: 0, active: true });
+  const [subjects, setSubjects] = useState<SubjectFormRow[]>([]);
+
+  // Validación bloqueante: con ≥1 asignatura, la suma de porcentajes debe ser 100
+  const totalPct = subjects.reduce((s, r) => s + (r.percentage || 0), 0);
+  const pctValid = subjects.length === 0 || totalPct === 100;
+  const missingNames = subjects.some((r) => !r.name.trim());
+  const canSave = form.name.trim().length > 0 && pctValid && !missingNames;
+
+  function addSubj() {
+    setSubjects((prev) => [...prev, { key: crypto.randomUUID(), name: "", abbreviation: "", averages: true, active: true, percentage: 0 }]);
+  }
+
+  function updSubj(key: string, patch: Partial<SubjectFormRow>) {
+    setSubjects((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  }
+
+  function delSubj(key: string) {
+    setSubjects((prev) => prev.filter((r) => r.key !== key));
+  }
+
+  function openCreate() {
+    setEditing(null);
+    setForm({ name: "", abbreviation: "", sortOrder: areas.length + 1, active: true });
+    setSubjects([]);
+    setShowForm(true);
+  }
+
+  function openEdit(a: AreaRow) {
+    setEditing(a);
+    setForm({ name: a.name, abbreviation: a.abbreviation || "", sortOrder: a.sortOrder, active: a.active });
+    setSubjects((a.subjects ?? []).map((s) => ({ key: s.id, id: s.id, name: s.name, abbreviation: s.abbreviation || "", averages: s.averages, active: s.active, percentage: s.percentage ?? 0 })));
+    setShowForm(true);
+  }
 
   const load = useCallback(() => {
     setLoading(true);
@@ -697,12 +767,23 @@ function KnowledgeAreasTab() {
   useEffect(() => { load(); }, [load]);
 
   async function save() {
-    if (!form.name.trim()) return;
-    const payload = { ...form, abbreviation: form.abbreviation || null };
+    if (!canSave) return;
+    const payload = {
+      ...form,
+      abbreviation: form.abbreviation || null,
+      subjects: subjects.map((r) => ({
+        ...(r.id ? { id: r.id } : {}),
+        name: r.name.trim(),
+        abbreviation: r.abbreviation || null,
+        averages: r.averages,
+        active: r.active,
+        percentage: r.percentage,
+      })),
+    };
     const d = editing
-      ? await crudPatch("/api/knowledge-areas", { id: editing.id, institutionId: user.institution.id, userId: user.id, ...payload })
-      : await crudPost("/api/knowledge-areas", { institutionId: user.institution.id, userId: user.id, ...payload });
-    if (d.ok) { setShowForm(false); setEditing(null); load(); }
+      ? await crudPatch("/api/knowledge-areas", { id: editing.id, institutionId: user.institution.id, userId: user.id, ...payload }, "Área y asignaturas actualizadas")
+      : await crudPost("/api/knowledge-areas", { institutionId: user.institution.id, userId: user.id, ...payload }, "Área y asignaturas creadas");
+    if (d.ok) { setShowForm(false); setEditing(null); setSubjects([]); load(); }
   }
 
   async function del(a: AreaRow) {
@@ -717,7 +798,7 @@ function KnowledgeAreasTab() {
       <Card className="hairline">
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-sm">Áreas del conocimiento ({areas.length})</CardTitle>
-          <Button size="sm" onClick={() => { setEditing(null); setForm({ name: "", abbreviation: "", sortOrder: areas.length + 1, active: true }); setShowForm(true); }} className="gap-1.5">
+          <Button size="sm" onClick={openCreate} className="gap-1.5">
             <Plus className="h-3.5 w-3.5" /> Nueva
           </Button>
         </CardHeader>
@@ -746,7 +827,7 @@ function KnowledgeAreasTab() {
                       <td className="py-2 pr-3 tabular-nums">{a._count?.subjects ?? 0}</td>
                       <td className="py-2 pr-3">{a.active ? <Badge className="chip-superior text-[10px]">Activo</Badge> : <Badge variant="outline" className="hairline text-[10px]">Inactivo</Badge>}</td>
                       <td className="py-2 pr-3 text-right">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditing(a); setForm({ name: a.name, abbreviation: a.abbreviation || "", sortOrder: a.sortOrder, active: a.active }); setShowForm(true); }}><Edit className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(a)}><Edit className="h-3.5 w-3.5" /></Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => del(a)}><Trash2 className="h-3.5 w-3.5" /></Button>
                       </td>
                     </tr>
@@ -759,19 +840,56 @@ function KnowledgeAreasTab() {
       </Card>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="sm:max-w-[420px]">
-          <DialogHeader><DialogTitle>{editing ? "Editar área" : "Crear área"}</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-2">
+        <DialogContent className="sm:max-w-[680px] flex flex-col overflow-hidden" style={{ maxHeight: "85vh" }}>
+          <DialogHeader className="flex-shrink-0"><DialogTitle>{editing ? "Editar área" : "Crear área"}</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2 overflow-y-auto flex-1">
             <div><Label>Nombre *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Humanidades, Ciencias Naturales..." /></div>
             <div className="grid grid-cols-2 gap-2">
               <div><Label>Abreviatura</Label><Input value={form.abbreviation} onChange={(e) => setForm({ ...form, abbreviation: e.target.value })} placeholder="HUM" className="font-mono" /></div>
               <div><Label>Orden</Label><Input type="number" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })} /></div>
             </div>
             <div className="flex items-center gap-2"><Switch checked={form.active} onCheckedChange={(v) => setForm({ ...form, active: v })} id="ka-act" /><Label htmlFor="ka-act" className="cursor-pointer">Activo</Label></div>
+
+            <div className="hairline-t pt-3 space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Plus className="h-3.5 w-3.5" /> Asignaturas
+              </div>
+              {subjects.length > 0 && (
+                <div className="grid grid-cols-12 gap-2 px-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                  <span className="col-span-3">Nombre *</span>
+                  <span className="col-span-2">Abreviatura</span>
+                  <span className="col-span-1 text-center">Promedio</span>
+                  <span className="col-span-1 text-center">Estado</span>
+                  <span className="col-span-4">Porcentaje</span>
+                  <span className="col-span-1" />
+                </div>
+              )}
+              {subjects.map((r) => (
+                <div key={r.key} className="grid grid-cols-12 gap-2 items-center">
+                  <Input className="col-span-3 h-8" placeholder="Matemáticas" value={r.name} onChange={(e) => updSubj(r.key, { name: e.target.value })} />
+                  <Input className="col-span-2 h-8 font-mono" placeholder="MAT" value={r.abbreviation} onChange={(e) => updSubj(r.key, { abbreviation: e.target.value })} />
+                  <div className="col-span-1 flex justify-center"><Checkbox checked={r.averages} onCheckedChange={(v) => updSubj(r.key, { averages: v === true })} aria-label="Promedia" /></div>
+                  <div className="col-span-1 flex justify-center"><Checkbox checked={r.active} onCheckedChange={(v) => updSubj(r.key, { active: v === true })} aria-label="Activa" /></div>
+                  <div className="col-span-4 flex items-center gap-2">
+                    <Slider className="flex-1" value={[r.percentage]} min={0} max={100} step={1} onValueChange={(v) => updSubj(r.key, { percentage: v[0] ?? 0 })} />
+                    <Input type="number" min={0} max={100} className="h-8 w-14 tabular-nums" value={r.percentage} onChange={(e) => updSubj(r.key, { percentage: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })} />
+                  </div>
+                  <Button variant="ghost" size="icon" className="col-span-1 h-8 w-8 text-destructive" onClick={() => delSubj(r.key)} aria-label="Eliminar asignatura"><Trash2 className="h-3.5 w-3.5" /></Button>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={addSubj}><Plus className="h-3.5 w-3.5" /> Agregar asignatura</Button>
+              {subjects.length > 0 && (
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="tabular-nums text-muted-foreground">Total: {totalPct}%</span>
+                  {!pctValid && <span className="text-destructive">Los porcentajes deben sumar 100% (actual: {totalPct}%)</span>}
+                  {pctValid && missingNames && <span className="text-destructive">Completa el nombre de todas las asignaturas</span>}
+                </div>
+              )}
+            </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0">
             <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
-            <Button onClick={save} disabled={!form.name.trim()} className="gap-1.5"><Save className="h-3.5 w-3.5" /> Guardar</Button>
+            <Button onClick={save} disabled={!canSave} className="gap-1.5"><Save className="h-3.5 w-3.5" /> Guardar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

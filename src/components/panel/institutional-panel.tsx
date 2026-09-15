@@ -161,6 +161,14 @@ export function InstitutionalPanel() {
   const { activeModule, setModule, sidebarOpen, setSidebar } = useUIStore();
   const [customModules, setCustomModules] = useState<any[]>([]);
 
+  // Al cambiar de módulo, el contenido vuelve al top. El scroll vertical vive
+  // en el documento (raíz min-h-screen), por lo que se usa window.scrollTo
+  // solo en este efecto de navegación: no interfiere con los scrolls internos
+  // de modales, dropdowns ni tablas con overflow propio.
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [activeModule]);
+
   // Cargar módulos personalizados publicados
   useEffect(() => {
     if (!user) return;

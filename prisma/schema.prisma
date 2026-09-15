@@ -183,6 +183,7 @@ model Subject {
   abbreviation  String?  // Abreviatura (PDF pág 3-4)
   averages      Boolean  @default(true)  // Promedia (PDF pág 3-4) - si cuenta para el promedio
   active        Boolean  @default(true)  // Estado (PDF pág 3-4)
+  percentage    Int      @default(0)     // % absoluto dentro del área (0-100; hijas de un área suman 100)
   createdAt     DateTime @default(now())
 
   areaId        String?  // área del conocimiento (catálogo KnowledgeArea)
