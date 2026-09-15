@@ -1,8 +1,8 @@
 /**
  * Seed completo de Aulnea:
  *  - Institución demo
- *  - Admin rector (credenciales en variables de entorno)
- *  - Usuarios de cada rol (docente, coordinador, director, orientador, acudiente)
+ *  - Admin rector (credenciales en .env: SEED_ADMIN_PASSWORD)
+ *  - Usuarios de cada rol (docente, coordinador, director, orientador, acudiente — SEED_PASSWORD)
  *  - Grupos, asignaturas, periodos, estudiantes
  *  - Spaces, posts, comentarios, reacciones
  *  - Talleres, observaciones, atenciones de orientación
@@ -16,6 +16,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
+import "dotenv/config";
 
 const db = new PrismaClient();
 
@@ -133,7 +134,7 @@ async function main() {
     return u;
   }
 
-  // Admin rector: credenciales en SEED_ADMIN_PASSWORD / username documental
+  // Admin rector: credenciales en .env (SEED_ADMIN_PASSWORD) / username documental
   const rector = await createUser({
     username: "1155218177",
     password: SEED_ADMIN_PASSWORD,
@@ -1090,13 +1091,13 @@ async function main() {
   console.log("\n✅ Seed completo.")
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
   console.log("Credenciales de acceso (contraseñas definidas en .env: SEED_ADMIN_PASSWORD / SEED_PASSWORD):")
-  console.log("  ▸ Rector / Admin: 1155218177 / $SEED_ADMIN_PASSWORD")
-  console.log("  ▸ Coordinador:    coordinacion / $SEED_PASSWORD")
-  console.log("  ▸ Director grupo: director / $SEED_PASSWORD")
-  console.log("  ▸ Docente:        docente / $SEED_PASSWORD")
-  console.log("  ▸ Orientador:     orientacion / $SEED_PASSWORD")
-  console.log("  ▸ Acudiente:      acudiente / $SEED_PASSWORD")
-  console.log("  ▸ Administrativo: administrativo / $SEED_PASSWORD")
+  console.log(`  ▸ Rector / Admin: 1155218177 / ${SEED_ADMIN_PASSWORD}`)
+  console.log(`  ▸ Coordinador:    coordinacion / ${SEED_PASSWORD}`)
+  console.log(`  ▸ Director grupo: director / ${SEED_PASSWORD}`)
+  console.log(`  ▸ Docente:        docente / ${SEED_PASSWORD}`)
+  console.log(`  ▸ Orientador:     orientacion / ${SEED_PASSWORD}`)
+  console.log(`  ▸ Acudiente:      acudiente / ${SEED_PASSWORD}`)
+  console.log(`  ▸ Administrativo: administrativo / ${SEED_PASSWORD}`)
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 }
 
