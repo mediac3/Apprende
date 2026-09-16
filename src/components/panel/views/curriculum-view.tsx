@@ -44,6 +44,7 @@ interface PlanSummary {
   id: string;
   name: string;
   description: string | null;
+  educationalModelId: string;
   active: boolean;
   gradesCount: number;
   subjectsCount: number;
@@ -152,6 +153,7 @@ function PlansTab({ onNeedGrades }: { onNeedGrades: () => void }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<PlanSummary | null>(null);
   const [duplicating, setDuplicating] = useState<PlanSummary | null>(null);
+  const [eduModels, setEduModels] = useState<{ id: string; name: string; periodCount: number }[]>([]);
 
   const load = useCallback(() => {
     if (!user.institution.id) return;
@@ -160,11 +162,14 @@ function PlansTab({ onNeedGrades }: { onNeedGrades: () => void }) {
       .then((r) => r.json())
       .then((d) => { if (d.ok) setPlans(d.plans); })
       .finally(() => setLoading(false));
+    fetch(`/api/educational-models?institutionId=${user.institution.id}`)
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) setEduModels(d.models.map((m: { id: string; name: string; periodCount: number }) => ({ id: m.id, name: m.name, periodCount: m.periodCount }))); });
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
 
-  async function savePlan(data: { name: string; description: string | null }) {
+  async function savePlan(data: { name: string; description: string | null; educationalModelId: string }) {
     if (editing) {
       const d = await crudPatch("/api/curriculum-plans", { id: editing.id, institutionId: user.institution.id, userId: user.id, ...data });
       if (d.ok) { setShowForm(false); setEditing(null); load(); }
@@ -263,19 +268,22 @@ function PlansTab({ onNeedGrades }: { onNeedGrades: () => void }) {
         </CardContent>
       </Card>
 
-      <PlanForm open={showForm} onOpenChange={setShowForm} plan={editing} onSave={savePlan} />
+      <PlanForm open={showForm} onOpenChange={setShowForm} plan={editing} models={eduModels} onSave={savePlan} />
       <DuplicateDialog plan={duplicating} onClose={() => setDuplicating(null)} onConfirm={duplicate} />
     </>
   );
 }
 
-function PlanForm({ open, onOpenChange, plan, onSave }: { open: boolean; onOpenChange: (v: boolean) => void; plan: PlanSummary | null; onSave: (d: { name: string; description: string | null }) => void }) {
+function PlanForm({ open, onOpenChange, plan, models, onSave }: { open: boolean; onOpenChange: (v: boolean) => void; plan: PlanSummary | null; models: { id: string; name: string; periodCount: number }[]; onSave: (d: { name: string; description: string | null; educationalModelId: string }) => void }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [modelId, setModelId] = useState("");
+  const [modelError, setModelError] = useState(false);
 
   useEffect(() => {
-    if (plan) { setName(plan.name); setDescription(plan.description || ""); }
-    else { setName(""); setDescription(""); }
+    if (plan) { setName(plan.name); setDescription(plan.description || ""); setModelId(plan.educationalModelId || ""); }
+    else { setName(""); setDescription(""); setModelId(""); }
+    setModelError(false);
   }, [plan, open]);
 
   return (
@@ -284,11 +292,23 @@ function PlanForm({ open, onOpenChange, plan, onSave }: { open: boolean; onOpenC
         <DialogHeader><DialogTitle>{plan ? "Editar plan de estudios" : "Crear plan de estudios"}</DialogTitle></DialogHeader>
         <div className="space-y-3 py-2">
           <div><Label>Nombre *</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Plan de estudios general" /></div>
+          <div>
+            <Label>Modelo educativo *</Label>
+            <Select value={modelId} onValueChange={(v) => { setModelId(v); setModelError(false); }}>
+              <SelectTrigger><SelectValue placeholder="Seleccione un modelo educativo" /></SelectTrigger>
+              <SelectContent>
+                {models.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.name} · {m.periodCount} periodos</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {modelError && <p className="text-xs text-red-500 mt-1">Seleccione un modelo educativo</p>}
+          </div>
           <div><Label>Descripción</Label><Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Opcional" /></div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => onSave({ name, description: description || null })} disabled={!name.trim()} className="gap-1.5"><Save className="h-3.5 w-3.5" /> Guardar</Button>
+          <Button onClick={() => { if (!modelId) { setModelError(true); return; } onSave({ name, description: description || null, educationalModelId: modelId }); }} disabled={!name.trim()} className="gap-1.5"><Save className="h-3.5 w-3.5" /> Guardar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

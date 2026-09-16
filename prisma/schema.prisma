@@ -659,6 +659,7 @@ model EducationalModel {
 
   concepts      EvaluativeConcept[]
   periods       Period[]
+  studyPlans    CurriculumPlan[]
 
   @@unique([institutionId, name])
 }
@@ -794,6 +795,8 @@ model CurriculumPlan {
   institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   name          String   // "Plan de estudios 2026", "Plan básica secundaria"...
   description   String?
+  educationalModelId String
+  educationalModel EducationalModel @relation(fields: [educationalModelId], references: [id], onDelete: Restrict)
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -801,6 +804,7 @@ model CurriculumPlan {
   items         CurriculumPlanItem[]
 
   @@unique([institutionId, name])
+  @@index([educationalModelId])
 }
 
 // --- Detalle del plan: asignatura × grado con intensidad horaria ---

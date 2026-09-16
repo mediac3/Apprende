@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { institutionId, name, description, active, cloneFromId, userId } = body;
+    const { institutionId, name, description, active, cloneFromId, educationalModelId, userId } = body;
 
     if (!institutionId || !name) {
       return NextResponse.json(
@@ -120,6 +120,8 @@ export async function POST(req: NextRequest) {
 
     // Duplicación de plan existente
     let sourceItems: any[] = [];
+    // Modelo educativo: obligatorio. En duplicación se hereda del plan origen.
+    let targetModelId = "";
     if (cloneFromId) {
       const source = await db.curriculumPlan.findFirst({
         where: { id: cloneFromId, institutionId },
@@ -132,6 +134,24 @@ export async function POST(req: NextRequest) {
         );
       }
       sourceItems = source.items;
+      targetModelId = source.educationalModelId;
+    } else {
+      if (!educationalModelId) {
+        return NextResponse.json(
+          { ok: false, error: "Debe seleccionar un modelo educativo" },
+          { status: 400 }
+        );
+      }
+      const model = await db.educationalModel.findFirst({
+        where: { id: educationalModelId, institutionId },
+      });
+      if (!model) {
+        return NextResponse.json(
+          { ok: false, error: "Modelo educativo no encontrado" },
+          { status: 400 }
+        );
+      }
+      targetModelId = educationalModelId;
     }
 
     const plan = await db.curriculumPlan.create({
@@ -139,6 +159,7 @@ export async function POST(req: NextRequest) {
         institutionId,
         name,
         description: description || null,
+        educationalModelId: targetModelId,
         active: active !== undefined ? Boolean(active) : true,
       },
     });
@@ -179,7 +200,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, institutionId, name, description, active, userId } = body;
+    const { id, institutionId, name, description, active, educationalModelId, userId } = body;
 
     if (!id || !institutionId) {
       return NextResponse.json(
@@ -214,6 +235,18 @@ export async function PATCH(req: NextRequest) {
     if (name !== undefined) update.name = name;
     if (description !== undefined) update.description = description || null;
     if (active !== undefined) update.active = Boolean(active);
+    if (educationalModelId !== undefined) {
+      const model = await db.educationalModel.findFirst({
+        where: { id: educationalModelId, institutionId },
+      });
+      if (!model) {
+        return NextResponse.json(
+          { ok: false, error: "Modelo educativo no encontrado" },
+          { status: 400 }
+        );
+      }
+      update.educationalModelId = educationalModelId;
+    }
 
     const updated = await db.curriculumPlan.update({ where: { id }, data: update });
 
