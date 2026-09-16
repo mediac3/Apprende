@@ -47,9 +47,6 @@ export async function GET(req: NextRequest) {
       branch: g.branch,
       journeyId: g.journeyId,
       journey: g.journey,
-      periodsCount: g.periodsCount,
-      semesterized: g.semesterized,
-      semester: g.semester,
     }));
 
     return NextResponse.json({ ok: true, groups: result });
@@ -64,7 +61,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       institutionId, name, gradeLevelId, academicYearId, branchId, journeyId,
-      periodsCount, semesterized, semester, headTeacherId, userId,
+      headTeacherId, userId,
     } = body;
 
     if (!institutionId || !name?.trim() || !gradeLevelId || !academicYearId) {
@@ -94,9 +91,6 @@ export async function POST(req: NextRequest) {
         academicYearId,
         branchId: branchId || null,
         journeyId: journeyId || null,
-        periodsCount: periodsCount ? Number(periodsCount) : null,
-        semesterized: !!semesterized,
-        semester: semester ? Number(semester) : null,
         headTeacherId: headTeacherId || null,
       },
     });
@@ -121,7 +115,7 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const {
       id, institutionId, name, branchId, journeyId,
-      periodsCount, semesterized, semester, headTeacherId, userId,
+      headTeacherId, userId,
     } = body;
 
     if (!id || !institutionId) {
@@ -132,9 +126,6 @@ export async function PATCH(req: NextRequest) {
     if (name !== undefined) update.name = String(name).trim();
     if (branchId !== undefined) update.branchId = branchId || null;
     if (journeyId !== undefined) update.journeyId = journeyId || null;
-    if (periodsCount !== undefined) update.periodsCount = periodsCount ? Number(periodsCount) : null;
-    if (semesterized !== undefined) update.semesterized = !!semesterized;
-    if (semester !== undefined) update.semester = semester ? Number(semester) : null;
     if (headTeacherId !== undefined) update.headTeacherId = headTeacherId || null;
 
     await db.group.update({ where: { id }, data: update });
