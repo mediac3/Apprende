@@ -9,6 +9,7 @@ export interface GradesToolbarProps {
   groupName: string; // chip "7-A"
   subjectName: string; // "TECNOLOGÍA E INFORMÁTICA"
   subtitle: string; // "NOTAS PARCIALES · 3ER PERIODO"
+  onOpenSearch: () => void; // [C4] Lupa: reabre el sidebar modal
   onAdd: () => void;
   onSave: () => void;
   saving: boolean;
@@ -19,6 +20,7 @@ export function GradesToolbar({
   groupName,
   subjectName,
   subtitle,
+  onOpenSearch,
   onAdd,
   onSave,
   saving,
@@ -27,7 +29,17 @@ export function GradesToolbar({
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3">
       <div className="flex min-w-0 items-center gap-3">
-        <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-10 w-10 shrink-0 rounded-full"
+          onClick={onOpenSearch}
+          aria-label="Buscar asignatura o grupo (abrir selector)"
+          title="Buscar asignatura o grupo"
+        >
+          <Search className="h-5 w-5" />
+        </Button>
         <span className="inline-flex shrink-0 items-center rounded-md bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
           {groupName}
         </span>

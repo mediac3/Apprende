@@ -80,7 +80,7 @@ export function CalificacionesView() {
   // Selección
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
   const [selected, setSelected] = useState<SidebarSubject | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // [C4] modal overlay, se abre con la Lupa
 
   // Planilla
   const [students, setStudents] = useState<StudentRow[]>([]);
@@ -171,6 +171,10 @@ export function CalificacionesView() {
     return out;
   }, [groups, planItems]);
 
+  // Selección efectiva [C4]: la elegida por el usuario o, por defecto, la primera
+  // disponible (derivado, sin efecto: al recargar vuelve al primer item).
+  const activeSubject = selected ?? sidebarSubjects[0] ?? null;
+
   // Cargar planilla al cambiar selección o periodo
   const loadSheet = useCallback(
     (sel: SidebarSubject, periodId: string) => {
@@ -211,8 +215,8 @@ export function CalificacionesView() {
   );
 
   useEffect(() => {
-    if (selected && selectedPeriodId) loadSheet(selected, selectedPeriodId);
-  }, [selected, selectedPeriodId, loadSheet]);
+    if (activeSubject && selectedPeriodId) loadSheet(activeSubject, selectedPeriodId);
+  }, [activeSubject, selectedPeriodId, loadSheet]);
 
   // Cálculos al vuelo
   const conceptColumns = useMemo<ConceptColumn[]>(
@@ -250,7 +254,7 @@ export function CalificacionesView() {
 
   // Guardar lote (transacción en servidor)
   const handleSave = useCallback(async () => {
-    if (!selected || dirty.size === 0 || saving) return;
+    if (!activeSubject || dirty.size === 0 || saving) return;
     setSaving(true);
     try {
       const records = [...dirty].map((k) => {
@@ -273,27 +277,27 @@ export function CalificacionesView() {
     } finally {
       setSaving(false);
     }
-  }, [selected, dirty, saving, values]);
+  }, [activeSubject, dirty, saving, values]);
 
   // Crear actividad (nueva sub-columna N… del concepto)
   const handleCreateActivity = useCallback(
     async (data: { evaluativeConceptId: string; name: string; isGeneral: boolean }) => {
-      if (!selected || !institutionId || !selectedPeriodId) return false;
+      if (!activeSubject || !institutionId || !selectedPeriodId) return false;
       try {
         const res = await fetch("/api/activities", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             institutionId,
-            groupId: selected.groupId,
-            subjectId: selected.subjectId,
+            groupId: activeSubject.groupId,
+            subjectId: activeSubject.subjectId,
             periodId: selectedPeriodId,
             ...data,
           }),
         }).then((r) => r.json());
         if (res?.ok) {
           toast.success(`Actividad "${res.activity?.name ?? ""}" creada`);
-          loadSheet(selected, selectedPeriodId);
+          loadSheet(activeSubject, selectedPeriodId);
           return true;
         }
         toast.error(res?.error ?? "Error creando la actividad");
@@ -303,7 +307,7 @@ export function CalificacionesView() {
         return false;
       }
     },
-    [selected, institutionId, selectedPeriodId, loadSheet]
+    [activeSubject, institutionId, selectedPeriodId, loadSheet]
   );
 
   if (loading) {
@@ -331,38 +335,32 @@ export function CalificacionesView() {
 
   return (
     <div className="flex h-full min-h-0 gap-4 p-4">
-      {sidebarOpen && (
-        <GradesSidebar
-          periods={modelPeriods.map((p) => ({ id: p.id, label: periodLabel(p) }))}
-          selectedPeriodId={selectedPeriodId}
-          onSelectPeriod={setSelectedPeriodId}
-          currentPeriodLabel={
-            selectedPeriod ? periodLabel(selectedPeriod) : modelPeriods[0]?.name ?? ""
-          }
-          subjects={sidebarSubjects}
-          selected={selected ? { groupId: selected.groupId, subjectId: selected.subjectId } : null}
-          onSelectSubject={setSelected}
-          onClose={() => setSidebarOpen(false)}
-        />
-      )}
+      {/* [C4] Sidebar Modal overlay: se abre con la Lupa del toolbar */}
+      <GradesSidebar
+        open={sidebarOpen}
+        onOpenChange={setSidebarOpen}
+        periods={modelPeriods.map((p) => ({ id: p.id, label: periodLabel(p) }))}
+        selectedPeriodId={selectedPeriodId}
+        onSelectPeriod={setSelectedPeriodId}
+        currentPeriodLabel={
+          selectedPeriod ? periodLabel(selectedPeriod) : modelPeriods[0]?.name ?? ""
+        }
+        subjects={sidebarSubjects}
+        selected={activeSubject ? { groupId: activeSubject.groupId, subjectId: activeSubject.subjectId } : null}
+        onSelectSubject={(s) => {
+          setSelected(s);
+          setSidebarOpen(false);
+        }}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col gap-3">
-        {!sidebarOpen && (
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="self-start rounded-lg border bg-card px-3 py-1.5 text-xs hover:bg-muted"
-          >
-            Mostrar sistema de calificaciones
-          </button>
-        )}
-
-        {selected ? (
+        {activeSubject ? (
           <>
             <GradesToolbar
-              groupName={selected.groupName}
-              subjectName={selected.subjectName}
+              groupName={activeSubject.groupName}
+              subjectName={activeSubject.subjectName}
               subtitle={periodSubtitle(modelPeriods, selectedPeriodId)}
+              onOpenSearch={() => setSidebarOpen(true)}
               onAdd={() => setModalOpen(true)}
               onSave={handleSave}
               saving={saving}
@@ -395,7 +393,8 @@ export function CalificacionesView() {
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center rounded-xl border bg-card p-8 text-sm text-muted-foreground">
-            Seleccione una asignatura en el sistema de calificaciones para ver la planilla.
+            No hay asignaturas para sus grupos en el plan activo. Use la lupa para
+            buscar una asignatura y ver la planilla.
           </div>
         )}
       </div>
