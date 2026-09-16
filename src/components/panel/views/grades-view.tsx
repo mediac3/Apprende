@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { CalificacionesView } from "./grades/calificaciones-view";
 
 interface Group { id: string; name: string; }
 interface Subject { id: string; name: string; area?: string | null; }
@@ -56,7 +57,14 @@ interface Student {
 
 const INDICADORES = ["Razonamiento", "Comunicación", "Resolución de problemas"];
 
+// El módulo "notas" (default) usa el nuevo módulo Calificaciones (planilla por
+// actividades). "indicadores" conserva la planilla legada sin cambios.
 export function GradesView({ mode = "default" }: { mode?: "default" | "indicadores" }) {
+  if (mode === "default") return <CalificacionesView />;
+  return <LegacyNotasView />;
+}
+
+function LegacyNotasView({ mode = "indicadores" }: { mode?: "default" | "indicadores" }) {
   const user = useAuthStore((s) => s.user);
   const [groups, setGroups] = useState<Group[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);

@@ -56,6 +56,7 @@ model Institution {
   externalCertificates ExternalCertificate[]
   educationalModels    EducationalModel[]
   evaluativeConcepts   EvaluativeConcept[]
+  activities           Activity[]
 }
 
 // UserRole (códigos del catálogo Role): rector, coordinador, director_grupo,
@@ -130,6 +131,7 @@ model Group {
   assignments   SubjectAssignment[]
   attendances   Attendance[]
   studentEnrollments StudentEnrollment[] // Gestión de Estudiantes (matrícula por año)
+  activities      Activity[] // Módulo Calificaciones
 }
 
 model Student {
@@ -172,6 +174,7 @@ model Student {
   contacts           StudentContact[]
   requirements       StudentRequirement[]
   externalCertificates ExternalCertificate[]
+  gradeRecords       GradeRecord[] // Módulo Calificaciones
 }
 
 model Subject {
@@ -192,6 +195,7 @@ model Subject {
   grades        Grade[]
   workshops     Workshop[]
   planItems     CurriculumPlanItem[]
+  activities    Activity[] // Módulo Calificaciones
 }
 
 model SubjectAssignment {
@@ -224,6 +228,7 @@ model Period {
   order         Int?     // posición dentro del modelo educativo (1..periodCount)
 
   grades        Grade[]
+  activities    Activity[] // Módulo Calificaciones
 }
 
 model Grade {
@@ -243,6 +248,51 @@ model Grade {
   subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   period        Period   @relation(fields: [periodId], references: [id], onDelete: Cascade)
   teacher       User?    @relation("GradeTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+}
+
+// === Módulo Calificaciones (planilla por actividades, PDF capturas) ===
+// Actividad evaluativa: sub-columna N1, N2... de un concepto evaluativo,
+// para un grupo+asignatura+periodo. "Act. General" = aplica a todo el grupo.
+model Activity {
+  id                  String    @id @default(cuid())
+  institutionId       String
+  institution         Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  groupId             String
+  group               Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subjectId           String
+  subject             Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  periodId            String
+  period              Period    @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  evaluativeConceptId String
+  evaluativeConcept   EvaluativeConcept @relation(fields: [evaluativeConceptId], references: [id], onDelete: Cascade)
+  name                String    // "N1", "Taller 1"...
+  isGeneral           Boolean   @default(false)
+  order               Int       @default(1)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  records             GradeRecord[]
+
+  @@unique([groupId, subjectId, periodId, name])
+  @@index([groupId, subjectId, periodId])
+  @@index([subjectId, periodId, evaluativeConceptId])
+}
+
+// Nota de un estudiante en una actividad (escala 0.0 - 5.0).
+// PROM / conceptAvg / DEF se calculan al vuelo, NO se persisten.
+model GradeRecord {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  activityId  String
+  activity    Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  value       Float    // 0.0 - 5.0
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([studentId, activityId])
+  @@index([studentId])
+  @@index([activityId])
 }
 
 model Workshop {
@@ -679,6 +729,8 @@ model EvaluativeConcept {
   open          Boolean  @default(true) // Estado: Abierto (true) / Cerrado (false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  activities    Activity[] // Módulo Calificaciones
 
   @@unique([educationalModelId, name])
 }
