@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 import { CurriculumView } from "./curriculum-view";
 import {
-  Plus, Edit, Trash2, Calendar, FileText, Scale, BookOpen, Building2, MapPin, Clock, FileCheck, Variable, Save, X, ArrowLeft, ListTree,
+  Plus, Edit, Trash2, Calendar, FileText, Scale, BookOpen, Building2, MapPin, Clock, Variable, Save, X, ArrowLeft, ListTree,
 } from "lucide-react";
 
 type ModuleType =
@@ -26,7 +26,6 @@ type ModuleType =
   | "curriculum-plans"
   | "evaluation-scales"
   | "indicator-adjectives"
-  | "evaluation-models"
   | "institution"
   | "branches"
   | "journeys"
@@ -43,7 +42,6 @@ const MODULE_CONFIG: Record<ModuleType, { title: string; description: string; ic
   "curriculum-plans": { title: "Plan de estudios", description: "Estructura curricular por grado con intensidad horaria y áreas del conocimiento.", icon: ListTree, apiBase: "/api/curriculum-plans" },
   "evaluation-scales": { title: "Escalas valorativas", description: "Escalas como Bajo, Básico, Alto, Superior con rangos numéricos.", icon: Scale, apiBase: "/api/evaluation-scales" },
   "indicator-adjectives": { title: "Adjetivos para indicadores", description: "Adjetivos asociados a cada escala valorativa.", icon: FileText, apiBase: "/api/indicator-adjectives" },
-  "evaluation-models": { title: "Modelos evaluativos", description: "Combinación año + escala + notas mín/máx.", icon: FileCheck, apiBase: "/api/evaluation-models" },
   "institution": { title: "Institución", description: "Datos de la institución: resolución, ciudad, código ICFES, decreto.", icon: Building2, apiBase: "/api/institution" },
   "branches": { title: "Sedes", description: "Sedes de la institución.", icon: MapPin, apiBase: "/api/branches" },
   "journeys": { title: "Jornadas", description: "Jornadas con modelos educativos asociados.", icon: Clock, apiBase: "/api/journeys" },
@@ -101,7 +99,6 @@ export function ParamsView({ module }: Props) {
       {module === "subjects" && <SubjectsView />}
       {module === "evaluation-scales" && <EvaluationScalesView />}
       {module === "indicator-adjectives" && <AdjectivesView />}
-      {module === "evaluation-models" && <EvaluationModelsView />}
       {module === "branches" && <BranchesView />}
       {module === "journeys" && <JourneysView />}
       {module === "report-templates" && <ReportTemplatesView />}
@@ -649,121 +646,6 @@ function AdjectivesView() {
         </DialogContent>
       </Dialog>
     </Card>
-  );
-}
-
-// ============================================================
-// MODELOS EVALUATIVOS
-// ============================================================
-
-function EvaluationModelsView() {
-  const user = useAuthStore((s) => s.user)!;
-  const { items: models, loading, load } = useCrudList<any>("/api/evaluation-models", user.institution.id);
-  const [years, setYears] = useState<any[]>([]);
-  const [scales, setScales] = useState<any[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<any | null>(null);
-  const [form, setForm] = useState({ academicYearId: "", scaleId: "", minNote: 0, maxNote: 5 });
-
-  useEffect(() => {
-    Promise.all([
-      fetch(`/api/academic-years?institutionId=${user.institution.id}`).then((r) => r.json()),
-      fetch(`/api/evaluation-scales?institutionId=${user.institution.id}`).then((r) => r.json()),
-    ]).then(([y, s]) => {
-      if (y.ok) setYears(y.years);
-      if (s.ok) setScales(s.scales);
-    });
-  }, [user]);
-
-  async function save() {
-    if (!form.scaleId) { toast.error("Seleccione escala"); return; }
-    if (editing) {
-      await crudPatch("/api/evaluation-models", { id: editing.id, institutionId: user.institution.id, userId: user.id, ...form });
-    } else {
-      await crudPost("/api/evaluation-models", { institutionId: user.institution.id, userId: user.id, ...form });
-    }
-    setShowForm(false); setEditing(null); load();
-  }
-
-  async function del(m: any) {
-    if (!confirm("¿Eliminar este modelo evaluativo?")) return;
-    await crudDelete("/api/evaluation-models", m.id, user.institution.id, user.id);
-    load();
-  }
-
-  return (
-    <>
-      <Card className="hairline">
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-sm">Modelos evaluativos ({models.length})</CardTitle>
-          <Button size="sm" onClick={() => { setEditing(null); setForm({ academicYearId: "", scaleId: "", minNote: 0, maxNote: 5 }); setShowForm(true); }} className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Nuevo</Button>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-10 skeleton-pulse rounded" />)}</div>
-          ) : models.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">Sin modelos evaluativos.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="hairline-b text-left">
-                  <th className="py-2 pr-3 font-medium">Año</th>
-                  <th className="py-2 pr-3 font-medium">Escala</th>
-                  <th className="py-2 pr-3 font-medium">Nota mín</th>
-                  <th className="py-2 pr-3 font-medium">Nota máx</th>
-                  <th className="py-2 pr-3 font-medium text-right">Acciones</th>
-                </tr></thead>
-                <tbody>
-                  {models.map((m) => (
-                    <tr key={m.id} className="hairline-b">
-                      <td className="py-2 pr-3 font-mono">{m.academicYear?.year || "—"}</td>
-                      <td className="py-2 pr-3"><Badge className={`${m.scale?.color || "chip-alto"} text-[10px]`}>{m.scale?.name}</Badge></td>
-                      <td className="py-2 pr-3 tabular-nums">{m.minNote.toFixed(2)}</td>
-                      <td className="py-2 pr-3 tabular-nums">{m.maxNote.toFixed(2)}</td>
-                      <td className="py-2 pr-3 text-right">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditing(m); setForm({ academicYearId: m.academicYearId || "", scaleId: m.scaleId, minNote: m.minNote, maxNote: m.maxNote }); setShowForm(true); }}><Edit className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => del(m)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="sm:max-w-[440px]">
-          <DialogHeader><DialogTitle>{editing ? "Editar modelo evaluativo" : "Crear modelo evaluativo"}</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-2">
-            <div><Label>Año</Label>
-              <Select value={form.academicYearId || "none"} onValueChange={(v) => setForm({ ...form, academicYearId: v === "none" ? "" : v })}>
-                <SelectTrigger><SelectValue placeholder="Sin año específico" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin año específico</SelectItem>
-                  {years.map((y) => <SelectItem key={y.id} value={y.id}>{y.year}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div><Label>Escala *</Label>
-              <Select value={form.scaleId} onValueChange={(v) => setForm({ ...form, scaleId: v })}>
-                <SelectTrigger><SelectValue placeholder="Seleccione" /></SelectTrigger>
-                <SelectContent>{scales.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div><Label>Nota mínima *</Label><Input type="number" step="0.01" value={form.minNote} onChange={(e) => setForm({ ...form, minNote: Number(e.target.value) })} /></div>
-              <div><Label>Nota máxima *</Label><Input type="number" step="0.01" value={form.maxNote} onChange={(e) => setForm({ ...form, maxNote: Number(e.target.value) })} /></div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
-            <Button onClick={save} className="gap-1.5"><Save className="h-3.5 w-3.5" /> Guardar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
   );
 }
 

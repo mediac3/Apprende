@@ -18,9 +18,10 @@ import { Plus, Edit, Trash2, Save, Users } from "lucide-react";
 
 // ============================================================
 // Gestión de Grupos (PDF Módulo Grupos)
-// Tabla: Sede | Grado | Grupo | Jornada | Semestre | Director | Acciones
-// Formulario: Año*, Grado*, Tipo de periodos*, Sede*, Jornada*,
-//             Nombre del grupo*, Semestralizado (→ Semestre)
+// Tabla: Sede | Grado | Grupo | Jornada | Director | Acciones
+// Formulario: Año*, Grado*, Sede*, Jornada*, Nombre del grupo*
+// (Tipo de periodos / Semestralizado / Semestre eliminados [C1]:
+//  la relación de periodos viene por Grado → Plan → Modelo Educativo)
 // ============================================================
 
 interface GroupRow {
@@ -33,19 +34,10 @@ interface GroupRow {
   branch?: { id: string; name: string } | null;
   journeyId?: string | null;
   journey?: { id: string; name: string } | null;
-  periodsCount?: number | null;
-  semesterized?: boolean;
-  semester?: number | null;
   headTeacherId?: string | null;
   headTeacher?: { id: string; fullName: string } | null;
   studentCount?: number;
 }
-
-const PERIOD_TYPES = [
-  { value: "4", label: "4 periodos (anual)" },
-  { value: "2", label: "2 periodos (semestral)" },
-  { value: "3", label: "3 periodos (trimestral)" },
-];
 
 /** Carga una lista de un endpoint estilo { ok, <clave>: [] } sin conocer la clave */
 function useApiList<T = any>(url: string | null) {
@@ -127,15 +119,12 @@ export function GroupsView() {
   const [fGrade, setFGrade] = useState("");
   const [fBranch, setFBranch] = useState("");
   const [fJourney, setFJourney] = useState("");
-  const [fPeriods, setFPeriods] = useState("");
   const [fName, setFName] = useState("");
-  const [fSemesterized, setFSemesterized] = useState("No");
-  const [fSemester, setFSemester] = useState("");
 
   function openCreate() {
     setEditing(null);
-    setFGrade(""); setFBranch(""); setFJourney(""); setFPeriods("");
-    setFName(""); setFSemesterized("No"); setFSemester("");
+    setFGrade(""); setFBranch(""); setFJourney("");
+    setFName("");
     setShowForm(true);
   }
 
@@ -144,10 +133,7 @@ export function GroupsView() {
     setFGrade(g.gradeLevel?.id || "");
     setFBranch(g.branchId || "");
     setFJourney(g.journeyId || "");
-    setFPeriods(g.periodsCount ? String(g.periodsCount) : "");
     setFName(g.name);
-    setFSemesterized(g.semesterized ? "Sí" : "No");
-    setFSemester(g.semester ? String(g.semester) : "");
     setShowForm(true);
   }
 
@@ -155,8 +141,6 @@ export function GroupsView() {
     const body: any = {
       institutionId: instId, userId: user.id,
       name: fName, branchId: fBranch, journeyId: fJourney,
-      periodsCount: fPeriods, semesterized: fSemesterized === "Sí",
-      semester: fSemesterized === "Sí" ? fSemester : null,
     };
     if (!editing) {
       body.gradeLevelId = fGrade;
@@ -232,7 +216,6 @@ export function GroupsView() {
                   <th className="py-2 pr-3 font-medium">Grado</th>
                   <th className="py-2 pr-3 font-medium">Grupo</th>
                   <th className="py-2 pr-3 font-medium">Jornada</th>
-                  <th className="py-2 pr-3 font-medium">Semestre</th>
                   <th className="py-2 pr-3 font-medium min-w-[180px]">Director</th>
                   <th className="py-2 pr-3 font-medium text-right">Acciones</th>
                 </tr></thead>
@@ -248,11 +231,6 @@ export function GroupsView() {
                         )}
                       </td>
                       <td className="py-2 pr-3">{g.journey?.name || <span className="text-muted-foreground">—</span>}</td>
-                      <td className="py-2 pr-3">
-                        {g.semesterized
-                          ? <Badge className="chip-superior text-[10px]">S{g.semester || "?"}</Badge>
-                          : <span className="text-muted-foreground">—</span>}
-                      </td>
                       <td className="py-2 pr-3">
                         <Select value={g.headTeacherId || "none"} onValueChange={(v) => setDirector(g, v === "none" ? "" : v)}>
                           <SelectTrigger className="h-7 text-xs w-full">
@@ -314,41 +292,6 @@ export function GroupsView() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Tipo de periodos *</Label>
-                <Select value={fPeriods} onValueChange={setFPeriods}>
-                  <SelectTrigger><SelectValue placeholder="Seleccione" /></SelectTrigger>
-                  <SelectContent>
-                    {PERIOD_TYPES.map((p) => (
-                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Semestralizado</Label>
-                <Select value={fSemesterized} onValueChange={setFSemesterized}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="No">No</SelectItem>
-                    <SelectItem value="Sí">Sí</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            {fSemesterized === "Sí" && (
-              <div>
-                <Label>Semestre *</Label>
-                <Select value={fSemester} onValueChange={setFSemester}>
-                  <SelectTrigger><SelectValue placeholder="Seleccione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Semestre 1</SelectItem>
-                    <SelectItem value="2">Semestre 2</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
                 <Label>Sede *</Label>
                 <Select value={fBranch} onValueChange={setFBranch}>
                   <SelectTrigger><SelectValue placeholder="Seleccione" /></SelectTrigger>
@@ -380,7 +323,7 @@ export function GroupsView() {
             <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
             <Button
               onClick={save}
-              disabled={!fName.trim() || !fPeriods || !fBranch || !fJourney || (fSemesterized === "Sí" && !fSemester) || (!editing && !fGrade)}
+              disabled={!fName.trim() || !fBranch || !fJourney || (!editing && !fGrade)}
               className="gap-1.5"
             >
               <Save className="h-3.5 w-3.5" /> {editing ? "Actualizar" : "Guardar"}
