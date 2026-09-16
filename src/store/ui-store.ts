@@ -47,7 +47,6 @@ export type ModuleKey =
   | "param-curriculum-plans"
   | "param-evaluation-scales"
   | "param-indicator-adjectives"
-  | "param-evaluation-models"
   | "param-institution"
   | "param-branches"
   | "param-journeys"

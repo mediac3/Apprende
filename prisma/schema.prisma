@@ -674,7 +674,10 @@ model IndicatorAdjective {
   @@unique([scaleId, name])
 }
 
-// --- Modelos evaluativos (PDF pág 9-12) ---
+// --- Modelos evaluativos (PDF pág 9-12) — DEPRECADO [C3] ---
+// Módulo eliminado del sistema (menú/vista/API). Su función la cumple
+// "Escalas valorativas" (EvaluationScale). Tabla y datos conservados
+// intencionalmente; no eliminar sin decisión explícita de negocio.
 // Combinación año + escala + notas mín/máx
 model EvaluationModel {
   id            String   @id @default(cuid())

@@ -32,7 +32,6 @@ import {
   Scale,
   MapPin,
   Clock,
-  FileCheck,
   Variable,
   ListTree,
   UserCog,
@@ -148,7 +147,6 @@ const NAV: NavItem[] = [
   { key: "param-curriculum-plans", label: "Plan de estudios", icon: ListTree, group: "Parámetros", roles: ["rector", "administrativo"] },
   { key: "param-evaluation-scales", label: "Escalas valorativas", icon: Scale, group: "Parámetros", roles: ["rector", "administrativo"] },
   { key: "param-indicator-adjectives", label: "Adjetivos indicadores", icon: FileText, group: "Parámetros", roles: ["rector", "administrativo"] },
-  { key: "param-evaluation-models", label: "Modelos evaluativos", icon: FileCheck, group: "Parámetros", roles: ["rector", "administrativo"] },
   { key: "param-branches", label: "Sedes", icon: MapPin, group: "Parámetros", roles: ["rector", "administrativo"] },
   { key: "param-journeys", label: "Jornadas", icon: Clock, group: "Parámetros", roles: ["rector", "administrativo"] },
   { key: "param-report-templates", label: "Plantillas de reportes", icon: FileText, group: "Parámetros", roles: ["rector", "administrativo"] },
@@ -295,8 +293,6 @@ export function InstitutionalPanel() {
         return <ParamsView module="evaluation-scales" />;
       case "param-indicator-adjectives":
         return <ParamsView module="indicator-adjectives" />;
-      case "param-evaluation-models":
-        return <ParamsView module="evaluation-models" />;
       case "param-institution":
         return <ParamsView module="institution" />;
       case "param-branches":
