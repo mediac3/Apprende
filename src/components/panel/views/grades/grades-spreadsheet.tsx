@@ -14,8 +14,10 @@ import {
 
 // === [F4] Módulo Calificaciones: planilla sobre Jspreadsheet CE (MIT) ===
 // Integración vanilla (sin wrapper) para React 19 / Next 16:
-//  - Fila 1 (nested headers): concepto + [X%] + botón "+" [F1]
-//  - Fila 2 (headers): sub-columnas N1, N2… + botones lápiz/− [F2]
+//  - Fila 1 (nested headers): concepto + [X%] + botón "+" [F1] — SIEMPRE visible,
+//    tenga o no actividades (UX: cada actividad queda debajo de su concepto).
+//  - Fila 2 (headers): sub-columnas N1, N2… + botones lápiz/− [F2]; los conceptos
+//    sin actividades muestran una columna "—" de marcador ( readOnly).
 //  - Columnas: Estudiante (ro) · PROM (ro) · DEF (ro) · actividades (editables)
 //  - Excel-like nativo: selección, flechas, Ctrl+C/V multi-celda y drag-fill.
 // El spreadsheet usa paleta clara propia (área de hoja siempre clara).
@@ -34,7 +36,7 @@ export interface SheetActivity {
   isGeneral: boolean;
 }
 
-// Paleta determinística por orden de concepto (equivalente a la tabla anterior)
+// Paleta determinística por orden de concepto (equivalente a la tabla original)
 const CONCEPT_COLORS = [
   { header: "#10b981", tint: "#ecfdf5" }, // emerald
   { header: "#f97316", tint: "#fff7ed" }, // orange
@@ -45,6 +47,7 @@ const COLOR_RED_BG = "#fee2e2";
 const COLOR_RED_FG = "#b91c1c";
 const COLOR_GREEN_BG = "#d1fae5";
 const COLOR_SKY_BG = "#e0f2fe";
+const COLOR_HEADER_MUTED = "#efece4"; // bloque Estudiantes/PROM/DEF
 
 function colorFor(order: number) {
   const i = ((order % CONCEPT_COLORS.length) + CONCEPT_COLORS.length) % CONCEPT_COLORS.length;
@@ -96,6 +99,11 @@ function makeHeaderButton(opts: {
   return b;
 }
 
+// Columna de la grilla: actividad real o marcador "—" de un concepto vacío
+type GridCol =
+  | { kind: "activity"; activity: SheetActivity }
+  | { kind: "placeholder"; conceptId: string };
+
 export interface GradesSpreadsheetProps {
   students: StudentRow[];
   concepts: SheetConcept[];
@@ -112,10 +120,10 @@ export interface GradesSpreadsheetProps {
   onDeleteActivity?: (activity: SheetActivity) => void;
 }
 
+type Props = GradesSpreadsheetProps;
+
 type WorksheetInstance = import("jspreadsheet-ce").WorksheetInstance;
 type JspreadsheetInstanceElement = import("jspreadsheet-ce").JspreadsheetInstanceElement;
-
-type Props = GradesSpreadsheetProps;
 
 export function GradesSpreadsheet(props: Props) {
   const { students, concepts, activities, values, calculations, periodClosed } = props;
@@ -128,14 +136,21 @@ export function GradesSpreadsheet(props: Props) {
   const echoRef = useRef<Set<string>>(new Set());
 
   const conceptById = useMemo(() => new Map(concepts.map((c) => [c.id, c])), [concepts]);
-  const conceptsWithActs = useMemo(
-    () => concepts.map((c) => ({ c, acts: activities.filter((a) => a.conceptId === c.id) })),
-    [concepts, activities]
-  );
-  const emptyConcepts = useMemo(
-    () => conceptsWithActs.filter((x) => x.acts.length === 0).map((x) => x.c),
-    [conceptsWithActs]
-  );
+
+  // Modelo de columnas: por cada concepto, sus actividades en orden; si no
+  // tiene ninguna, una columna marcador "—" (mantiene el concepto visible en
+  // el header con su botón "+" — UX según captura del usuario).
+  const gridCols = useMemo<GridCol[]>(() => {
+    const cols: GridCol[] = [];
+    for (const c of concepts) {
+      const acts = activities.filter((a) => a.conceptId === c.id);
+      for (const a of acts) cols.push({ kind: "activity", activity: a });
+      if (acts.length === 0) cols.push({ kind: "placeholder", conceptId: c.id });
+    }
+    return cols;
+  }, [concepts, activities]);
+  const colsRef = useRef<GridCol[]>(gridCols);
+  colsRef.current = gridCols;
 
   // Estructura de la hoja (cambia solo con datos estructurales, no con cada tecla)
   const structureKey = useMemo(
@@ -149,7 +164,7 @@ export function GradesSpreadsheet(props: Props) {
     [students, activities, concepts, periodClosed]
   );
 
-  // Estilo de una celda de nota según su valor (paridad con la tabla anterior)
+  // Estilo de una celda de nota según su valor (paridad con la tabla original)
   function activityCellStyle(raw: string, conceptOrder: number): string {
     const v = parseNote(raw);
     if (v === null) return `background-color: ${colorFor(conceptOrder).tint};`;
@@ -157,17 +172,24 @@ export function GradesSpreadsheet(props: Props) {
     return `background-color: ${COLOR_GREEN_BG};`;
   }
 
+  function conceptOrderOf(conceptId: string): number {
+    return propsRef.current.concepts.find((c) => c.id === conceptId)?.order ?? 0;
+  }
+
   // (Re)construcción del spreadsheet
   useEffect(() => {
     const el = containerRef.current;
     if (!el || students.length === 0) return;
 
+    const cols = gridCols;
     const calcByStudent = new Map(calculations.map((c) => [c.studentId, c]));
     const data: string[][] = students.map((s) => [
       s.fullName,
       fmt(calcByStudent.get(s.studentId)?.prom ?? null),
       fmt(calcByStudent.get(s.studentId)?.def ?? null),
-      ...activities.map((a) => values[`${s.studentId}::${a.id}`] ?? ""),
+      ...cols.map((col) =>
+        col.kind === "activity" ? values[`${s.studentId}::${col.activity.id}`] ?? "" : ""
+      ),
     ]);
 
     // Estilos iniciales celda por celda (clave "D2" = col 3, fila 1)
@@ -191,27 +213,22 @@ export function GradesSpreadsheet(props: Props) {
         calc && calc.def !== null && calc.def < APPROVAL_THRESHOLD
           ? `background-color: ${COLOR_RED_BG}; color: ${COLOR_RED_FG}; font-weight: bold;`
           : `background-color: #ecfdf5; font-weight: bold;`;
-      for (let ci = 0; ci < activities.length; ci++) {
-        const a = activities[ci];
-        const raw = values[`${students[r].studentId}::${a.id}`] ?? "";
-        const order = conceptById.get(a.conceptId)?.order ?? 0;
-        style[`${colName(ci + 3)}${r + 1}`] = activityCellStyle(raw, order);
+      for (let ci = 0; ci < cols.length; ci++) {
+        const col = cols[ci];
+        if (col.kind === "placeholder") {
+          const order = conceptOrderOf(col.conceptId);
+          style[`${colName(ci + 3)}${r + 1}`] = `background-color: ${colorFor(order).tint};`;
+        } else {
+          const order = conceptOrderOf(col.activity.conceptId);
+          const raw = values[`${students[r].studentId}::${col.activity.id}`] ?? "";
+          style[`${colName(ci + 3)}${r + 1}`] = activityCellStyle(raw, order);
+        }
       }
     }
 
-    // Fila 1: grupos de conceptos con colspan real (solo conceptos con actividades)
-    const nested =
-      conceptsWithActs.filter((x) => x.acts.length > 0).length > 0
-        ? [
-            conceptsWithActs
-              .filter((x) => x.acts.length > 0)
-              .map((x) => ({
-                title: `${x.c.name} [${x.c.percentage}%]`,
-                colspan: x.acts.length,
-                align: "center",
-              })),
-          ]
-        : undefined;
+    // Fila 1 (conceptos): se construye por DOM tras crear la hoja — ver abajo.
+    // (No se usa nestedHeaders del CE: sus anchos no quedan alineados a las
+    // columnas reales cuando hay columnas marcador "—".)
 
     // v5: la fábrica retorna WorksheetInstance[] directamente
     const worksheets = jspreadsheet(el, {
@@ -227,14 +244,16 @@ export function GradesSpreadsheet(props: Props) {
         const c = Number(colIndex);
         const r = Number(rowIndex);
         if (c < 3) return; // Estudiante/PROM/DEF no emiten cambios
+        const col = colsRef.current[c - 3];
+        if (!col || col.kind !== "activity") return; // columna marcador
         const p = propsRef.current;
         const s = p.students[r];
-        const a = p.activities[c - 3];
-        if (!s || !a) return;
+        if (!s) return;
+        const a = col.activity;
         const raw = String(newValue ?? "");
         const key = `${s.studentId}::${a.id}`;
         if (!isValidNote(raw)) {
-          // Revertir al valor previo y avisar (paridad con la tabla anterior)
+          // Revertir al valor previo y avisar (paridad con la tabla original)
           toast.error("Nota fuera de rango: debe estar entre 0.0 y 5.0");
           const prev = p.values[key] ?? "";
           instance.setValueFromCoords(c, r, prev, true);
@@ -248,28 +267,31 @@ export function GradesSpreadsheet(props: Props) {
       worksheets: [
         {
           data,
-          nestedHeaders: nested,
           style,
           tableOverflow: true,
           tableHeight: Math.max(el.clientHeight, 240),
           tableWidth: "100%",
           freezeColumns: 1,
           editable: !periodClosed,
-          columnResize: true,
+          columnResize: false,
           columnDrag: false,
           columnSorting: false,
           search: false,
           pagination: 0,
-          // Columnas: Estudiante · PROM · DEF · actividades
+          // Columnas: Estudiante · PROM · DEF · actividades / marcadores "—"
           columns: [
             { title: "Estudiantes", width: 220, readOnly: true },
             { title: "PROM", width: 52, readOnly: true },
             { title: "DEF", width: 52, readOnly: true },
-            ...activities.map((a) => ({
-              title: a.isGeneral ? `${a.name} ★` : a.name,
-              width: 64,
-              readOnly: false,
-            })),
+            ...cols.map((col) =>
+              col.kind === "activity"
+                ? {
+                    title: col.activity.isGeneral ? `${col.activity.name} ★` : col.activity.name,
+                    width: 64,
+                    readOnly: false,
+                  }
+                : { title: "—", width: 150, readOnly: true }
+            ),
           ],
         },
       ],
@@ -277,14 +299,22 @@ export function GradesSpreadsheet(props: Props) {
 
     wsRef.current = worksheets[0] ?? null;
 
-    // === Inyección de botones en los headers (vanilla DOM) ===
-    // Fila 2 (headers estándar): lápiz [F2] y "−" [F2] por actividad
+    // === Inyección de botones y estilos en los headers (vanilla DOM) ===
     const ws = wsRef.current;
     if (ws) {
-      activities.forEach((a, i) => {
+      // Fila 2 (headers estándar): lápiz/− por actividad; "—" tenue en marcadores
+      cols.forEach((col, i) => {
         const th = ws.headers?.[i + 3];
         if (!th) return;
         th.style.whiteSpace = "nowrap";
+        if (col.kind === "placeholder") {
+          const order = conceptOrderOf(col.conceptId);
+          th.style.background = colorFor(order).tint;
+          th.style.color = "#9ca3af";
+          th.style.fontWeight = "600";
+          return;
+        }
+        const a = col.activity;
         if (props.onEditActivity) {
           th.appendChild(
             makeHeaderButton({
@@ -315,34 +345,59 @@ export function GradesSpreadsheet(props: Props) {
         }
       });
 
-      // Fila 1 (nested headers): botón "+" por concepto [F1]
-      if (props.onAddActivityForConcept) {
-        const theadRows = el.querySelectorAll("thead tr");
-        const nestedRow = theadRows[0];
-        if (nestedRow) {
-          const tds = Array.from(nestedRow.querySelectorAll<HTMLElement>("td, th"));
-          // tds[0] = grupo Estudiante/PROM/DEF (colspan 3); luego un td por concepto
-          const withActs = conceptsWithActs.filter((x) => x.acts.length > 0);
-          withActs.forEach((x, i) => {
-            const td = tds[i + 1];
-            if (!td) return;
-            const { header } = colorFor(x.c.order);
-            td.style.background = header;
-            td.style.color = "#ffffff";
-            td.style.fontWeight = "700";
-            td.style.fontSize = "11px";
-            td.style.textAlign = "center";
-            td.style.whiteSpace = "nowrap";
+      // Fila 1 (conceptos): fila propia insertada en el thead, con colspans
+      // que suman los anchos reales de las columnas → alineación garantizada.
+      // Bloque de color + botón "+" por concepto [F1], siempre visible.
+      if (props.onAddActivityForConcept && concepts.length > 0) {
+        const thead = el.querySelector("thead");
+        const stdRow = ws.headers?.[0]?.parentElement;
+        if (thead && stdRow) {
+          const tr = document.createElement("tr");
+          // Grupo fijo Estudiantes/PROM/DEF
+          const tdGroup = document.createElement("td");
+          tdGroup.colSpan = 3;
+          Object.assign(tdGroup.style, {
+            background: COLOR_HEADER_MUTED,
+            color: "#374151",
+            fontWeight: "700",
+            fontSize: "11px",
+            textAlign: "left",
+            paddingLeft: "8px",
+          } satisfies Partial<CSSStyleDeclaration>);
+          tdGroup.textContent = "Estudiantes";
+          tr.appendChild(tdGroup);
+          // Un bloque por concepto evaluativo
+          for (const c of concepts) {
+            const count = cols.filter((col) =>
+              col.kind === "activity" ? col.activity.conceptId === c.id : col.conceptId === c.id
+            ).length;
+            if (count === 0) continue;
+            const td = document.createElement("td");
+            td.colSpan = count;
+            const { header } = colorFor(c.order);
+            Object.assign(td.style, {
+              background: header,
+              color: "#ffffff",
+              fontWeight: "700",
+              fontSize: "11px",
+              textAlign: "center",
+              whiteSpace: "nowrap",
+              paddingLeft: "2px",
+              paddingRight: "2px",
+            } satisfies Partial<CSSStyleDeclaration>);
+            td.title = `${c.name} [${c.percentage}%]`;
+            td.appendChild(document.createTextNode(`${c.name} [${c.percentage}%] `));
             td.appendChild(
               makeHeaderButton({
                 html: SVG_PLUS,
-                title: `Agregar actividad al concepto ${x.c.name}`,
+                title: `Agregar actividad al concepto ${c.name}`,
                 disabled: periodClosed,
-                onClick: () => propsRef.current.onAddActivityForConcept?.(x.c.id),
+                onClick: () => propsRef.current.onAddActivityForConcept?.(c.id),
               })
             );
-          });
-          // Celdas del encabezado estándar bajo el grupo fijo (Estudiantes/PROM/DEF)
+            tr.appendChild(td);
+          }
+          thead.insertBefore(tr, stdRow);
         }
       }
     }
@@ -360,18 +415,16 @@ export function GradesSpreadsheet(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [structureKey]);
 
-  function conceptOrderOf(conceptId: string): number {
-    return propsRef.current.concepts.find((c) => c.id === conceptId)?.order ?? 0;
-  }
-
   // Sincronizar values externos (recargas de planilla) sin reconstruir la hoja
   useEffect(() => {
     const ws = wsRef.current;
     if (!ws) return;
     for (let r = 0; r < students.length; r++) {
       const s = students[r];
-      for (let ci = 0; ci < activities.length; ci++) {
-        const a = activities[ci];
+      for (let ci = 0; ci < gridCols.length; ci++) {
+        const col = gridCols[ci];
+        if (col.kind !== "activity") continue;
+        const a = col.activity;
         const key = `${s.studentId}::${a.id}`;
         if (echoRef.current.has(key)) {
           echoRef.current.delete(key); // ya está en el DOM
@@ -418,32 +471,6 @@ export function GradesSpreadsheet(props: Props) {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-1.5 overflow-hidden">
-      {/* [F1] Conceptos sin actividades: no generan columnas en la hoja;
-          se ofrecen aquí con su botón "+" */}
-      {emptyConcepts.length > 0 && props.onAddActivityForConcept && (
-        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-          <span>Conceptos sin actividades:</span>
-          {emptyConcepts.map((c) => (
-            <span
-              key={c.id}
-              className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5"
-            >
-              {c.name} [{c.percentage}%]
-              <button
-                type="button"
-                title={`Agregar actividad al concepto ${c.name}`}
-                disabled={periodClosed}
-                onClick={() => props.onAddActivityForConcept?.(c.id)}
-                className="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[11px] leading-none hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                +
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-      <div ref={containerRef} className="jss-planilla min-h-0 flex-1 overflow-hidden rounded-xl border bg-card" />
-    </div>
+    <div ref={containerRef} className="jss-planilla min-h-0 flex-1 overflow-hidden rounded-xl border bg-card" />
   );
 }
