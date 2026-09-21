@@ -37,6 +37,7 @@ import {
   UserCog,
   ClipboardList,
   School,
+  ListChecks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +50,7 @@ import {
 } from "@/components/ui/sheet";
 import { DashboardView } from "./views/dashboard-view";
 import { GradesView } from "./views/grades-view";
+import { ActivitiesManagementView } from "./views/grades/activities-management-view";
 import { AttendanceView } from "./views/attendance-view";
 import { ObserverView } from "./views/observer-view";
 import { CoexistenceView } from "./views/coexistence-view";
@@ -97,6 +99,8 @@ const NAV: NavItem[] = [
   // Académico
   { key: "planeador", label: "Planeador de clases", icon: BookOpen, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
   { key: "notas", label: "Notas parciales", icon: FileText, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
+  // [F3] Gestión de Actividades — junto a Notas parciales (decisión del usuario)
+  { key: "gestion-actividades", label: "Gestión de Actividades", icon: ListChecks, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
   { key: "pre-informe", label: "Pre-Informe", icon: Bell, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
   { key: "talleres", label: "Banco de talleres", icon: Library, group: "Académico", roles: ["docente", "director_grupo", "coordinador"] },
   { key: "e-learning", label: "E-Learning", icon: GraduationCap, group: "Académico", roles: ["docente", "estudiante", "acudiente"] },
@@ -227,6 +231,9 @@ export function InstitutionalPanel() {
       case "notas":
       case "indicadores":
         return <GradesView mode={activeModule === "indicadores" ? "indicadores" : "default"} />;
+      // [F3] Gestión de Actividades
+      case "gestion-actividades":
+        return <ActivitiesManagementView />;
       case "asistencia":
         return <AttendanceView />;
       case "observador":

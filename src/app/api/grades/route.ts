@@ -68,39 +68,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Faltan datos" }, { status: 400 });
     }
 
-    const grade = await db.grade.upsert({
-      where: {
-        studentId_subjectId_periodId_isSelfEval: {
-          studentId,
-          subjectId,
-          periodId,
-          isSelfEval: !!isSelfEval,
-        },
-      },
-      create: {
-        studentId,
-        subjectId,
-        periodId,
-        teacherId: teacherId || null,
-        value: Number(value),
-        performance: performance || null,
-        observations: observations || null,
-        isSelfEval: !!isSelfEval,
-      },
-      update: {
-        teacherId: teacherId || null,
-        value: Number(value),
-        performance: performance || null,
-        observations: observations || null,
-        isSelfEval: !!isSelfEval,
-      },
-      include: {
-        student: { select: { id: true, firstName: true, lastName: true, code: true } },
-        subject: { select: { id: true, name: true } },
-        period: { select: { id: true, name: true } },
-        teacher: { select: { id: true, fullName: true } },
-      },
+    // Grade no tiene restricción única compuesta en el schema: upsert manual
+    // (findFirst → update | create) con semántica equivalente.
+    const existing = await db.grade.findFirst({
+      where: { studentId, subjectId, periodId, isSelfEval: !!isSelfEval },
+      orderBy: { createdAt: "desc" },
     });
+    const payload = {
+      teacherId: teacherId || null,
+      value: Number(value),
+      performance: performance || null,
+      observations: observations || null,
+      isSelfEval: !!isSelfEval,
+    };
+    const grade = existing
+      ? await db.grade.update({ where: { id: existing.id }, data: payload, include: {
+          student: { select: { id: true, firstName: true, lastName: true, code: true } },
+          subject: { select: { id: true, name: true } },
+          period: { select: { id: true, name: true } },
+          teacher: { select: { id: true, fullName: true } },
+        } })
+      : await db.grade.create({
+          data: { studentId, subjectId, periodId, ...payload },
+          include: {
+            student: { select: { id: true, firstName: true, lastName: true, code: true } },
+            subject: { select: { id: true, name: true } },
+            period: { select: { id: true, name: true } },
+            teacher: { select: { id: true, fullName: true } },
+          },
+        });
 
     await db.auditLog.create({
       data: {

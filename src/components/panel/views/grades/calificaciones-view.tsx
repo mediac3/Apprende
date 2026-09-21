@@ -7,11 +7,24 @@ import { cn } from "@/lib/utils";
 import { GradesSidebar, type SidebarSubject } from "./grades-sidebar";
 import { GradesToolbar } from "./grades-toolbar";
 import {
-  GradesSheet,
+  GradesSpreadsheet,
   type SheetConcept,
   type SheetActivity,
-} from "./grades-sheet";
-import { AddActivityModal } from "./add-activity-modal";
+} from "./grades-spreadsheet";
+import {
+  AddActivityModal,
+  type EditableActivity,
+} from "./add-activity-modal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   useGradesCalculations,
   type ConceptColumn,
@@ -89,6 +102,12 @@ export function CalificacionesView() {
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  // [F1] concepto precargado al abrir el modal desde el botón "+" del concepto
+  const [modalPresetConceptId, setModalPresetConceptId] = useState<string | null>(null);
+  // [F2] actividad en edición / en confirmación de borrado
+  const [editingActivity, setEditingActivity] = useState<EditableActivity | null>(null);
+  const [deletingActivity, setDeletingActivity] = useState<SheetActivity | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const activePlan = useMemo(
     () => plans.find((p) => p.active) ?? plans[0] ?? null,
@@ -310,6 +329,81 @@ export function CalificacionesView() {
     [activeSubject, institutionId, selectedPeriodId, loadSheet]
   );
 
+  // [F1] abrir modal con concepto precargado (botón "+" del header del concepto)
+  const handleAddForConcept = useCallback((conceptId: string) => {
+    setEditingActivity(null);
+    setModalPresetConceptId(conceptId);
+    setModalOpen(true);
+  }, []);
+
+  // Toolbar "Agregar": modal sin precarga (comportamiento original)
+  const openCreateModal = useCallback(() => {
+    setEditingActivity(null);
+    setModalPresetConceptId(null);
+    setModalOpen(true);
+  }, []);
+
+  // [F2] abrir modal de edición con nombre/tipo precargados (lápiz)
+  const handleEditActivity = useCallback((a: SheetActivity) => {
+    setModalPresetConceptId(null);
+    setEditingActivity({ id: a.id, name: a.name, conceptId: a.conceptId, isGeneral: a.isGeneral });
+    setModalOpen(true);
+  }, []);
+
+  // [F2] actualizar actividad (PUT /api/activities)
+  const handleUpdateActivity = useCallback(
+    async (
+      id: string,
+      data: { evaluativeConceptId: string; name: string; isGeneral: boolean }
+    ) => {
+      if (!activeSubject || !selectedPeriodId) return false;
+      try {
+        const res = await fetch("/api/activities", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, ...data }),
+        }).then((r) => r.json());
+        if (res?.ok) {
+          toast.success("Actividad actualizada");
+          loadSheet(activeSubject, selectedPeriodId);
+          return true;
+        }
+        toast.error(res?.error ?? "Error actualizando la actividad");
+        return false;
+      } catch {
+        toast.error("Error actualizando la actividad");
+        return false;
+      }
+    },
+    [activeSubject, selectedPeriodId, loadSheet]
+  );
+
+  // [F2] eliminar actividad con confirmación (borra notas en cascada)
+  const handleDeleteActivity = useCallback(async () => {
+    if (!deletingActivity || !activeSubject || !selectedPeriodId || deleting) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/activities?id=${deletingActivity.id}`, {
+        method: "DELETE",
+      }).then((r) => r.json());
+      if (res?.ok) {
+        toast.success(
+          res.recordsDeleted > 0
+            ? `Actividad eliminada (${res.recordsDeleted} nota(s) borrada(s))`
+            : "Actividad eliminada"
+        );
+        setDeletingActivity(null);
+        loadSheet(activeSubject, selectedPeriodId);
+      } else {
+        toast.error(res?.error ?? "Error eliminando la actividad");
+      }
+    } catch {
+      toast.error("Error eliminando la actividad");
+    } finally {
+      setDeleting(false);
+    }
+  }, [deletingActivity, activeSubject, selectedPeriodId, loadSheet, deleting]);
+
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
@@ -361,7 +455,7 @@ export function CalificacionesView() {
               subjectName={activeSubject.subjectName}
               subtitle={periodSubtitle(modelPeriods, selectedPeriodId)}
               onOpenSearch={() => setSidebarOpen(true)}
-              onAdd={() => setModalOpen(true)}
+              onAdd={openCreateModal}
               onSave={handleSave}
               saving={saving}
               dirty={dirty.size > 0}
@@ -371,7 +465,7 @@ export function CalificacionesView() {
                 El periodo está cerrado: las notas no se pueden editar.
               </p>
             )}
-            <GradesSheet
+            <GradesSpreadsheet
               students={students}
               concepts={modelConcepts.map((c) => ({
                 id: c.id,
@@ -384,6 +478,9 @@ export function CalificacionesView() {
               calculations={calculations}
               periodClosed={periodClosed}
               onCellChange={handleCellChange}
+              onAddActivityForConcept={handleAddForConcept}
+              onEditActivity={handleEditActivity}
+              onDeleteActivity={setDeletingActivity}
             />
             <p className={cn("text-[11px] text-muted-foreground", dirty.size > 0 && "text-amber-600")}>
               {dirty.size > 0
@@ -408,7 +505,41 @@ export function CalificacionesView() {
           percentage: c.percentage,
         }))}
         onCreate={handleCreateActivity}
+        presetConceptId={modalPresetConceptId}
+        editActivity={editingActivity}
+        onUpdate={handleUpdateActivity}
       />
+
+      {/* [F2] Confirmación de borrado: advierte que las notas se eliminan en cascada */}
+      <AlertDialog
+        open={deletingActivity !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeletingActivity(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar la actividad "{deletingActivity?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminarán también las notas registradas para esta actividad.
+              Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault(); // mantener el dialog abierto hasta terminar
+                handleDeleteActivity();
+              }}
+            >
+              {deleting ? "Eliminando…" : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

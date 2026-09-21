@@ -4,6 +4,7 @@ export type ModuleKey =
   | "dashboard"
   | "planeador"
   | "notas"
+  | "gestion-actividades"
   | "pre-informe"
   | "talleres"
   | "e-learning"
