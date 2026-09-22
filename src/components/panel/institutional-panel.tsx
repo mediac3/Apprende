@@ -38,6 +38,7 @@ import {
   ClipboardList,
   School,
   ListChecks,
+  Palette,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +68,7 @@ import { SupervisionView } from "./views/supervision-view";
 import { GroupDirectionView } from "./views/group-direction-view";
 import { MessagesView } from "./views/messages-view";
 import { AcademicoView } from "./views/academico-view";
+import { ThemeOptionsView } from "./views/theme-options-view";
 import { CustomModuleBuilderView } from "./views/custom-module-builder-view";
 import { CustomModuleRuntimeView } from "./views/custom-module-runtime-view";
 import { ModuleApprovalsView } from "./views/module-approvals-view";
@@ -138,6 +140,8 @@ const NAV: NavItem[] = [
   { key: "talento-humano", label: "Talento Humano", icon: Users, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "auditoria", label: "Auditoría", icon: ScrollText, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "configuracion", label: "Configuración", icon: Settings, group: "Administración", roles: ["rector", "administrativo"] },
+  // [theme-options] Opciones de Tema — configuración global del sitio
+  { key: "opciones-tema", label: "Opciones de tema", icon: Palette, group: "Administración", roles: ["rector", "administrativo"] },
 
   // Constructor de módulos — admin
   { key: "custom-module-builder", label: "Constructor de módulos", icon: Boxes, group: "Constructor", roles: ["administrativo"] },
@@ -257,6 +261,9 @@ export function InstitutionalPanel() {
         return <AcademicoView module={activeModule} />;
       case "auditoria":
         return <AuditView />;
+      // [theme-options] Opciones de Tema
+      case "opciones-tema":
+        return <ThemeOptionsView />;
       case "usuarios":
         return <UsersView />;
       case "gestion-grupos":
