@@ -417,7 +417,8 @@ export function InstitutionalPanel() {
 
         {/* Main */}
         <main className="flex-1 min-w-0 overflow-x-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          {/* [theme-options-movil] Notas parciales usa padding compacto en móvil */}
+          <div className={`max-w-7xl mx-auto ${activeModule === "notas" ? "px-2 py-3 sm:px-6 sm:py-6" : "px-4 py-6 sm:px-6"}`}>
             {renderModule()}
           </div>
         </main>
