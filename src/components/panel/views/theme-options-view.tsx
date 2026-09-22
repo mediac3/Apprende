@@ -52,6 +52,7 @@ import {
   normalizeThemeData,
   type ThemeData,
 } from "@/lib/theme-options";
+import { applyThemeToDocument, useThemeOptionsStore } from "@/store/theme-options-store";
 
 type SectionKey =
   | "logo"
@@ -82,6 +83,7 @@ const EDITOR_ROLES = ["rector", "administrativo"];
 
 export function ThemeOptionsView() {
   const user = useAuthStore((s) => s.user);
+  const setSharedTheme = useThemeOptionsStore((s) => s.setTheme);
   const institutionId = user?.institution?.id ?? "";
   const canEdit = useMemo(() => {
     const roles = user?.roles?.length ? user.roles : user?.role ? [user.role] : [];
@@ -131,6 +133,9 @@ export function ThemeOptionsView() {
       const json = await res.json();
       if (res.ok && json?.ok) {
         setTheme(json.data as ThemeData);
+        // [theme-options] aplicar en vivo: refresca <style> global y consumidores
+        setSharedTheme(json.data as ThemeData);
+        applyThemeToDocument(json.data);
         setDirty(false);
         setFeedback({ ok: true, msg: "Cambios guardados correctamente." });
       } else {
