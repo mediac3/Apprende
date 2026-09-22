@@ -12,11 +12,14 @@ const EDITOR_ROLES = ["rector", "administrativo"];
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
+  // institutionId opcional: sin parámetro se devuelve el tema de la primera
+  // institución (despliegue de institución única) para la inyección global.
   const institutionId = searchParams.get("institutionId");
-  if (!institutionId) return NextResponse.json({ ok: false, error: "institutionId requerido" }, { status: 400 });
 
   try {
-    const row = await db.themeOptions.findUnique({ where: { institutionId } });
+    const row = institutionId
+      ? await db.themeOptions.findUnique({ where: { institutionId } })
+      : await db.themeOptions.findFirst();
     return NextResponse.json({
       ok: true,
       data: normalizeThemeData(row?.data),

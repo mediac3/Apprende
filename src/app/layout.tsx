@@ -3,6 +3,7 @@ import { Open_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
+import { ThemeOptionsVars } from "@/components/theme-options-vars";
 
 const openSans = Open_Sans({
   variable: "--font-open-sans",
@@ -84,6 +85,8 @@ export default function RootLayout({
         style={{ fontFamily: "var(--font-open-sans), ui-sans-serif, system-ui, sans-serif" }}
       >
         {children}
+        {/* [theme-options] Inyecta variables CSS del tema (cliente, sin afectar render del servidor) */}
+        <ThemeOptionsVars />
         <Toaster />
         <SonnerToaster position="top-right" richColors closeButton />
       </body>
