@@ -1011,3 +1011,14 @@ model ExternalCertificate {
 
   @@index([studentId])
 }
+
+// [theme-options] Configuración global de tema por institución (módulo Opciones de Tema)
+model ThemeOptions {
+  id            String   @id @default(cuid())
+  institutionId String   @unique
+  data          String // JSON con toda la configuración del tema
+  version       Int      @default(1)
+  updatedBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
