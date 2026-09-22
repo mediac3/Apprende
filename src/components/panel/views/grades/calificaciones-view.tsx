@@ -271,41 +271,6 @@ export function CalificacionesView() {
     setCommentText(commentDialog ? comments[commentDialog.key] ?? "" : "");
   }, [commentDialog, comments]);
 
-  // [comentarios] guardar/eliminar el comentario de la celda
-  const handleSaveComment = useCallback(() => {
-    if (!commentDialog || !user) return;
-    const [studentId, activityId] = commentDialog.key.split("::");
-    const text = commentText.trim();
-    fetch("/api/grade-comments", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        institutionId: user.institution.id,
-        userId: user.id,
-        studentId,
-        activityId,
-        text,
-      }),
-    })
-      .then((r) => r.json())
-      .then((res) => {
-        if (!res?.ok) {
-          toast.error(res?.error ?? "Error guardando el comentario");
-          return;
-        }
-        setComments((prev) => {
-          const next = { ...prev };
-          if (text) next[commentDialog.key] = text;
-          else delete next[commentDialog.key];
-          return next;
-        });
-        setCommentsVersion((v) => v + 1);
-        setCommentDialog(null);
-        toast.success(text ? "Comentario guardado" : "Comentario eliminado");
-      })
-      .catch(() => toast.error("Error de red al guardar el comentario"));
-  }, [commentDialog, commentText, user]);
-
   // Cálculos al vuelo
   const conceptColumns = useMemo<ConceptColumn[]>(
     () =>
@@ -366,6 +331,45 @@ export function CalificacionesView() {
       setSaving(false);
     }
   }, [activeSubject, dirty, saving, values]);
+
+  // [comentarios] guardar/eliminar el comentario de la celda; si había notas
+  // sin guardar se persisten también: el comentario se guarda al instante y
+  // sin esto la nota pendiente se perdería en una recarga (reporte:
+  // "persiste el comentario pero borra la nota")
+  const handleSaveComment = useCallback(() => {
+    if (!commentDialog || !user) return;
+    const [studentId, activityId] = commentDialog.key.split("::");
+    const text = commentText.trim();
+    fetch("/api/grade-comments", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        institutionId: user.institution.id,
+        userId: user.id,
+        studentId,
+        activityId,
+        text,
+      }),
+    })
+      .then((r) => r.json())
+      .then((res) => {
+        if (!res?.ok) {
+          toast.error(res?.error ?? "Error guardando el comentario");
+          return;
+        }
+        setComments((prev) => {
+          const next = { ...prev };
+          if (text) next[commentDialog.key] = text;
+          else delete next[commentDialog.key];
+          return next;
+        });
+        setCommentsVersion((v) => v + 1);
+        setCommentDialog(null);
+        toast.success(text ? "Comentario guardado" : "Comentario eliminado");
+        if (dirty.size > 0) void handleSave();
+      })
+      .catch(() => toast.error("Error de red al guardar el comentario"));
+  }, [commentDialog, commentText, user, dirty, handleSave]);
 
   // Crear actividad (nueva sub-columna N… del concepto)
   const handleCreateActivity = useCallback(

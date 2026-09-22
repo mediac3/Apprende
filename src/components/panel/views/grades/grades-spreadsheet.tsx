@@ -443,7 +443,6 @@ export function GradesSpreadsheet(props: Props) {
     }) as WorksheetInstance[];
 
     wsRef.current = worksheets[0] ?? null;
-    const ws0 = worksheets[0] ?? null;
 
     // [theme-options-movil] Sin tableWidth (móvil), jss no limita el ancho del
     // contenedor de la hoja (.jss_container inline-block crece con la tabla) ni
@@ -457,28 +456,6 @@ export function GradesSpreadsheet(props: Props) {
         contentEl.style.width = "100%";
         contentEl.style.overflowX = "auto";
       }
-    }
-
-    // [theme-options-movil] Con columnas inmovilizadas, jss solo congela las
-    // columnas de datos (Estudiantes…): la columna de numeración seguiría
-    // desplazándose y la franja fija del header sobresaldría sobre los
-    // conceptos. Se fija también la numeración (esquina + primera celda).
-    if (freezeCount > 0 && ws0) {
-      const pinCorner = (cell: Element | null | undefined) => {
-        if (!cell) return;
-        const s = (cell as HTMLElement).style;
-        s.position = "sticky";
-        s.left = "0px";
-        s.zIndex = "3";
-      };
-      const cornerRow = ws0.headers?.[0]?.parentElement as HTMLTableRowElement | undefined;
-      pinCorner(cornerRow?.cells?.[0] ?? null);
-      el.querySelectorAll<HTMLTableRowElement>("tbody tr").forEach((tr) => {
-        pinCorner(tr.cells?.[0] ?? null);
-        // Estudiantes congelada por jss debe pintar SOBRE la numeración fija
-        const student = tr.cells?.[1] as HTMLElement | undefined;
-        if (student) student.style.zIndex = "4";
-      });
     }
 
     // === [C4] Drag-fill = copiar valor (no incrementar) ===
@@ -611,10 +588,10 @@ export function GradesSpreadsheet(props: Props) {
           const tr = document.createElement("tr");
           // [theme-options] alto configurable del header de conceptos
           tr.style.height = "var(--grades-header-height, 40px)";
-          // Grupo fijo: columna de numeración + Estudiantes + PROM + DEF (4 columnas)
-          // [theme-options-movil] se divide en dos celdas: la parte que cubre las
-          // columnas inmovilizadas queda fija y el resto (p. ej. la franja sobre
-          // PROM/DEF) se desplaza con el scroll horizontal.
+          // Grupo: columna de numeración + Estudiantes + PROM + DEF (4 columnas)
+          // [theme-options-movil] la franja se divide para congelarse SOLO sobre
+          // las columnas realmente congeladas por jss (Estudiantes + PROM/DEF
+          // según los chips): la numeración y el resto se desplazan con el scroll.
           const groupStyles: Partial<CSSStyleDeclaration> = {
             background: COLOR_HEADER_MUTED,
             color: "#374151",
@@ -623,29 +600,31 @@ export function GradesSpreadsheet(props: Props) {
             textAlign: "left",
             paddingLeft: "8px",
           };
-          const pinnedCols = freezeCount > 0 ? 1 + freezeCount : 0; // numeración + congeladas
-          if (pinnedCols > 0) {
-            const tdPinned = document.createElement("td");
-            tdPinned.colSpan = pinnedCols;
-            tdPinned.style.position = "sticky";
-            tdPinned.style.left = "0px";
-            tdPinned.style.zIndex = "4";
-            Object.assign(tdPinned.style, groupStyles);
-            tdPinned.textContent = "Estudiantes";
-            tr.appendChild(tdPinned);
-            const restCols = 4 - pinnedCols;
-            if (restCols > 0) {
-              const tdRest = document.createElement("td");
-              tdRest.colSpan = restCols;
-              Object.assign(tdRest.style, groupStyles);
-              tr.appendChild(tdRest);
+          const mkGroupCell = (colspan: number, opts?: { stickyLeft?: number; text?: string }) => {
+            if (colspan <= 0) return;
+            const td = document.createElement("td");
+            td.colSpan = colspan;
+            if (opts?.stickyLeft !== undefined) {
+              td.style.position = "sticky";
+              td.style.left = `${opts.stickyLeft}px`;
+              td.style.zIndex = "4";
             }
+            Object.assign(td.style, groupStyles);
+            if (opts?.text) td.textContent = opts.text;
+            tr.appendChild(td);
+          };
+          if (freezeCount > 0) {
+            // numeración: se desplaza (jss no congela la columna de numeración)
+            mkGroupCell(1);
+            // Estudiantes: congelada en el borde del contenido
+            mkGroupCell(1, { stickyLeft: 0, text: "Estudiantes" });
+            // PROM/DEF congeladas: franja fija a continuación del ancho de Estudiantes
+            const frozenExtra = freezeCount - 1;
+            mkGroupCell(frozenExtra, { stickyLeft: STUDENT_COL_WIDTH });
+            // resto no congelado del grupo: se desplaza
+            mkGroupCell(3 - freezeCount);
           } else {
-            const tdGroup = document.createElement("td");
-            tdGroup.colSpan = 4;
-            Object.assign(tdGroup.style, groupStyles);
-            tdGroup.textContent = "Estudiantes";
-            tr.appendChild(tdGroup);
+            mkGroupCell(4, { text: "Estudiantes" });
           }
           // Un bloque por concepto evaluativo.
           // [C2] ancho uniforme: suma de los anchos reales de sus sub-columnas
