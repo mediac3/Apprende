@@ -198,11 +198,24 @@ export function GradesSpreadsheet(props: Props) {
   const colsRef = useRef<GridCol[]>(gridCols);
   colsRef.current = gridCols;
 
+  // [theme-options-movil] breakpoint móvil para densidad y ancho de tabla
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   // [C2] Ancho uniforme por bloque de concepto: cada bloque mide máx(180px, n×64px)
   // y sus sub-columnas se reparten ese ancho por igual → nombre + [%] + "+" caben
   // siempre, independientemente del nº de actividades del concepto.
   // [theme-options] el mínimo configurable vive en --grades-min-col-width.
-  const ACTIVITY_COL_WIDTH = 64;
+  // [theme-options-movil] en móvil columnas más angostas → más información visible.
+  const STUDENT_COL_WIDTH = isMobile ? 150 : 220;
+  const ACTIVITY_COL_WIDTH = isMobile ? 52 : 64;
   const CONCEPT_MIN_WIDTH = gradesTheme.minColWidth;
   const colWidths = useMemo(() => {
     const counts = new Map<string, number>();
@@ -215,7 +228,7 @@ export function GradesSpreadsheet(props: Props) {
       const n = counts.get(cid) ?? 1;
       return Math.ceil(Math.max(CONCEPT_MIN_WIDTH, n * ACTIVITY_COL_WIDTH) / n);
     });
-  }, [gridCols, CONCEPT_MIN_WIDTH]);
+  }, [gridCols, CONCEPT_MIN_WIDTH, ACTIVITY_COL_WIDTH]);
   const colWidthsRef = useRef<number[]>(colWidths);
   colWidthsRef.current = colWidths;
 
@@ -234,8 +247,9 @@ export function GradesSpreadsheet(props: Props) {
         // [theme-options] reconstruir solo si algún valor del tema cambia
         gt: [gradesTheme.conditional ? 1 : 0, gradesTheme.threshold, gradesTheme.minColWidth],
         fc: freezeCount,
+        mob: isMobile ? 1 : 0,
       }),
-    [students, activities, concepts, periodClosed, gradesTheme, freezeCount]
+    [students, activities, concepts, periodClosed, gradesTheme, freezeCount, isMobile]
   );
 
   // Estilo de una celda de nota según su valor (paridad con la tabla original)
@@ -371,8 +385,11 @@ export function GradesSpreadsheet(props: Props) {
               // [C3] sin tableHeight → .jss_content sin maxHeight/overflow-y:
               // la grilla crece hasta el último estudiante y el scroll vertical
               // es el de la página (el interno queda solo para horizontal).
-              tableWidth: "100%",
-          freezeColumns: freezeCount,
+              // [theme-options-movil] en móvil SIN tableWidth: la tabla conserva
+              // su ancho natural (suma de columnas) → hay desborde real y el
+              // scroll horizontal con dedo funciona junto a freezeColumns.
+              tableWidth: isMobile ? undefined : "100%",
+              freezeColumns: freezeCount,
           editable: !periodClosed,
           columnResize: false,
           columnDrag: false,
@@ -382,7 +399,7 @@ export function GradesSpreadsheet(props: Props) {
           // Columnas: Estudiante · PROM · DEF · actividades / marcadores "—"
           // [C2] ancho por columna según bloque de concepto (uniforme)
           columns: [
-            { title: "Estudiantes", width: 220, readOnly: true },
+            { title: "Estudiantes", width: STUDENT_COL_WIDTH, readOnly: true },
             { title: "PROM", width: 52, readOnly: true },
             { title: "DEF", width: 52, readOnly: true },
             ...cols.map((col, ci) =>
