@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Save, Search } from "lucide-react";
+import { MessageSquarePlus, Plus, Save, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // === Módulo Calificaciones: header de contexto (capturas 2, 3, 6) ===
@@ -14,6 +14,9 @@ export interface GradesToolbarProps {
   onSave: () => void;
   saving: boolean;
   dirty: boolean;
+  /** [comentarios] modo edición de comentarios por celda */
+  commentMode?: boolean;
+  onToggleCommentMode?: () => void;
 }
 
 export function GradesToolbar({
@@ -25,6 +28,8 @@ export function GradesToolbar({
   onSave,
   saving,
   dirty,
+  commentMode,
+  onToggleCommentMode,
 }: GradesToolbarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2 md:flex-nowrap md:gap-3 md:px-4 md:py-3">
@@ -49,6 +54,15 @@ export function GradesToolbar({
         </div>
       </div>
       <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
+        <Button
+          variant={commentMode ? "default" : "outline"}
+          size="sm"
+          onClick={onToggleCommentMode}
+          title="Agregar o editar comentarios en las celdas"
+          aria-pressed={commentMode}
+        >
+          <MessageSquarePlus className="mr-1 h-4 w-4" /> Comentar
+        </Button>
         <Button variant="outline" size="sm" onClick={onAdd}>
           <Plus className="mr-1 h-4 w-4" /> Agregar
         </Button>

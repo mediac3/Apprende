@@ -26,6 +26,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
   useGradesCalculations,
   type ConceptColumn,
   type StudentRow,
@@ -99,6 +108,16 @@ export function CalificacionesView() {
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [activities, setActivities] = useState<SheetActivity[]>([]);
   const [values, setValues] = useState<Record<string, string>>({});
+  // [comentarios] comentarios por celda + modo edición + diálogo
+  const [comments, setComments] = useState<Record<string, string>>({});
+  const [commentMode, setCommentMode] = useState(false);
+  const [commentsVersion, setCommentsVersion] = useState(0);
+  const [commentDialog, setCommentDialog] = useState<{
+    key: string;
+    studentName: string;
+    activityName: string;
+  } | null>(null);
+  const [commentText, setCommentText] = useState("");
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -230,6 +249,15 @@ export function CalificacionesView() {
           setDirty(new Set());
         })
         .catch(() => toast.error("Error cargando la planilla"));
+      // [comentarios] comentarios existentes de la planilla
+      fetch(
+        `/api/grade-comments?groupId=${sel.groupId}&subjectId=${sel.subjectId}&periodId=${periodId}`
+      )
+        .then((r) => r.json())
+        .then((res) => {
+          if (res?.ok) setComments(res.comments ?? {});
+        })
+        .catch(() => {});
     },
     []
   );
@@ -237,6 +265,46 @@ export function CalificacionesView() {
   useEffect(() => {
     if (activeSubject && selectedPeriodId) loadSheet(activeSubject, selectedPeriodId);
   }, [activeSubject, selectedPeriodId, loadSheet]);
+
+  // [comentarios] precargar el texto del comentario al abrir el diálogo
+  useEffect(() => {
+    setCommentText(commentDialog ? comments[commentDialog.key] ?? "" : "");
+  }, [commentDialog, comments]);
+
+  // [comentarios] guardar/eliminar el comentario de la celda
+  const handleSaveComment = useCallback(() => {
+    if (!commentDialog || !user) return;
+    const [studentId, activityId] = commentDialog.key.split("::");
+    const text = commentText.trim();
+    fetch("/api/grade-comments", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        institutionId: user.institution.id,
+        userId: user.id,
+        studentId,
+        activityId,
+        text,
+      }),
+    })
+      .then((r) => r.json())
+      .then((res) => {
+        if (!res?.ok) {
+          toast.error(res?.error ?? "Error guardando el comentario");
+          return;
+        }
+        setComments((prev) => {
+          const next = { ...prev };
+          if (text) next[commentDialog.key] = text;
+          else delete next[commentDialog.key];
+          return next;
+        });
+        setCommentsVersion((v) => v + 1);
+        setCommentDialog(null);
+        toast.success(text ? "Comentario guardado" : "Comentario eliminado");
+      })
+      .catch(() => toast.error("Error de red al guardar el comentario"));
+  }, [commentDialog, commentText, user]);
 
   // Cálculos al vuelo
   const conceptColumns = useMemo<ConceptColumn[]>(
@@ -466,10 +534,17 @@ export function CalificacionesView() {
               onSave={handleSave}
               saving={saving}
               dirty={dirty.size > 0}
+              commentMode={commentMode}
+              onToggleCommentMode={() => setCommentMode((v) => !v)}
             />
             {periodClosed && (
               <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
                 El periodo está cerrado: las notas no se pueden editar.
+              </p>
+            )}
+            {commentMode && (
+              <p className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-300">
+                Modo comentario activo: toque una celda de actividad para escribir o editar su comentario.
               </p>
             )}
             <GradesSpreadsheet
@@ -488,6 +563,10 @@ export function CalificacionesView() {
               onAddActivityForConcept={handleAddForConcept}
               onEditActivity={handleEditActivity}
               onDeleteActivity={setDeletingActivity}
+              comments={comments}
+              commentMode={commentMode}
+              commentsVersion={commentsVersion}
+              onCellCommentRequest={setCommentDialog}
             />
             <p className={cn("text-[11px] text-muted-foreground", dirty.size > 0 && "text-amber-600")}>
               {dirty.size > 0
@@ -516,6 +595,38 @@ export function CalificacionesView() {
         editActivity={editingActivity}
         onUpdate={handleUpdateActivity}
       />
+
+      {/* [comentarios] diálogo de edición del comentario de una celda */}
+      <Dialog open={!!commentDialog} onOpenChange={(o) => !o && setCommentDialog(null)}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="text-base">Comentario de la celda</DialogTitle>
+            <DialogDescription className="text-xs">
+              {commentDialog?.studentName} · {commentDialog?.activityName}
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            rows={4}
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            placeholder="Escriba el comentario de esta celda…"
+            className="text-xs"
+          />
+          <div className="flex items-center justify-between gap-2">
+            <Button variant="outline" size="sm" onClick={() => setCommentText("")}>
+              Limpiar
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setCommentDialog(null)}>
+                Cancelar
+              </Button>
+              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={handleSaveComment}>
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* [F2] Confirmación de borrado: advierte que las notas se eliminan en cascada */}
       <AlertDialog

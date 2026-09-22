@@ -143,6 +143,14 @@ export interface GradesSpreadsheetProps {
   onEditActivity?: (activity: SheetActivity) => void;
   /** [F2] "−" por actividad */
   onDeleteActivity?: (activity: SheetActivity) => void;
+  /** [comentarios] mapa `studentId::activityId` → texto del comentario */
+  comments?: Record<string, string>;
+  /** [comentarios] contador que cambia al guardar → reconstruye marcadores */
+  commentsVersion?: number;
+  /** [comentarios] modo activo: un tap/click en celda abre su comentario */
+  commentMode?: boolean;
+  /** [comentarios] solicitud de edición de comentario en una celda */
+  onCellCommentRequest?: (info: { key: string; studentName: string; activityName: string }) => void;
 }
 
 type Props = GradesSpreadsheetProps;
@@ -151,7 +159,7 @@ type WorksheetInstance = import("jspreadsheet-ce").WorksheetInstance;
 type JspreadsheetInstanceElement = import("jspreadsheet-ce").JspreadsheetInstanceElement;
 
 export function GradesSpreadsheet(props: Props) {
-  const { students, concepts, activities, values, calculations, periodClosed } = props;
+  const { students, concepts, activities, values, calculations, periodClosed, comments, commentMode, commentsVersion } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WorksheetInstance | null>(null);
   // Última instantánea de props para los callbacks DOM (botones del header)
@@ -248,8 +256,10 @@ export function GradesSpreadsheet(props: Props) {
         gt: [gradesTheme.conditional ? 1 : 0, gradesTheme.threshold, gradesTheme.minColWidth],
         fc: freezeCount,
         mob: isMobile ? 1 : 0,
+        // [comentarios] reconstruir cuando cambian marcadores o el modo
+        cm: [commentsVersion ?? 0, Object.keys(comments ?? {}).length, commentMode ? 1 : 0],
       }),
-    [students, activities, concepts, periodClosed, gradesTheme, freezeCount, isMobile]
+    [students, activities, concepts, periodClosed, gradesTheme, freezeCount, isMobile, commentsVersion, comments, commentMode]
   );
 
   // Estilo de una celda de nota según su valor (paridad con la tabla original)
@@ -294,6 +304,19 @@ export function GradesSpreadsheet(props: Props) {
       } while (n >= 0);
       return s;
     };
+
+    // [comentarios] convertir el mapa `studentId::activityId` a nombres de celda
+    const commentsInit: Record<string, string> = {};
+    if (comments) {
+      for (const [key, text] of Object.entries(comments)) {
+        const [sid, aid] = key.split("::");
+        const r = students.findIndex((s) => s.studentId === sid);
+        if (r < 0) continue;
+        const ci = gridCols.findIndex((col) => col.kind === "activity" && col.activity.id === aid);
+        if (ci < 0) continue;
+        commentsInit[`${colName(ci + 3)}${r + 1}`] = text;
+      }
+    }
     for (let r = 0; r < students.length; r++) {
       const calc = calcByStudent.get(students[r].studentId);
       // [theme-options] fuente, alineación y color configurables de la columna estudiante
@@ -391,6 +414,7 @@ export function GradesSpreadsheet(props: Props) {
               tableWidth: isMobile ? undefined : "100%",
               freezeColumns: freezeCount,
           editable: !periodClosed,
+          comments: commentsInit,
           columnResize: false,
           columnDrag: false,
           columnSorting: false,
@@ -419,6 +443,7 @@ export function GradesSpreadsheet(props: Props) {
     }) as WorksheetInstance[];
 
     wsRef.current = worksheets[0] ?? null;
+    const ws0 = worksheets[0] ?? null;
 
     // [theme-options-movil] Sin tableWidth (móvil), jss no limita el ancho del
     // contenedor de la hoja (.jss_container inline-block crece con la tabla) ni
@@ -432,6 +457,25 @@ export function GradesSpreadsheet(props: Props) {
         contentEl.style.width = "100%";
         contentEl.style.overflowX = "auto";
       }
+    }
+
+    // [theme-options-movil] Con columnas inmovilizadas, jss solo congela las
+    // columnas de datos (Estudiantes…): la columna de numeración seguiría
+    // desplazándose y la franja fija del header sobresaldría sobre los
+    // conceptos. Se fija también la numeración (esquina + primera celda).
+    if (freezeCount > 0 && ws0) {
+      const pinCorner = (cell: Element | null | undefined) => {
+        if (!cell) return;
+        const s = (cell as HTMLElement).style;
+        s.position = "sticky";
+        s.left = "0px";
+        s.zIndex = "3";
+      };
+      const cornerRow = ws0.headers?.[0]?.parentElement as HTMLTableRowElement | undefined;
+      pinCorner(cornerRow?.cells?.[0] ?? null);
+      el.querySelectorAll<HTMLTableRowElement>("tbody tr").forEach((tr) => {
+        pinCorner(tr.cells?.[0] ?? null);
+      });
     }
 
     // === [C4] Drag-fill = copiar valor (no incrementar) ===
@@ -482,6 +526,30 @@ export function GradesSpreadsheet(props: Props) {
     };
     el.addEventListener("mousedown", fillDown);
     document.addEventListener("mouseup", fillUpEnd);
+
+    // [comentarios] en modo comentario, un tap/click en una celda de actividad
+    // abre el diálogo de su comentario (funciona igual en táctil y escritorio)
+    const handleCommentClick = (ev: Event) => {
+      if (!propsRef.current.commentMode) return;
+      const target = ev.target as HTMLElement;
+      const td = target.closest("td");
+      const x = Number(td?.getAttribute("data-x"));
+      const y = Number(td?.getAttribute("data-y"));
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      if (x < 3) return; // Estudiantes/PROM/DEF sin comentarios
+      const col = colsRef.current[x - 3];
+      if (!col || col.kind !== "activity") return; // marcador "—"
+      const s = propsRef.current.students[y];
+      if (!s) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      propsRef.current.onCellCommentRequest?.({
+        key: `${s.studentId}::${col.activity.id}`,
+        studentName: s.fullName,
+        activityName: col.activity.label ?? col.activity.name,
+      });
+    };
+    el.addEventListener("click", handleCommentClick);
 
     // === Inyección de botones y estilos en los headers (vanilla DOM) ===
     const ws = wsRef.current;
@@ -645,6 +713,7 @@ export function GradesSpreadsheet(props: Props) {
 
     return () => {
       el.removeEventListener("mousedown", fillDown);
+      el.removeEventListener("click", handleCommentClick);
       document.removeEventListener("mouseup", fillUpEnd);
       try {
         jspreadsheet.destroy(el as JspreadsheetInstanceElement);
