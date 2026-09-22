@@ -14,6 +14,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -520,6 +528,197 @@ function ColorsSection({
   );
 }
 
+// ── Sección: Tipografía ─────────────────────────────────────────────────────
+
+const FONT_WEIGHTS = [300, 400, 500, 600, 700, 800] as const;
+
+function FontSpecFields({
+  title,
+  value,
+  disabled,
+  onChange,
+}: {
+  title: string;
+  value: ThemeData["typography"]["h1"];
+  disabled: boolean;
+  onChange: (patch: Partial<ThemeData["typography"]["h1"]>) => void;
+}) {
+  return (
+    <div className="space-y-2 rounded-md border p-3">
+      <p className="text-sm font-medium">{title}</p>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Familia</Label>
+          <Input
+            value={value.family}
+            disabled={disabled}
+            placeholder="Ej. 'Segoe UI', sans-serif"
+            className="h-8 w-56 font-mono text-xs"
+            onChange={(e) => onChange({ family: e.target.value })}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Peso y estilo</Label>
+          <Select value={String(value.weight)} disabled={disabled} onValueChange={(v) => onChange({ weight: Number(v) })}>
+            <SelectTrigger className="h-8 w-32 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {FONT_WEIGHTS.map((w) => (
+                <SelectItem key={w} value={String(w)}>
+                  {w}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <NumberField label="Tamaño" suffix="px" value={value.size} min={8} max={120} disabled={disabled} onChange={(v) => onChange({ size: v })} />
+      </div>
+    </div>
+  );
+}
+
+function TypographySection({
+  theme,
+  canEdit,
+  updateSection,
+}: {
+  theme: ThemeData;
+  canEdit: boolean;
+  updateSection: SectionUpdater;
+}) {
+  const t = theme.typography;
+  const set = (patch: Partial<ThemeData["typography"]>) => updateSection("typography", patch);
+  const specs: { key: keyof ThemeData["typography"]; title: string }[] = [
+    { key: "siteTitle", title: "Título del sitio" },
+    { key: "body", title: "Fuente de cuerpo" },
+    { key: "h1", title: "H1" },
+    { key: "h2", title: "H2" },
+    { key: "h3", title: "H3" },
+    { key: "h4", title: "H4" },
+    { key: "h5", title: "H5" },
+    { key: "h6", title: "H6" },
+  ];
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between rounded-md border p-3">
+        <div>
+          <p className="text-sm font-medium">Personalización de tipografía</p>
+          <p className="text-xs text-muted-foreground">Habilita valores personalizados por nivel. Vacío = tema activo.</p>
+        </div>
+        <Switch checked={t.enabled} disabled={!canEdit} onCheckedChange={(v) => set({ enabled: v })} />
+      </div>
+      {specs.map(({ key, title }) => (
+        <FontSpecFields
+          key={key}
+          title={title}
+          value={t[key] as ThemeData["typography"]["h1"]}
+          disabled={!canEdit}
+          onChange={(patch) => set({ [key]: { ...(t[key] as object), ...patch } } as Partial<ThemeData["typography"]>)}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Sección: Encabezado ─────────────────────────────────────────────────────
+
+const HEADER_COMPONENTS: { key: keyof ThemeData["header"]["components"]; label: string }[] = [
+  { key: "search", label: "Búsqueda" },
+  { key: "messages", label: "Mensajes" },
+  { key: "notifications", label: "Notificaciones" },
+  { key: "cart", label: "Carrito de compras" },
+];
+
+function HeaderSection({
+  theme,
+  canEdit,
+  updateSection,
+}: {
+  theme: ThemeData;
+  canEdit: boolean;
+  updateSection: SectionUpdater;
+}) {
+  const h = theme.header;
+  const set = (patch: Partial<ThemeData["header"]>) => updateSection("header", patch);
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-4 rounded-md border p-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Estilo del menú</Label>
+          <Select value={h.style} disabled={!canEdit} onValueChange={(v) => set({ style: v as ThemeData["header"]["style"] })}>
+            <SelectTrigger className="h-8 w-40 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="expanded">Expandido</SelectItem>
+              <SelectItem value="menuBar">Ficha de la barra</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Perfil desplegable</Label>
+          <Select value={h.profileStyle} disabled={!canEdit} onValueChange={(v) => set({ profileStyle: v as ThemeData["header"]["profileStyle"] })}>
+            <SelectTrigger className="h-8 w-40 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="nameAvatar">Nombre y avatar</SelectItem>
+              <SelectItem value="avatarOnly">Avatar solo</SelectItem>
+              <SelectItem value="off">Off</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-3 rounded-md border p-3">
+        <p className="text-sm font-medium">Componentes (escritorio)</p>
+        <div className="flex flex-wrap gap-4">
+          {HEADER_COMPONENTS.map(({ key, label }) => (
+            <div key={key} className="flex items-center gap-2">
+              <Switch checked={h.components[key]} disabled={!canEdit} onCheckedChange={(v) => set({ components: { ...h.components, [key]: v } })} />
+              <Label className="text-xs">{label}</Label>
+            </div>
+          ))}
+        </div>
+        <p className="text-sm font-medium">Componentes (móvil)</p>
+        <div className="flex flex-wrap gap-4">
+          {HEADER_COMPONENTS.map(({ key, label }) => (
+            <div key={key} className="flex items-center gap-2">
+              <Switch checked={h.mobileComponents[key]} disabled={!canEdit} onCheckedChange={(v) => set({ mobileComponents: { ...h.mobileComponents, [key]: v } })} />
+              <Label className="text-xs">{label}</Label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-4 rounded-md border p-3">
+        <div className="flex items-center gap-2">
+          <Switch checked={h.sticky} disabled={!canEdit} onCheckedChange={(v) => set({ sticky: v })} />
+          <Label className="text-xs">Sticky header</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch checked={h.shadow} disabled={!canEdit} onCheckedChange={(v) => set({ shadow: v })} />
+          <Label className="text-xs">Sombra del encabezado</Label>
+        </div>
+        <div className="min-w-52 flex-1 space-y-1.5">
+          <Label className="text-xs">
+            Altura del encabezado <span className="text-muted-foreground">({h.height}px, entre 60 y 200)</span>
+          </Label>
+          <Slider
+            value={[h.height]}
+            min={60}
+            max={200}
+            step={1}
+            disabled={!canEdit}
+            onValueChange={([v]) => set({ height: v })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Despachador de secciones ────────────────────────────────────────────────
 
 function SectionFields({
@@ -538,6 +737,10 @@ function SectionFields({
       return <LogoSection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
     case "colors":
       return <ColorsSection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
+    case "typography":
+      return <TypographySection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
+    case "header":
+      return <HeaderSection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
     default:
       return (
         <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
