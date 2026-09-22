@@ -1110,6 +1110,20 @@ function GradesTableSection({
           <NumberField label="Fuente del header" suffix="px" value={g.headerFontSize} min={9} max={24} disabled={!canEdit} onChange={(v) => set({ headerFontSize: v })} />
           <NumberField label="Fuente de celda" suffix="px" value={g.cellFontSize} min={9} max={24} disabled={!canEdit} onChange={(v) => set({ cellFontSize: v })} />
           <NumberField label="Fuente columna estudiante" suffix="px" value={g.studentColFontSize} min={9} max={24} disabled={!canEdit} onChange={(v) => set({ studentColFontSize: v })} />
+          <div className="space-y-1.5">
+            <Label className="text-xs">Alineación del nombre</Label>
+            <Select value={g.studentNameAlign} disabled={!canEdit} onValueChange={(v) => set({ studentNameAlign: v as ThemeData["gradesTable"]["studentNameAlign"] })}>
+              <SelectTrigger className="h-8 w-32 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="left">Izquierda</SelectItem>
+                <SelectItem value="center">Centro</SelectItem>
+                <SelectItem value="right">Derecha</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <ColorField label="Color de texto del nombre" value={g.studentNameColor} disabled={!canEdit} onChange={(v) => set({ studentNameColor: v })} />
           <NumberField label="Alto del header" suffix="px" value={g.headerHeight} min={28} max={80} disabled={!canEdit} onChange={(v) => set({ headerHeight: v })} />
           <NumberField label="Ancho mínimo por columna de concepto" suffix="px" value={g.minColumnWidth} min={60} max={400} disabled={!canEdit} onChange={(v) => set({ minColumnWidth: v })} />
         </div>

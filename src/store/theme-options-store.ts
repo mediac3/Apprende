@@ -37,6 +37,8 @@ function gradesDecls(d: ThemeData): string[] {
     `--grades-header-height:${g.headerHeight || 40}px`,
     `--grades-cell-font-size:${g.cellFontSize || 13}px`,
     `--grades-student-font-size:${g.studentColFontSize || 13}px`,
+    `--grades-student-align:${g.studentNameAlign || "left"}`,
+    `--grades-student-color:${g.studentNameColor || "inherit"}`,
     `--grades-row-height:${rowHeight}`,
     `--grades-min-col-width:${g.minColumnWidth || 180}px`,
     `--grades-prom-bg:${c(g.promBg, "#e0f2fe")}`,

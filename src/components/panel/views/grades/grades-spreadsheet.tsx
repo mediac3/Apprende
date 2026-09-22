@@ -277,8 +277,9 @@ export function GradesSpreadsheet(props: Props) {
     };
     for (let r = 0; r < students.length; r++) {
       const calc = calcByStudent.get(students[r].studentId);
-      // [theme-options] fuente de la columna estudiante
-      style[`${colName(0)}${r + 1}`] = `font-size: var(--grades-student-font-size, 13px);`;
+      // [theme-options] fuente, alineación y color configurables de la columna estudiante
+      style[`${colName(0)}${r + 1}`] =
+        `font-size: var(--grades-student-font-size, 13px); text-align: var(--grades-student-align, left); color: var(--grades-student-color, inherit);`;
       style[`${colName(1)}${r + 1}`] =
         calc && calc.prom !== null && gradesTheme.conditional && calc.prom < gradesTheme.threshold
           ? `background-color: var(--grades-low-color, ${COLOR_RED_BG}); color: ${COLOR_RED_FG}; font-weight: bold; font-size: var(--grades-cell-font-size, 13px);`
