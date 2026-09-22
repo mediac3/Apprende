@@ -433,8 +433,9 @@ export function CalificacionesView() {
     );
   }
 
+  // [C3] min-h-full: la vista crece con la planilla; el scroll es el de la página
   return (
-    <div className="flex h-full min-h-0 gap-4 p-4">
+    <div className="flex min-h-full gap-4 p-4">
       {/* [C4] Sidebar Modal overlay: se abre con la Lupa del toolbar */}
       <GradesSidebar
         open={sidebarOpen}

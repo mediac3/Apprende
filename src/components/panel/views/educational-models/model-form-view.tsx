@@ -148,7 +148,7 @@ export function ModelFormView({
       return model.concepts
         .slice()
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-        .map((c) => ({ name: c.name, percentage: c.percentage, open: c.open }));
+        .map((c) => ({ id: c.id, name: c.name, percentage: c.percentage, open: c.open }));
     }
     return mode === "new" ? BASE_CONCEPTS.map((c) => ({ ...c })) : [];
   });

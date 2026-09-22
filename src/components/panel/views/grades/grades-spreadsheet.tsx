@@ -154,6 +154,26 @@ export function GradesSpreadsheet(props: Props) {
   const colsRef = useRef<GridCol[]>(gridCols);
   colsRef.current = gridCols;
 
+  // [C2] Ancho uniforme por bloque de concepto: cada bloque mide máx(180px, n×64px)
+  // y sus sub-columnas se reparten ese ancho por igual → nombre + [%] + "+" caben
+  // siempre, independientemente del nº de actividades del concepto.
+  const ACTIVITY_COL_WIDTH = 64;
+  const CONCEPT_MIN_WIDTH = 180;
+  const colWidths = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const col of gridCols) {
+      const cid = col.kind === "activity" ? col.activity.conceptId : col.conceptId;
+      counts.set(cid, (counts.get(cid) ?? 0) + 1);
+    }
+    return gridCols.map((col) => {
+      const cid = col.kind === "activity" ? col.activity.conceptId : col.conceptId;
+      const n = counts.get(cid) ?? 1;
+      return Math.ceil(Math.max(CONCEPT_MIN_WIDTH, n * ACTIVITY_COL_WIDTH) / n);
+    });
+  }, [gridCols]);
+  const colWidthsRef = useRef<number[]>(colWidths);
+  colWidthsRef.current = colWidths;
+
   // Estructura de la hoja (cambia solo con datos estructurales, no con cada tecla)
   const structureKey = useMemo(
     () =>
@@ -254,6 +274,25 @@ export function GradesSpreadsheet(props: Props) {
         const a = col.activity;
         const raw = String(newValue ?? "");
         const key = `${s.studentId}::${a.id}`;
+        // [C4] Durante un drag-fill, sustituir la serie de CE por el valor de la
+        // fila origen (Excel-copiar) antes de cualquier validación/aviso.
+        if (fillSession) {
+          const { src } = fillSession;
+          let srcRow: number | null = null;
+          if (r > src.y2) srcRow = src.y1;
+          else if (r < src.y1) srcRow = src.y2;
+          if (srcRow !== null && c >= src.x1 && c <= src.x2) {
+            const srcVal = instance.getValueFromCoords(c, srcRow);
+            const srcRaw = String(srcVal ?? "");
+            if (srcRaw !== raw) {
+              instance.setValueFromCoords(c, r, srcVal, true);
+              echoRef.current.add(key);
+              p.onCellChange(s.studentId, a.id, srcRaw);
+              cell.style.cssText = activityCellStyle(srcRaw, conceptOrderOf(a.conceptId));
+              return;
+            }
+          }
+        }
         if (!isValidNote(raw)) {
           // Revertir al valor previo y avisar (paridad con la tabla original)
           toast.error("Nota fuera de rango: debe estar entre 0.0 y 5.0");
@@ -266,13 +305,15 @@ export function GradesSpreadsheet(props: Props) {
         p.onCellChange(s.studentId, a.id, raw);
         cell.style.cssText = activityCellStyle(raw, conceptOrderOf(a.conceptId));
       },
-      worksheets: [
-        {
-          data,
-          style,
-          tableOverflow: true,
-          tableHeight: Math.max(el.clientHeight, 240),
-          tableWidth: "100%",
+          worksheets: [
+            {
+              data,
+              style,
+              tableOverflow: true,
+              // [C3] sin tableHeight → .jss_content sin maxHeight/overflow-y:
+              // la grilla crece hasta el último estudiante y el scroll vertical
+              // es el de la página (el interno queda solo para horizontal).
+              tableWidth: "100%",
           freezeColumns: 1,
           editable: !periodClosed,
           columnResize: false,
@@ -281,20 +322,21 @@ export function GradesSpreadsheet(props: Props) {
           search: false,
           pagination: 0,
           // Columnas: Estudiante · PROM · DEF · actividades / marcadores "—"
+          // [C2] ancho por columna según bloque de concepto (uniforme)
           columns: [
             { title: "Estudiantes", width: 220, readOnly: true },
             { title: "PROM", width: 52, readOnly: true },
             { title: "DEF", width: 52, readOnly: true },
-            ...cols.map((col) =>
+            ...cols.map((col, ci) =>
               col.kind === "activity"
                 ? {
                     title: col.activity.isGeneral
                       ? `${col.activity.label ?? col.activity.name} ★`
                       : col.activity.label ?? col.activity.name,
-                    width: 64,
+                    width: colWidths[ci] ?? ACTIVITY_COL_WIDTH,
                     readOnly: false,
                   }
-                : { title: "—", width: 150, readOnly: true }
+                : { title: "—", width: colWidths[ci] ?? 150, readOnly: true }
             ),
           ],
         },
@@ -302,6 +344,55 @@ export function GradesSpreadsheet(props: Props) {
     }) as WorksheetInstance[];
 
     wsRef.current = worksheets[0] ?? null;
+
+    // === [C4] Drag-fill = copiar valor (no incrementar) ===
+    // CE v5 no expone evento para el fill del handle (jss_corner) y su fill
+    // numérico genera serie (1,2,3…). Al pulsar el handle se arma una sesión
+    // de fill con la selección origen; mientras está activa, cada escritura de
+    // CE pasa por onchange y se sustituye por el valor de la fila/columna
+    // origen (Excel-copiar), siguiendo el flujo normal de validación y
+    // persistencia. La sesión se cierra en el mouseup posterior al fill.
+    type FillRect = { x1: number; y1: number; x2: number; y2: number };
+    type WorksheetWithInternals = WorksheetInstance & {
+      jssWorksheet?: WorksheetInstance;
+      highlighted?: Element[];
+    };
+    let fillSession: { src: FillRect } | null = null;
+    const fillDown = (ev: MouseEvent) => {
+      const t = ev.target as HTMLElement | null;
+      if (!t?.classList?.contains("jss_corner")) return;
+      if (propsRef.current.periodClosed) return;
+      const holder = t.closest(".jss_container") as (HTMLElement & WorksheetWithInternals) | null;
+      const inst = holder?.jssWorksheet ?? (wsRef.current as WorksheetWithInternals | null);
+      if (!inst) return;
+      const xs: number[] = [];
+      const ys: number[] = [];
+      for (const node of inst.highlighted ?? []) {
+        // CE v5: highlighted[i] = { element: td } (wrapper, no el td directo)
+        const cellEl = ((node as unknown as { element?: Element }).element ?? node) as Element;
+        const x = Number(cellEl.getAttribute?.("data-x"));
+        const y = Number(cellEl.getAttribute?.("data-y"));
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          xs.push(x);
+          ys.push(y);
+        }
+      }
+      if (!xs.length) return;
+      fillSession = {
+        src: { x1: Math.min(...xs), y1: Math.min(...ys), x2: Math.max(...xs), y2: Math.max(...ys) },
+      };
+    };
+    let fillSessionClose: ReturnType<typeof setTimeout> | null = null;
+    const fillUpEnd = () => {
+      // El fill de CE escribe sus celdas DESPUÉS del mouseup (asíncrono):
+      // cerrar la sesión con un pequeño debounce para cubrir esos onchange.
+      if (fillSessionClose) clearTimeout(fillSessionClose);
+      fillSessionClose = setTimeout(() => {
+        fillSession = null;
+      }, 200);
+    };
+    el.addEventListener("mousedown", fillDown);
+    document.addEventListener("mouseup", fillUpEnd);
 
     // === Inyección de botones y estilos en los headers (vanilla DOM) ===
     const ws = wsRef.current;
@@ -371,20 +462,20 @@ export function GradesSpreadsheet(props: Props) {
           } satisfies Partial<CSSStyleDeclaration>);
           tdGroup.textContent = "Estudiantes";
           tr.appendChild(tdGroup);
-          // Un bloque por concepto evaluativo
+          // Un bloque por concepto evaluativo.
+          // [C2] ancho uniforme: suma de los anchos reales de sus sub-columnas
+          // (bloque ≥ 180px); nombre con ellipsis, [%] y "+" siempre visibles.
+          const widths = colWidthsRef.current;
           for (const c of concepts) {
-            const count = cols.filter((col) =>
-              col.kind === "activity" ? col.activity.conceptId === c.id : col.conceptId === c.id
-            ).length;
-            if (count === 0) continue;
+            const idxs: number[] = [];
+            cols.forEach((col, i) => {
+              if ((col.kind === "activity" ? col.activity.conceptId : col.conceptId) === c.id) idxs.push(i);
+            });
+            if (idxs.length === 0) continue;
             const td = document.createElement("td");
-            td.colSpan = count;
+            td.colSpan = idxs.length;
             // Refuerzo de layout: ancho = suma de las columnas que abarca
-            const widthSum = cols
-              .filter((col) =>
-                col.kind === "activity" ? col.activity.conceptId === c.id : col.conceptId === c.id
-              )
-              .reduce((n, col) => n + (col.kind === "activity" ? 64 : 150), 0);
+            const widthSum = idxs.reduce((n, i) => n + (widths[i] ?? 0), 0);
             if (widthSum > 0) td.style.width = `${widthSum}px`;
             const { header } = colorFor(c.order);
             Object.assign(td.style, {
@@ -393,20 +484,43 @@ export function GradesSpreadsheet(props: Props) {
               fontWeight: "700",
               fontSize: "11px",
               textAlign: "center",
-              whiteSpace: "nowrap",
-              paddingLeft: "2px",
+              paddingLeft: "4px",
               paddingRight: "2px",
             } satisfies Partial<CSSStyleDeclaration>);
             td.title = `${c.name} [${c.percentage}%]`;
-            td.appendChild(document.createTextNode(`${c.name} [${c.percentage}%] `));
-            td.appendChild(
-              makeHeaderButton({
-                html: SVG_PLUS,
-                title: `Agregar actividad al concepto ${c.name}`,
-                disabled: periodClosed,
-                onClick: () => propsRef.current.onAddActivityForConcept?.(c.id),
-              })
-            );
+            // Wrapper flex interno: nombre elástico (ellipsis) + [%] + "+" inflexibles
+            const wrap = document.createElement("div");
+            Object.assign(wrap.style, {
+              display: "flex",
+              alignItems: "center",
+              gap: "3px",
+              width: "100%",
+              minWidth: "0",
+            } satisfies Partial<CSSStyleDeclaration>);
+            const nameSpan = document.createElement("span");
+            Object.assign(nameSpan.style, {
+              flex: "1 1 0",
+              minWidth: "0",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              textAlign: "left",
+            } satisfies Partial<CSSStyleDeclaration>);
+            nameSpan.textContent = c.name;
+            const pctSpan = document.createElement("span");
+            pctSpan.style.flexShrink = "0";
+            pctSpan.textContent = `[${c.percentage}%]`;
+            const plus = makeHeaderButton({
+              html: SVG_PLUS,
+              title: `Agregar actividad al concepto ${c.name}`,
+              disabled: periodClosed,
+              onClick: () => propsRef.current.onAddActivityForConcept?.(c.id),
+            });
+            plus.style.flexShrink = "0";
+            wrap.appendChild(nameSpan);
+            wrap.appendChild(pctSpan);
+            wrap.appendChild(plus);
+            td.appendChild(wrap);
             tr.appendChild(td);
           }
           thead.insertBefore(tr, stdRow);
@@ -415,6 +529,8 @@ export function GradesSpreadsheet(props: Props) {
     }
 
     return () => {
+      el.removeEventListener("mousedown", fillDown);
+      document.removeEventListener("mouseup", fillUpEnd);
       try {
         jspreadsheet.destroy(el as JspreadsheetInstanceElement);
       } catch {
@@ -482,7 +598,6 @@ export function GradesSpreadsheet(props: Props) {
     );
   }
 
-  return (
-    <div ref={containerRef} className="jss-planilla min-h-0 flex-1 overflow-hidden rounded-xl border bg-card" />
-  );
+  // [C3] sin overflow-hidden ni altura fija: crece con el nº de estudiantes
+  return <div ref={containerRef} className="jss-planilla flex-1 rounded-xl border bg-card" />;
 }
