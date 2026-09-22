@@ -6,10 +6,14 @@
 // Las secciones se implementan iterativamente; esta vista centraliza carga,
 // guardado, estado "dirty" y restablecimiento.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { HexColorPicker } from "react-colorful";
 import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -243,26 +247,304 @@ export function ThemeOptionsView() {
   );
 }
 
-// ── Placeholder tipado de secciones (se implementa por iteraciones) ─────────
+// ── Campos compartidos ──────────────────────────────────────────────────────
 
 type SectionUpdater = <K extends Exclude<SectionKey, "importExport">>(
   key: K,
   patch: Partial<ThemeData[K]>
 ) => void;
 
+const HEX_RE = /^(#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})?)?$/;
+
+/** Campo de color: hex input + picker visual (react-colorful) + limpiar. "" = sin override. */
+function ColorField({
+  label,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs">{label}</Label>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label={`Picker ${label}`}
+          disabled={disabled}
+          onClick={() => setOpen((o) => !o)}
+          className="h-8 w-10 shrink-0 rounded-md border border-input shadow-sm"
+          style={{ background: value || "repeating-linear-gradient(45deg,#eee,#eee 4px,#fafafa 4px,#fafafa 8px)" }}
+        />
+        <Input
+          value={value}
+          disabled={disabled}
+          placeholder="#RRGGBB"
+          className="h-8 w-32 font-mono text-xs"
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "" || HEX_RE.test(v)) onChange(v);
+          }}
+        />
+        {value !== "" && (
+          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" disabled={disabled} onClick={() => onChange("")}>
+            Limpiar
+          </Button>
+        )}
+      </div>
+      {open && !disabled && (
+        <div className="space-y-1 rounded-md border bg-popover p-2 shadow-md w-fit">
+          <HexColorPicker color={/^#[0-9a-fA-F]{6}$/.test(value) ? value : "#2F4A6D"} onChange={(c) => onChange(c)} />
+          <Button type="button" variant="outline" size="sm" className="h-7 w-full text-xs" onClick={() => setOpen(false)}>
+            Cerrar
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NumberField({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  suffix,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  suffix?: string;
+  onChange: (v: number) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs">
+        {label} {suffix && <span className="text-muted-foreground">({suffix})</span>}
+      </Label>
+      <Input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        step={step}
+        disabled={disabled}
+        className="h-8 w-24 text-xs"
+        onChange={(e) => {
+          const n = Number(e.target.value);
+          if (!Number.isNaN(n)) onChange(Math.min(max, Math.max(min, n)));
+        }}
+      />
+    </div>
+  );
+}
+
+// ── Sección: Logotipo ───────────────────────────────────────────────────────
+
+const LOGO_MAX_BYTES = 400 * 1024;
+
+function LogoSection({
+  theme,
+  canEdit,
+  updateSection,
+}: {
+  theme: ThemeData;
+  canEdit: boolean;
+  updateSection: SectionUpdater;
+}) {
+  const logo = theme.logo;
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function handleFile(file: File) {
+    setError(null);
+    if (!/^image\/(png|jpeg|webp|svg\+xml)$/.test(file.type)) {
+      setError("Formato no permitido. Usa PNG, JPG, WEBP o SVG.");
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      setError("La imagen supera 400KB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result);
+      if (!dataUrl.startsWith("data:image/")) {
+        setError("No se pudo leer la imagen.");
+        return;
+      }
+      updateSection("logo", { dataUrl, enabled: true });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between rounded-md border p-3">
+        <div>
+          <p className="text-sm font-medium">Logo de escritorio</p>
+          <p className="text-xs text-muted-foreground">Sube tu logotipo personalizado para el diseño de escritorio (280×80 px recomendado).</p>
+        </div>
+        <Switch checked={logo.enabled} disabled={!canEdit} onCheckedChange={(v) => updateSection("logo", { enabled: v })} />
+      </div>
+
+      <div className="flex flex-wrap items-start gap-4">
+        <div className="flex h-24 w-56 items-center justify-center rounded-md border bg-muted/40 p-2">
+          {logo.dataUrl ? (
+            <img src={logo.dataUrl} alt="Logo" style={{ maxHeight: 80, maxWidth: 200 }} />
+          ) : (
+            <span className="text-xs text-muted-foreground">Sin logo</span>
+          )}
+        </div>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" disabled={!canEdit} onClick={() => fileRef.current?.click()}>
+              Upload
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!canEdit || !logo.dataUrl}
+              onClick={() => updateSection("logo", { dataUrl: "", enabled: false })}
+            >
+              Remove
+            </Button>
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleFile(f);
+              e.target.value = "";
+            }}
+          />
+          {error && <p className="text-xs text-red-600">{error}</p>}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-4">
+        <NumberField label="Ancho" suffix="px" value={logo.width} min={20} max={600} disabled={!canEdit} onChange={(v) => updateSection("logo", { width: v })} />
+        <NumberField label="Alto" suffix="px" value={logo.height} min={20} max={200} disabled={!canEdit} onChange={(v) => updateSection("logo", { height: v })} />
+        <NumberField label="Margen" suffix="px" value={logo.margin} min={0} max={48} disabled={!canEdit} onChange={(v) => updateSection("logo", { margin: v })} />
+      </div>
+    </div>
+  );
+}
+
+// ── Sección: Colores ────────────────────────────────────────────────────────
+
+function ColorsSection({
+  theme,
+  canEdit,
+  updateSection,
+}: {
+  theme: ThemeData;
+  canEdit: boolean;
+  updateSection: SectionUpdater;
+}) {
+  const c = theme.colors;
+  const set = (patch: Partial<ThemeData["colors"]>) => updateSection("colors", patch);
+  const btnPairFields = (
+    pair: "btnPrimary" | "btnSecondary",
+    title: string
+  ) => (
+    <div className="space-y-3 rounded-md border p-3">
+      <p className="text-sm font-medium">{title}</p>
+      {(["regular", "hover"] as const).map((state) => (
+        <div key={state} className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground capitalize">{state}</p>
+          <div className="flex flex-wrap gap-4">
+            <ColorField label="Fondo" value={c[pair][state].bg} disabled={!canEdit} onChange={(v) => set({ [pair]: { ...c[pair], [state]: { ...c[pair][state], bg: v } } } as Partial<ThemeData["colors"]>)} />
+            <ColorField label="Borde" value={c[pair][state].border} disabled={!canEdit} onChange={(v) => set({ [pair]: { ...c[pair], [state]: { ...c[pair][state], border: v } } } as Partial<ThemeData["colors"]>)} />
+            <ColorField label="Texto" value={c[pair][state].text} disabled={!canEdit} onChange={(v) => set({ [pair]: { ...c[pair], [state]: { ...c[pair][state], text: v } } } as Partial<ThemeData["colors"]>)} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-3 rounded-md border p-3">
+        <p className="text-sm font-medium">Paleta general</p>
+        <div className="flex flex-wrap gap-4">
+          <ColorField label="Color primario" value={c.primary} disabled={!canEdit} onChange={(v) => set({ primary: v })} />
+          <ColorField label="Color de fondo" value={c.bg} disabled={!canEdit} onChange={(v) => set({ bg: v })} />
+          <ColorField label="Contenido de fondo" value={c.contentBg} disabled={!canEdit} onChange={(v) => set({ contentBg: v })} />
+          <ColorField label="Contenido alternativo de fondo" value={c.altBg} disabled={!canEdit} onChange={(v) => set({ altBg: v })} />
+          <ColorField label="Color de borde" value={c.border} disabled={!canEdit} onChange={(v) => set({ border: v })} />
+        </div>
+      </div>
+
+      <div className="space-y-3 rounded-md border p-3">
+        <p className="text-sm font-medium">Enlaces y texto</p>
+        <div className="flex flex-wrap gap-4">
+          <ColorField label="Enlace" value={c.link} disabled={!canEdit} onChange={(v) => set({ link: v })} />
+          <ColorField label="Enlace hover" value={c.linkHover} disabled={!canEdit} onChange={(v) => set({ linkHover: v })} />
+          <ColorField label="Texto de cuerpo" value={c.bodyText} disabled={!canEdit} onChange={(v) => set({ bodyText: v })} />
+          <ColorField label="Texto alternativo" value={c.altText} disabled={!canEdit} onChange={(v) => set({ altText: v })} />
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {btnPairFields("btnPrimary", "Botón primario")}
+        {btnPairFields("btnSecondary", "Botón secundario")}
+      </div>
+
+      <div className="space-y-3 rounded-md border p-3">
+        <p className="text-sm font-medium">Encabezado</p>
+        <div className="flex flex-wrap gap-4">
+          <ColorField label="Fondo" value={c.header.bg} disabled={!canEdit} onChange={(v) => set({ header: { ...c.header, bg: v } })} />
+          <ColorField label="Fondo alternativo" value={c.header.altBg} disabled={!canEdit} onChange={(v) => set({ header: { ...c.header, altBg: v } })} />
+          <ColorField label="Texto" value={c.header.text} disabled={!canEdit} onChange={(v) => set({ header: { ...c.header, text: v } })} />
+          <ColorField label="Enlace" value={c.header.link} disabled={!canEdit} onChange={(v) => set({ header: { ...c.header, link: v } })} />
+          <ColorField label="Enlace hover" value={c.header.linkHover} disabled={!canEdit} onChange={(v) => set({ header: { ...c.header, linkHover: v } })} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Despachador de secciones ────────────────────────────────────────────────
+
 function SectionFields({
   section,
+  theme,
+  canEdit,
+  updateSection,
 }: {
   section: SectionKey;
   theme: ThemeData;
   canEdit: boolean;
   updateSection: SectionUpdater;
 }) {
-  return (
-    <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
-      Sección <span className="font-medium text-foreground">{section}</span> en construcción.
-    </div>
-  );
+  switch (section) {
+    case "logo":
+      return <LogoSection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
+    case "colors":
+      return <ColorsSection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
+    default:
+      return (
+        <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
+          Sección <span className="font-medium text-foreground">{section}</span> en construcción.
+        </div>
+      );
+  }
 }
 
 // ── Importación / Exportación (UI propia, no se persiste en el tema) ────────
