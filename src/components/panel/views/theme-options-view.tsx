@@ -1054,6 +1054,105 @@ function CustomCodeSection({
   );
 }
 
+// ── Sección: Tabla "Notas parciales" ────────────────────────────────────────
+
+const GRADE_CONCEPTS: { key: keyof ThemeData["gradesTable"]["concepts"]; label: string }[] = [
+  { key: "ser", label: "Ser" },
+  { key: "saber", label: "Saber" },
+  { key: "hacer", label: "Hacer" },
+  { key: "autoevaluacion", label: "Autoevaluación" },
+];
+
+const ROW_DENSITY_HEIGHT: Record<ThemeData["gradesTable"]["rowDensity"], number> = {
+  compact: 32,
+  normal: 40,
+  comfortable: 52,
+};
+
+function GradesTableSection({
+  theme,
+  canEdit,
+  updateSection,
+}: {
+  theme: ThemeData;
+  canEdit: boolean;
+  updateSection: SectionUpdater;
+}) {
+  const g = theme.gradesTable;
+  const set = (patch: Partial<ThemeData["gradesTable"]>) => updateSection("gradesTable", patch);
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-3 rounded-md border p-3">
+        <p className="text-sm font-medium">Colores de header por concepto</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {GRADE_CONCEPTS.map(({ key, label }) => (
+            <div key={key} className="space-y-2 rounded-md border p-2" style={{ background: g.concepts[key].bg || undefined }}>
+              <p className="text-sm font-semibold" style={{ color: g.concepts[key].text || undefined }}>
+                {label}
+              </p>
+              <ColorField label="Fondo" value={g.concepts[key].bg} disabled={!canEdit} onChange={(v) => set({ concepts: { ...g.concepts, [key]: { ...g.concepts[key], bg: v } } })} />
+              <ColorField label="Texto" value={g.concepts[key].text} disabled={!canEdit} onChange={(v) => set({ concepts: { ...g.concepts, [key]: { ...g.concepts[key], text: v } } })} />
+            </div>
+          ))}
+        </div>
+        <ColorField label="Color de texto general del header" value={g.headerTextColor} disabled={!canEdit} onChange={(v) => set({ headerTextColor: v })} />
+      </div>
+
+      <div className="space-y-3 rounded-md border p-3">
+        <p className="text-sm font-medium">Tamaños y densidad</p>
+        <div className="flex flex-wrap gap-4">
+          <NumberField label="Fuente del header" suffix="px" value={g.headerFontSize} min={9} max={24} disabled={!canEdit} onChange={(v) => set({ headerFontSize: v })} />
+          <NumberField label="Fuente de celda" suffix="px" value={g.cellFontSize} min={9} max={24} disabled={!canEdit} onChange={(v) => set({ cellFontSize: v })} />
+          <NumberField label="Fuente columna estudiante" suffix="px" value={g.studentColFontSize} min={9} max={24} disabled={!canEdit} onChange={(v) => set({ studentColFontSize: v })} />
+          <NumberField label="Alto del header" suffix="px" value={g.headerHeight} min={28} max={80} disabled={!canEdit} onChange={(v) => set({ headerHeight: v })} />
+          <NumberField label="Ancho mínimo por columna de concepto" suffix="px" value={g.minColumnWidth} min={60} max={400} disabled={!canEdit} onChange={(v) => set({ minColumnWidth: v })} />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">
+            Densidad de fila <span className="text-muted-foreground">(alto ≈ {ROW_DENSITY_HEIGHT[g.rowDensity]}px)</span>
+          </Label>
+          <Select value={g.rowDensity} disabled={!canEdit} onValueChange={(v) => set({ rowDensity: v as ThemeData["gradesTable"]["rowDensity"] })}>
+            <SelectTrigger className="h-8 w-40 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="compact">Compacta</SelectItem>
+              <SelectItem value="normal">Normal</SelectItem>
+              <SelectItem value="comfortable">Cómoda</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-3 rounded-md border p-3">
+        <p className="text-sm font-medium">Fondos de columnas PROM y DEF</p>
+        <div className="flex flex-wrap gap-4">
+          <ColorField label="Fondo PROM" value={g.promBg} disabled={!canEdit} onChange={(v) => set({ promBg: v })} />
+          <ColorField label="Fondo DEF" value={g.defBg} disabled={!canEdit} onChange={(v) => set({ defBg: v })} />
+        </div>
+      </div>
+
+      <div className="space-y-3 rounded-md border p-3">
+        <div className="flex items-center gap-2">
+          <Switch checked={g.conditionalNotes} disabled={!canEdit} onCheckedChange={(v) => set({ conditionalNotes: v })} />
+          <p className="text-sm font-medium">Colores condicionales de nota</p>
+        </div>
+        {g.conditionalNotes && (
+          <div className="flex flex-wrap gap-4">
+            <NumberField label="Umbral bajo" value={g.lowThreshold} min={0} max={10} step={0.1} disabled={!canEdit} onChange={(v) => set({ lowThreshold: v })} />
+            <ColorField label="Bajo umbral" value={g.lowColor} disabled={!canEdit} onChange={(v) => set({ lowColor: v })} />
+            <ColorField label="Sobre umbral" value={g.highColor} disabled={!canEdit} onChange={(v) => set({ highColor: v })} />
+            <p className="self-end text-xs text-muted-foreground">
+              Notas &lt; {g.lowThreshold} en rojo; ≥ {g.lowThreshold} en verde.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Despachador de secciones ────────────────────────────────────────────────
 
 function SectionFields({
@@ -1084,6 +1183,8 @@ function SectionFields({
       return <MaintenanceSection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
     case "customCode":
       return <CustomCodeSection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
+    case "gradesTable":
+      return <GradesTableSection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
     default:
       return (
         <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
