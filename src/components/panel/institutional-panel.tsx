@@ -69,6 +69,7 @@ import { GroupDirectionView } from "./views/group-direction-view";
 import { MessagesView } from "./views/messages-view";
 import { AcademicoView } from "./views/academico-view";
 import { ThemeOptionsView } from "./views/theme-options-view";
+import { useThemeOptionsStore } from "@/store/theme-options-store";
 import { CustomModuleBuilderView } from "./views/custom-module-builder-view";
 import { CustomModuleRuntimeView } from "./views/custom-module-runtime-view";
 import { ModuleApprovalsView } from "./views/module-approvals-view";
@@ -163,6 +164,9 @@ const NAV: NavItem[] = [
 
 export function InstitutionalPanel() {
   const user = useAuthStore((s) => s.user);
+  // [theme-options] logo configurado (si no, fallback "Ap")
+  const sharedTheme = useThemeOptionsStore((s) => s.theme);
+  const logoDataUrl = sharedTheme?.logo.enabled ? sharedTheme.logo.dataUrl : "";
   const logout = useAuthStore((s) => s.logout);
   const { activeModule, setModule, sidebarOpen, setSidebar } = useUIStore();
   const [customModules, setCustomModules] = useState<any[]>([]);
@@ -336,8 +340,12 @@ export function InstitutionalPanel() {
               <LayoutDashboard className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="avatar-circle h-9 w-9 text-xs shadow-sm">
-                Ap
+              <div className="avatar-circle h-9 w-9 text-xs shadow-sm overflow-hidden">
+                {logoDataUrl ? (
+                  <img src={logoDataUrl} alt={user.institution.name} className="h-full w-full object-contain" />
+                ) : (
+                  "Ap"
+                )}
               </div>
               <div className="hidden sm:block min-w-0">
                 <div className="text-sm font-semibold truncate">{user.institution.name}</div>

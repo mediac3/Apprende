@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { GraduationCap, Loader2, LogIn, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
+import { useThemeOptionsStore } from "@/store/theme-options-store";
 import { toast } from "sonner";
 
 export function LoginDialog({
@@ -28,6 +29,9 @@ export function LoginDialog({
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const setUser = useAuthStore((s) => s.setUser);
+  // [theme-options] logo configurado (si no, fallback "Ap")
+  const sharedTheme = useThemeOptionsStore((s) => s.theme);
+  const logoDataUrl = sharedTheme?.logo.enabled ? sharedTheme.logo.dataUrl : "";
 
   // Pre-llenar con credenciales de admin
   useEffect(() => {
@@ -68,8 +72,12 @@ export function LoginDialog({
         <div className="p-6">
           <DialogHeader className="space-y-3">
             <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground grid place-items-center font-extrabold text-base shadow-sm">
-                Ap
+              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground grid place-items-center font-extrabold text-base shadow-sm overflow-hidden">
+                {logoDataUrl ? (
+                  <img src={logoDataUrl} alt="Logo institucional" className="h-full w-full object-contain" />
+                ) : (
+                  "Ap"
+                )}
               </div>
               <div>
                 <DialogTitle className="text-xl">Acceso institucional</DialogTitle>
