@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import jspreadsheet from "jspreadsheet-ce";
 import "jspreadsheet-ce/dist/jspreadsheet.css";
@@ -54,6 +54,29 @@ const COLOR_HEADER_MUTED = "#efece4"; // bloque Estudiantes/PROM/DEF
 function colorFor(order: number) {
   const i = ((order % CONCEPT_COLORS.length) + CONCEPT_COLORS.length) % CONCEPT_COLORS.length;
   return CONCEPT_COLORS[i];
+}
+
+// [theme-options] Resuelve las vars CSS del tema por nombre de concepto.
+// Orden de match importa: "autoevaluación" antes que otros; "ser" al final
+// (startsWith no colisiona con "saber"). Fallbacks = paleta actual.
+const CONCEPT_VAR_MATCHERS: [RegExp, string, string][] = [
+  [/autoevaluac/, "autoevaluacion", "#10b981"],
+  [/saber/, "saber", "#8b5cf6"],
+  [/hacer/, "hacer", "#0ea5e9"],
+  [/^ser/, "ser", "#f97316"],
+];
+
+function conceptThemeStyle(name: string): { bg: string; text: string } | null {
+  const n = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  for (const [re, key, fb] of CONCEPT_VAR_MATCHERS) {
+    if (re.test(n)) {
+      return {
+        bg: `var(--grades-concept-${key}-bg, ${fb})`,
+        text: `var(--grades-concept-${key}-text, #ffffff)`,
+      };
+    }
+  }
+  return null;
 }
 
 function fmt(v: number | null): string {
@@ -139,6 +162,27 @@ export function GradesSpreadsheet(props: Props) {
 
   const conceptById = useMemo(() => new Map(concepts.map((c) => [c.id, c])), [concepts]);
 
+  // [theme-options] Valores del tema leídos de las CSS vars inyectadas
+  // (ThemeOptionsVars en el layout raíz). Defaults = comportamiento actual.
+  const [gradesTheme, setGradesTheme] = useState({
+    conditional: true,
+    threshold: APPROVAL_THRESHOLD,
+    minColWidth: 180,
+  });
+  useEffect(() => {
+    const cs = getComputedStyle(document.documentElement);
+    const num = (name: string, fb: number) => {
+      const raw = parseFloat(cs.getPropertyValue(name));
+      return Number.isFinite(raw) ? raw : fb;
+    };
+    const condRaw = cs.getPropertyValue("--grades-conditional").trim();
+    setGradesTheme({
+      conditional: condRaw === "" ? true : condRaw !== "0",
+      threshold: num("--grades-low-threshold", APPROVAL_THRESHOLD),
+      minColWidth: num("--grades-min-col-width", 180),
+    });
+  }, []);
+
   // Modelo de columnas: por cada concepto, sus actividades en orden; si no
   // tiene ninguna, una columna marcador "—" (mantiene el concepto visible en
   // el header con su botón "+" — UX según captura del usuario).
@@ -157,8 +201,9 @@ export function GradesSpreadsheet(props: Props) {
   // [C2] Ancho uniforme por bloque de concepto: cada bloque mide máx(180px, n×64px)
   // y sus sub-columnas se reparten ese ancho por igual → nombre + [%] + "+" caben
   // siempre, independientemente del nº de actividades del concepto.
+  // [theme-options] el mínimo configurable vive en --grades-min-col-width.
   const ACTIVITY_COL_WIDTH = 64;
-  const CONCEPT_MIN_WIDTH = 180;
+  const CONCEPT_MIN_WIDTH = gradesTheme.minColWidth;
   const colWidths = useMemo(() => {
     const counts = new Map<string, number>();
     for (const col of gridCols) {
@@ -170,7 +215,7 @@ export function GradesSpreadsheet(props: Props) {
       const n = counts.get(cid) ?? 1;
       return Math.ceil(Math.max(CONCEPT_MIN_WIDTH, n * ACTIVITY_COL_WIDTH) / n);
     });
-  }, [gridCols]);
+  }, [gridCols, CONCEPT_MIN_WIDTH]);
   const colWidthsRef = useRef<number[]>(colWidths);
   colWidthsRef.current = colWidths;
 
@@ -182,16 +227,21 @@ export function GradesSpreadsheet(props: Props) {
         a: activities.map((a) => `${a.id}::${a.conceptId}::${a.name}::${a.isGeneral}`),
         c: concepts.map((c) => `${c.id}::${c.name}::${c.percentage}::${c.order}`),
         pc: periodClosed,
+        // [theme-options] reconstruir solo si algún valor del tema cambia
+        gt: [gradesTheme.conditional ? 1 : 0, gradesTheme.threshold, gradesTheme.minColWidth],
       }),
-    [students, activities, concepts, periodClosed]
+    [students, activities, concepts, periodClosed, gradesTheme]
   );
 
   // Estilo de una celda de nota según su valor (paridad con la tabla original)
+  // [theme-options] colores condicionales y fuente configurables vía CSS vars.
   function activityCellStyle(raw: string, conceptOrder: number): string {
     const v = parseNote(raw);
     if (v === null) return `background-color: ${colorFor(conceptOrder).tint};`;
-    if (v < APPROVAL_THRESHOLD) return `background-color: ${COLOR_RED_BG}; color: ${COLOR_RED_FG};`;
-    return `background-color: ${COLOR_GREEN_BG};`;
+    if (!gradesTheme.conditional) return `font-size: var(--grades-cell-font-size, 13px);`;
+    if (v < gradesTheme.threshold)
+      return `background-color: var(--grades-low-color, ${COLOR_RED_BG}); color: ${COLOR_RED_FG}; font-size: var(--grades-cell-font-size, 13px);`;
+    return `background-color: var(--grades-high-color, ${COLOR_GREEN_BG}); font-size: var(--grades-cell-font-size, 13px);`;
   }
 
   function conceptOrderOf(conceptId: string): number {
@@ -227,14 +277,16 @@ export function GradesSpreadsheet(props: Props) {
     };
     for (let r = 0; r < students.length; r++) {
       const calc = calcByStudent.get(students[r].studentId);
+      // [theme-options] fuente de la columna estudiante
+      style[`${colName(0)}${r + 1}`] = `font-size: var(--grades-student-font-size, 13px);`;
       style[`${colName(1)}${r + 1}`] =
-        calc && calc.prom !== null && calc.prom < APPROVAL_THRESHOLD
-          ? `background-color: ${COLOR_RED_BG}; color: ${COLOR_RED_FG}; font-weight: bold;`
-          : `background-color: ${COLOR_SKY_BG}; font-weight: bold;`;
+        calc && calc.prom !== null && gradesTheme.conditional && calc.prom < gradesTheme.threshold
+          ? `background-color: var(--grades-low-color, ${COLOR_RED_BG}); color: ${COLOR_RED_FG}; font-weight: bold; font-size: var(--grades-cell-font-size, 13px);`
+          : `background-color: var(--grades-prom-bg, ${COLOR_SKY_BG}); font-weight: bold; font-size: var(--grades-cell-font-size, 13px);`;
       style[`${colName(2)}${r + 1}`] =
-        calc && calc.def !== null && calc.def < APPROVAL_THRESHOLD
-          ? `background-color: ${COLOR_RED_BG}; color: ${COLOR_RED_FG}; font-weight: bold;`
-          : `background-color: #ecfdf5; font-weight: bold;`;
+        calc && calc.def !== null && gradesTheme.conditional && calc.def < gradesTheme.threshold
+          ? `background-color: var(--grades-low-color, ${COLOR_RED_BG}); color: ${COLOR_RED_FG}; font-weight: bold; font-size: var(--grades-cell-font-size, 13px);`
+          : `background-color: var(--grades-def-bg, #ecfdf5); font-weight: bold; font-size: var(--grades-cell-font-size, 13px);`;
       for (let ci = 0; ci < cols.length; ci++) {
         const col = cols[ci];
         if (col.kind === "placeholder") {
@@ -449,6 +501,8 @@ export function GradesSpreadsheet(props: Props) {
         const stdRow = ws.headers?.[0]?.parentElement;
         if (thead && stdRow) {
           const tr = document.createElement("tr");
+          // [theme-options] alto configurable del header de conceptos
+          tr.style.height = "var(--grades-header-height, 40px)";
           // Grupo fijo: columna de numeración + Estudiantes + PROM + DEF (4 columnas)
           const tdGroup = document.createElement("td");
           tdGroup.colSpan = 4;
@@ -456,7 +510,7 @@ export function GradesSpreadsheet(props: Props) {
             background: COLOR_HEADER_MUTED,
             color: "#374151",
             fontWeight: "700",
-            fontSize: "11px",
+            fontSize: "var(--grades-header-font-size, 11px)",
             textAlign: "left",
             paddingLeft: "8px",
           } satisfies Partial<CSSStyleDeclaration>);
@@ -477,12 +531,13 @@ export function GradesSpreadsheet(props: Props) {
             // Refuerzo de layout: ancho = suma de las columnas que abarca
             const widthSum = idxs.reduce((n, i) => n + (widths[i] ?? 0), 0);
             if (widthSum > 0) td.style.width = `${widthSum}px`;
+            const themed = conceptThemeStyle(c.name);
             const { header } = colorFor(c.order);
             Object.assign(td.style, {
-              background: header,
-              color: "#ffffff",
+              background: themed ? themed.bg : header,
+              color: themed ? themed.text : "#ffffff",
               fontWeight: "700",
-              fontSize: "11px",
+              fontSize: "var(--grades-header-font-size, 11px)",
               textAlign: "center",
               paddingLeft: "4px",
               paddingRight: "2px",
@@ -577,15 +632,15 @@ export function GradesSpreadsheet(props: Props) {
       const promCell = ws.getCell(1, r);
       if (promCell)
         promCell.style.cssText =
-          calc.prom !== null && calc.prom < APPROVAL_THRESHOLD
-            ? `background-color: ${COLOR_RED_BG}; color: ${COLOR_RED_FG}; font-weight: bold;`
-            : `background-color: ${COLOR_SKY_BG}; font-weight: bold;`;
+          calc.prom !== null && gradesTheme.conditional && calc.prom < gradesTheme.threshold
+            ? `background-color: var(--grades-low-color, ${COLOR_RED_BG}); color: ${COLOR_RED_FG}; font-weight: bold;`
+            : `background-color: var(--grades-prom-bg, ${COLOR_SKY_BG}); font-weight: bold;`;
       const defCell = ws.getCell(2, r);
       if (defCell)
         defCell.style.cssText =
-          calc.def !== null && calc.def < APPROVAL_THRESHOLD
-            ? `background-color: ${COLOR_RED_BG}; color: ${COLOR_RED_FG}; font-weight: bold;`
-            : `background-color: #ecfdf5; font-weight: bold;`;
+          calc.def !== null && gradesTheme.conditional && calc.def < gradesTheme.threshold
+            ? `background-color: var(--grades-low-color, ${COLOR_RED_BG}); color: ${COLOR_RED_FG}; font-weight: bold;`
+            : `background-color: var(--grades-def-bg, #ecfdf5); font-weight: bold;`;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calculations, structureKey]);

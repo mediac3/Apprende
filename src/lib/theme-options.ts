@@ -266,26 +266,29 @@ const customCodeSchema = z
   .catch({ enabled: false, css: "", js: "", headCode: "" });
 
 // ── Tabla "Notas parciales" ─────────────────────────────────────────────────
+// Los defaults replican EXACTAMENTE el aspecto actual de la planilla
+// (paleta por orden, umbral 3, verdes/rojos de PROM/DEF) para que un tema
+// sin configurar no produzca ninguna regresión visual.
 
 export const GRADES_TABLE_DEFAULTS = {
   concepts: {
-    ser: { bg: "#EA580C", text: "#FFFFFF" },
-    saber: { bg: "#7C3AED", text: "#FFFFFF" },
-    hacer: { bg: "#0EA5E9", text: "#FFFFFF" },
-    autoevaluacion: { bg: "#16A34A", text: "#FFFFFF" },
+    ser: { bg: "#f97316", text: "#FFFFFF" }, // naranja (actual)
+    saber: { bg: "#8b5cf6", text: "#FFFFFF" }, // violeta (actual)
+    hacer: { bg: "#0ea5e9", text: "#FFFFFF" }, // celeste (actual)
+    autoevaluacion: { bg: "#10b981", text: "#FFFFFF" }, // esmeralda (actual)
   },
-  headerFontSize: 13,
+  headerFontSize: 11,
   cellFontSize: 13,
   studentColFontSize: 13,
   rowDensity: "normal",
   headerHeight: 40,
   minColumnWidth: 180,
-  conditionalNotes: false,
+  conditionalNotes: true,
   lowThreshold: 3.0,
-  lowColor: "#DC2626",
-  highColor: "#16A34A",
-  promBg: "#E0F2FE",
-  defBg: "#DCFCE7",
+  lowColor: "#fee2e2", // fondo rojo de nota baja (actual)
+  highColor: "#d1fae5", // fondo verde de nota aprobada (actual)
+  promBg: "#e0f2fe", // celeste PROM (actual)
+  defBg: "#ecfdf5", // verde claro DEF (actual)
   headerTextColor: "#FFFFFF",
 } as const;
 

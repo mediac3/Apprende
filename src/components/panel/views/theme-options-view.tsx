@@ -1063,10 +1063,10 @@ const GRADE_CONCEPTS: { key: keyof ThemeData["gradesTable"]["concepts"]; label: 
   { key: "autoevaluacion", label: "Autoevaluación" },
 ];
 
-const ROW_DENSITY_HEIGHT: Record<ThemeData["gradesTable"]["rowDensity"], number> = {
-  compact: 32,
-  normal: 40,
-  comfortable: 52,
+const ROW_DENSITY_HEIGHT: Record<ThemeData["gradesTable"]["rowDensity"], string> = {
+  compact: "≈28px",
+  normal: "alto actual de la hoja",
+  comfortable: "≈52px",
 };
 
 function GradesTableSection({
@@ -1110,7 +1110,7 @@ function GradesTableSection({
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">
-            Densidad de fila <span className="text-muted-foreground">(alto ≈ {ROW_DENSITY_HEIGHT[g.rowDensity]}px)</span>
+            Densidad de fila <span className="text-muted-foreground">({ROW_DENSITY_HEIGHT[g.rowDensity]})</span>
           </Label>
           <Select value={g.rowDensity} disabled={!canEdit} onValueChange={(v) => set({ rowDensity: v as ThemeData["gradesTable"]["rowDensity"] })}>
             <SelectTrigger className="h-8 w-40 text-xs">

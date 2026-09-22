@@ -29,6 +29,7 @@ function buildCss(d: ThemeData): string {
     `--grades-concept-autoevaluacion-text:${c(g.concepts.autoevaluacion.text, GRADES_TABLE_DEFAULTS.concepts.autoevaluacion.text)}`,
     `--grades-header-text:${c(g.headerTextColor, GRADES_TABLE_DEFAULTS.headerTextColor)}`,
     `--grades-header-font-size:${g.headerFontSize || GRADES_TABLE_DEFAULTS.headerFontSize}px`,
+    `--grades-header-height:${g.headerHeight || GRADES_TABLE_DEFAULTS.headerHeight}px`,
     `--grades-cell-font-size:${g.cellFontSize || GRADES_TABLE_DEFAULTS.cellFontSize}px`,
     `--grades-student-font-size:${g.studentColFontSize || GRADES_TABLE_DEFAULTS.studentColFontSize}px`,
     `--grades-row-height:${rowHeight}`,
