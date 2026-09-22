@@ -420,6 +420,20 @@ export function GradesSpreadsheet(props: Props) {
 
     wsRef.current = worksheets[0] ?? null;
 
+    // [theme-options-movil] Sin tableWidth (móvil), jss no limita el ancho del
+    // contenedor de la hoja (.jss_container inline-block crece con la tabla) ni
+    // del .jss_content (shrink-to-fit) → no hay desborde y el scroll no existe.
+    // Mismo mecanismo que jss aplica en escritorio vía tableWidth, pero inline:
+    if (isMobile && el) {
+      const containerEl = el.querySelector<HTMLElement>(".jss_container");
+      if (containerEl) containerEl.style.maxWidth = "100%";
+      const contentEl = el.querySelector<HTMLElement>(".jss_content");
+      if (contentEl) {
+        contentEl.style.width = "100%";
+        contentEl.style.overflowX = "auto";
+      }
+    }
+
     // === [C4] Drag-fill = copiar valor (no incrementar) ===
     // CE v5 no expone evento para el fill del handle (jss_corner) y su fill
     // numérico genera serie (1,2,3…). Al pulsar el handle se arma una sesión

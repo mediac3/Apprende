@@ -488,7 +488,18 @@
 /* [theme-options-movil] Planilla de Notas parciales: barra de desplazamiento
    horizontal visible en móvil para desplazarse hacia las actividades */
 @media (max-width: 767px) {
+  /* jss v5 envuelve la hoja en .jss_container (inline-block) que crece con la
+     tabla: sin este límite el .jss_content nunca queda confinado al ancho real */
+  .jss-planilla .jss_container {
+    max-width: 100%;
+  }
+  /* El scroll horizontal ocurre en .jss_content: es el elemento cuyo scrollLeft
+     escucha jss para actualizar las columnas inmovilizadas (freezeColumns).
+     Sin tableWidth (móvil) jss no le asigna width inline y su display
+     inline-block lo expande al ancho de la tabla → fijarlo al contenedor. */
   .jss-planilla .jss_content {
+    width: 100% !important;
+    overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
   }
