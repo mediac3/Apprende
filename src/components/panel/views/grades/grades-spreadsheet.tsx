@@ -541,24 +541,41 @@ export function GradesSpreadsheet(props: Props) {
           // [theme-options] alto configurable del header de conceptos
           tr.style.height = "var(--grades-header-height, 40px)";
           // Grupo fijo: columna de numeración + Estudiantes + PROM + DEF (4 columnas)
-          const tdGroup = document.createElement("td");
-          tdGroup.colSpan = 4;
-          // [theme-options-movil] fijar el grupo izquierdo si hay columnas inmovilizadas
-          if (freezeCount > 0) {
-            tdGroup.style.position = "sticky";
-            tdGroup.style.left = "0px";
-            tdGroup.style.zIndex = "4";
-          }
-          Object.assign(tdGroup.style, {
+          // [theme-options-movil] se divide en dos celdas: la parte que cubre las
+          // columnas inmovilizadas queda fija y el resto (p. ej. la franja sobre
+          // PROM/DEF) se desplaza con el scroll horizontal.
+          const groupStyles: Partial<CSSStyleDeclaration> = {
             background: COLOR_HEADER_MUTED,
             color: "#374151",
             fontWeight: "700",
             fontSize: "var(--grades-header-font-size, 11px)",
             textAlign: "left",
             paddingLeft: "8px",
-          } satisfies Partial<CSSStyleDeclaration>);
-          tdGroup.textContent = "Estudiantes";
-          tr.appendChild(tdGroup);
+          };
+          const pinnedCols = freezeCount > 0 ? 1 + freezeCount : 0; // numeración + congeladas
+          if (pinnedCols > 0) {
+            const tdPinned = document.createElement("td");
+            tdPinned.colSpan = pinnedCols;
+            tdPinned.style.position = "sticky";
+            tdPinned.style.left = "0px";
+            tdPinned.style.zIndex = "4";
+            Object.assign(tdPinned.style, groupStyles);
+            tdPinned.textContent = "Estudiantes";
+            tr.appendChild(tdPinned);
+            const restCols = 4 - pinnedCols;
+            if (restCols > 0) {
+              const tdRest = document.createElement("td");
+              tdRest.colSpan = restCols;
+              Object.assign(tdRest.style, groupStyles);
+              tr.appendChild(tdRest);
+            }
+          } else {
+            const tdGroup = document.createElement("td");
+            tdGroup.colSpan = 4;
+            Object.assign(tdGroup.style, groupStyles);
+            tdGroup.textContent = "Estudiantes";
+            tr.appendChild(tdGroup);
+          }
           // Un bloque por concepto evaluativo.
           // [C2] ancho uniforme: suma de los anchos reales de sus sub-columnas
           // (bloque ≥ 180px); nombre con ellipsis, [%] y "+" siempre visibles.

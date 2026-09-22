@@ -27,8 +27,8 @@ export function GradesToolbar({
   dirty,
 }: GradesToolbarProps) {
   return (
-    <div className="flex items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2 md:gap-3 md:px-4 md:py-3">
-      <div className="flex min-w-0 items-center gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2 md:flex-nowrap md:gap-3 md:px-4 md:py-3">
+      <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
         <Button
           type="button"
           variant="outline"
@@ -48,7 +48,7 @@ export function GradesToolbar({
           <p className="text-[11px] text-muted-foreground">{subtitle}</p>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
         <Button variant="outline" size="sm" onClick={onAdd}>
           <Plus className="mr-1 h-4 w-4" /> Agregar
         </Button>
