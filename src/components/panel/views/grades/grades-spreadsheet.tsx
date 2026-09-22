@@ -475,6 +475,9 @@ export function GradesSpreadsheet(props: Props) {
       pinCorner(cornerRow?.cells?.[0] ?? null);
       el.querySelectorAll<HTMLTableRowElement>("tbody tr").forEach((tr) => {
         pinCorner(tr.cells?.[0] ?? null);
+        // Estudiantes congelada por jss debe pintar SOBRE la numeración fija
+        const student = tr.cells?.[1] as HTMLElement | undefined;
+        if (student) student.style.zIndex = "4";
       });
     }
 
