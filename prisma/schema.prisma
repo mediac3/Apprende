@@ -1022,3 +1022,18 @@ model ThemeOptions {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+// [theme-options] Comentarios por celda de la planilla de Notas parciales
+model GradeCellComment {
+  id            String   @id @default(cuid())
+  institutionId String
+  studentId     String
+  activityId    String
+  text          String
+  updatedBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([studentId, activityId])
+  @@index([activityId])
+}
