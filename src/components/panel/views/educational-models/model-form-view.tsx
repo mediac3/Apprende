@@ -46,6 +46,7 @@ export type PeriodRow = {
 };
 
 export type ConceptRow = {
+  id?: string; // [C1] presente en filas cargadas del modelo → upsert conserva identidad
   name: string;
   percentage: number;
   open: boolean;
@@ -232,7 +233,9 @@ export function ModelFormView({
           startDate: new Date(`${p.startDate}T00:00:00`).toISOString(),
           endDate: new Date(`${p.endDate}T23:59:59`).toISOString(),
         })),
-        concepts: concepts.map((c) => ({ name: c.name.trim(), percentage: c.percentage, open: c.open })),
+        // [C1] id presente en conceptos existentes → el PATCH los actualiza
+        // in-place y NO regenera ids (evita perder actividades y notas por cascada)
+        concepts: concepts.map((c) => ({ ...(c.id ? { id: c.id } : {}), name: c.name.trim(), percentage: c.percentage, open: c.open })),
       };
       const res = await fetch("/api/educational-models", {
         method: mode === "new" ? "POST" : "PATCH",

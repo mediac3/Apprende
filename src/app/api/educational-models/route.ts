@@ -193,9 +193,28 @@ export async function PATCH(req: NextRequest) {
 
       const existing = await db.educationalModel.findFirst({
         where: { id, institutionId },
-        include: { periods: { select: { id: true } }, concepts: { select: { id: true } } },
+        include: {
+          periods: { select: { id: true } },
+          concepts: {
+            select: { id: true, name: true, _count: { select: { activities: true } } },
+            orderBy: { order: "asc" },
+          },
+        },
       });
       if (!existing) return NextResponse.json({ ok: false, error: "Modelo educativo no encontrado" }, { status: 404 });
+
+      // [C1] Upsert por id: un concepto que el payload ya no incluye solo puede
+      // eliminarse si no tiene actividades (Activity→EvaluativeConcept es Cascade
+      // y arrastraría GradeRecord (notas)).
+      const referencedConceptIds = new Set(
+        concepts.map((c) => c.id).filter((x): x is string => Boolean(x))
+      );
+      const leftoverConcepts = existing.concepts.filter((ec) => !referencedConceptIds.has(ec.id));
+      const leftoverWithActivities = leftoverConcepts.filter((c) => c._count.activities > 0);
+      if (leftoverWithActivities.length) {
+        const names = leftoverWithActivities.map((c) => `"${c.name}"`).join(", ");
+        return NextResponse.json({ ok: false, error: `No se puede guardar: el concepto ${names} tiene actividades con notas asociadas. Elimina primero sus actividades.` }, { status: 400 });
+      }
 
       const details = body.details !== undefined ? (body.details ? sanitizeDetails(String(body.details)) : null) : undefined;
 
@@ -239,19 +258,33 @@ export async function PATCH(req: NextRequest) {
           if (orphan.length) await tx.period.updateMany({ where: { id: { in: orphan } }, data: { educationalModelId: null, order: null } });
         }
 
-        // --- Concepts: reemplazo completo (sin hijos que proteger) ---
-        await tx.evaluativeConcept.deleteMany({ where: { educationalModelId: id } });
-        if (concepts.length) {
-          await tx.evaluativeConcept.createMany({
-            data: concepts.map((c, i) => ({
-              institutionId,
-              educationalModelId: id,
-              name: String(c.name).trim(),
-              percentage: Math.round(Number(c.percentage)),
-              open: Boolean(c.open),
-              order: i + 1,
-            })),
-          });
+        // --- Concepts: upsert por id [C1] — conserva los ids para no perder
+        // Activities/GradeRecords (FKs en cascada). Ítems sin id = nuevos.
+        // Sobrantes: sin actividades (validado antes de la tx), se eliminan.
+        const leftoverConceptIds = leftoverConcepts.map((c) => c.id);
+        if (leftoverConceptIds.length) {
+          await tx.evaluativeConcept.deleteMany({ where: { id: { in: leftoverConceptIds } } });
+        }
+        const ownConceptIds = new Set(existing.concepts.map((ec) => ec.id));
+        // Renombrar los existentes conservados a un nombre temporal para esquivar
+        // la restricción única (educationalModelId, name) en renombres/intercambios.
+        for (const ec of existing.concepts) {
+          if (!referencedConceptIds.has(ec.id)) continue;
+          await tx.evaluativeConcept.update({ where: { id: ec.id }, data: { name: `__tmp_${ec.id}` } });
+        }
+        for (let i = 0; i < concepts.length; i++) {
+          const c = concepts[i];
+          const data = {
+            name: String(c.name).trim(),
+            percentage: Math.round(Number(c.percentage)),
+            open: Boolean(c.open),
+            order: i + 1,
+          };
+          if (c.id && ownConceptIds.has(c.id)) {
+            await tx.evaluativeConcept.update({ where: { id: c.id }, data });
+          } else {
+            await tx.evaluativeConcept.create({ data: { ...data, institutionId, educationalModelId: id } });
+          }
         }
       });
 
