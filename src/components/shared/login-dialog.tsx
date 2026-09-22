@@ -29,9 +29,17 @@ export function LoginDialog({
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const setUser = useAuthStore((s) => s.setUser);
-  // [theme-options] logo configurado (si no, fallback "Ap")
+  // [theme-options] logo y paleta de la sección "Inicio de Sesión / Registro"
   const sharedTheme = useThemeOptionsStore((s) => s.theme);
   const logoDataUrl = sharedTheme?.logo.enabled ? sharedTheme.logo.dataUrl : "";
+  const auth = sharedTheme?.auth;
+  const authBg = auth?.bg || undefined;
+  const authText = auth?.text || undefined;
+  const authBorder = auth?.border || undefined;
+  const btnP = auth?.btnPrimary.regular;
+  const btnStyle = btnP
+    ? { background: btnP.bg || undefined, color: btnP.text || undefined, borderColor: btnP.border || undefined }
+    : undefined;
 
   // Pre-llenar con credenciales de admin
   useEffect(() => {
@@ -67,8 +75,11 @@ export function LoginDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden">
-        <div className="h-1.5 bg-primary" />
+      <DialogContent
+        className="sm:max-w-[420px] p-0 overflow-hidden"
+        style={{ background: authBg, borderColor: authBorder, color: authText }}
+      >
+        <div className="h-1.5 bg-primary" style={{ background: btnStyle?.background }} />
         <div className="p-6">
           <DialogHeader className="space-y-3">
             <div className="flex items-center gap-3">
@@ -124,7 +135,7 @@ export function LoginDialog({
               </div>
             </div>
 
-            <Button type="submit" className="w-full gap-2" disabled={loading}>
+            <Button type="submit" className="w-full gap-2" style={btnStyle} disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
