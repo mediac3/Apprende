@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -456,6 +457,37 @@ function LogoSection({
 
 // ── Sección: Colores ────────────────────────────────────────────────────────
 
+type BtnPair = ThemeData["colors"]["btnPrimary"];
+
+/** Tarjeta de par Regular/Hover (fondo, borde, texto) reutilizada por Colores y Acceso. */
+function BtnPairCard({
+  title,
+  value,
+  disabled,
+  onChange,
+}: {
+  title: string;
+  value: BtnPair;
+  disabled: boolean;
+  onChange: (next: BtnPair) => void;
+}) {
+  return (
+    <div className="space-y-3 rounded-md border p-3">
+      <p className="text-sm font-medium">{title}</p>
+      {(["regular", "hover"] as const).map((state) => (
+        <div key={state} className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground capitalize">{state}</p>
+          <div className="flex flex-wrap gap-4">
+            <ColorField label="Fondo" value={value[state].bg} disabled={disabled} onChange={(v) => onChange({ ...value, [state]: { ...value[state], bg: v } })} />
+            <ColorField label="Borde" value={value[state].border} disabled={disabled} onChange={(v) => onChange({ ...value, [state]: { ...value[state], border: v } })} />
+            <ColorField label="Texto" value={value[state].text} disabled={disabled} onChange={(v) => onChange({ ...value, [state]: { ...value[state], text: v } })} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ColorsSection({
   theme,
   canEdit,
@@ -467,24 +499,6 @@ function ColorsSection({
 }) {
   const c = theme.colors;
   const set = (patch: Partial<ThemeData["colors"]>) => updateSection("colors", patch);
-  const btnPairFields = (
-    pair: "btnPrimary" | "btnSecondary",
-    title: string
-  ) => (
-    <div className="space-y-3 rounded-md border p-3">
-      <p className="text-sm font-medium">{title}</p>
-      {(["regular", "hover"] as const).map((state) => (
-        <div key={state} className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground capitalize">{state}</p>
-          <div className="flex flex-wrap gap-4">
-            <ColorField label="Fondo" value={c[pair][state].bg} disabled={!canEdit} onChange={(v) => set({ [pair]: { ...c[pair], [state]: { ...c[pair][state], bg: v } } } as Partial<ThemeData["colors"]>)} />
-            <ColorField label="Borde" value={c[pair][state].border} disabled={!canEdit} onChange={(v) => set({ [pair]: { ...c[pair], [state]: { ...c[pair][state], border: v } } } as Partial<ThemeData["colors"]>)} />
-            <ColorField label="Texto" value={c[pair][state].text} disabled={!canEdit} onChange={(v) => set({ [pair]: { ...c[pair], [state]: { ...c[pair][state], text: v } } } as Partial<ThemeData["colors"]>)} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
 
   return (
     <div className="space-y-4">
@@ -510,8 +524,8 @@ function ColorsSection({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {btnPairFields("btnPrimary", "Botón primario")}
-        {btnPairFields("btnSecondary", "Botón secundario")}
+        <BtnPairCard title="Botón primario" value={c.btnPrimary} disabled={!canEdit} onChange={(patch) => set({ btnPrimary: patch })} />
+        <BtnPairCard title="Botón secundario" value={c.btnSecondary} disabled={!canEdit} onChange={(patch) => set({ btnSecondary: patch })} />
       </div>
 
       <div className="space-y-3 rounded-md border p-3">
@@ -719,6 +733,260 @@ function HeaderSection({
   );
 }
 
+// ── Sección: Pie de página ──────────────────────────────────────────────────
+
+const SOCIAL_KEYS: { key: keyof ThemeData["footer"]["social"]; label: string }[] = [
+  { key: "facebook", label: "Facebook" },
+  { key: "instagram", label: "Instagram" },
+  { key: "x", label: "Twitter / X" },
+  { key: "youtube", label: "YouTube" },
+  { key: "linkedin", label: "LinkedIn" },
+  { key: "tiktok", label: "TikTok" },
+  { key: "whatsapp", label: "WhatsApp" },
+  { key: "github", label: "Github" },
+];
+
+function FooterSection({
+  theme,
+  canEdit,
+  updateSection,
+}: {
+  theme: ThemeData;
+  canEdit: boolean;
+  updateSection: SectionUpdater;
+}) {
+  const f = theme.footer;
+  const set = (patch: Partial<ThemeData["footer"]>) => updateSection("footer", patch);
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2 rounded-md border p-3">
+        <Label className="text-xs">Aviso de derechos de autor</Label>
+        <Input
+          value={f.copyright}
+          disabled={!canEdit}
+          placeholder="© {year} · Nombre de la institución"
+          onChange={(e) => set({ copyright: e.target.value })}
+        />
+        <p className="text-xs text-muted-foreground">
+          Vista previa: <span className="font-medium text-foreground">{f.copyright.replaceAll("{year}", String(new Date().getFullYear()))}</span>
+        </p>
+      </div>
+
+      <div className="space-y-3 rounded-md border p-3">
+        <p className="text-sm font-medium">Vínculos sociales</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {SOCIAL_KEYS.map(({ key, label }) => (
+            <div key={key} className="space-y-1.5">
+              <Label className="text-xs">{label}</Label>
+              <Input
+                value={f.social[key]}
+                disabled={!canEdit}
+                placeholder="https://…"
+                className="h-8 text-xs"
+                onChange={(e) => set({ social: { ...f.social, [key]: e.target.value } })}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3 rounded-md border p-3">
+        <p className="text-sm font-medium">Widgets</p>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Switch checked={f.widgets.columns} disabled={!canEdit} onCheckedChange={(v) => set({ widgets: { ...f.widgets, columns: v } })} />
+            <Label className="text-xs">Columnas de widgets</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={f.widgets.infoSection} disabled={!canEdit} onCheckedChange={(v) => set({ widgets: { ...f.widgets, infoSection: v } })} />
+            <Label className="text-xs">Sección info</Label>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Estilo</Label>
+            <Select value={f.widgets.style} disabled={!canEdit} onValueChange={(v) => set({ widgets: { ...f.widgets, style: v as ThemeData["footer"]["widgets"]["style"] } })}>
+              <SelectTrigger className="h-8 w-36 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Predeterminado</SelectItem>
+                <SelectItem value="centered">Centrado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Sección: Inicio de Sesión / Registro ────────────────────────────────────
+
+function AuthSection({
+  theme,
+  canEdit,
+  updateSection,
+}: {
+  theme: ThemeData;
+  canEdit: boolean;
+  updateSection: SectionUpdater;
+}) {
+  const a = theme.auth;
+  const set = (patch: Partial<ThemeData["auth"]>) => updateSection("auth", patch);
+  return (
+    <div className="space-y-4">
+      <div className="space-y-3 rounded-md border p-3">
+        <p className="text-sm font-medium">Paleta de la pantalla de acceso</p>
+        <div className="flex flex-wrap gap-4">
+          <ColorField label="Fondo" value={a.bg} disabled={!canEdit} onChange={(v) => set({ bg: v })} />
+          <ColorField label="Texto" value={a.text} disabled={!canEdit} onChange={(v) => set({ text: v })} />
+          <ColorField label="Enlace" value={a.link} disabled={!canEdit} onChange={(v) => set({ link: v })} />
+          <ColorField label="Enlace hover" value={a.linkHover} disabled={!canEdit} onChange={(v) => set({ linkHover: v })} />
+          <ColorField label="Borde" value={a.border} disabled={!canEdit} onChange={(v) => set({ border: v })} />
+        </div>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <BtnPairCard
+          title="Botón primario"
+          value={a.btnPrimary}
+          disabled={!canEdit}
+          onChange={(patch) => set({ btnPrimary: patch })}
+        />
+        <BtnPairCard
+          title="Botón secundario"
+          value={a.btnSecondary}
+          disabled={!canEdit}
+          onChange={(patch) => set({ btnSecondary: patch })}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Sección: Modo de Mantenimiento ──────────────────────────────────────────
+
+function MaintenanceSection({
+  theme,
+  canEdit,
+  updateSection,
+}: {
+  theme: ThemeData;
+  canEdit: boolean;
+  updateSection: SectionUpdater;
+}) {
+  const m = theme.maintenance;
+  const set = (patch: Partial<ThemeData["maintenance"]>) => updateSection("maintenance", patch);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function handleFile(file: File) {
+    setError(null);
+    if (!/^image\/(png|jpeg|webp|svg\+xml)$/.test(file.type)) {
+      setError("Formato no permitido. Usa PNG, JPG, WEBP o SVG.");
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      setError("La imagen supera 400KB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result);
+      if (!dataUrl.startsWith("data:image/")) {
+        setError("No se pudo leer la imagen.");
+        return;
+      }
+      set({ imageDataUrl: dataUrl });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between rounded-md border p-3">
+        <div>
+          <p className="text-sm font-medium">Activar modo de mantenimiento</p>
+          <p className="text-xs text-muted-foreground">Muestra una página de mantenimiento a usuarios no administradores.</p>
+        </div>
+        <Switch checked={m.enabled} disabled={!canEdit} onCheckedChange={(v) => set({ enabled: v })} />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Título</Label>
+          <Input value={m.title} disabled={!canEdit} className="h-8 text-xs" onChange={(e) => set({ title: e.target.value })} />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Texto de abajo</Label>
+          <Input value={m.bottomText} disabled={!canEdit} className="h-8 text-xs" onChange={(e) => set({ bottomText: e.target.value })} />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs">Descripción</Label>
+        <Textarea value={m.description} disabled={!canEdit} rows={3} className="text-xs" onChange={(e) => set({ description: e.target.value })} />
+      </div>
+
+      <div className="space-y-2 rounded-md border p-3">
+        <p className="text-sm font-medium">Imagen destacada</p>
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="flex h-20 w-40 items-center justify-center rounded-md border bg-muted/40 p-2">
+            {m.imageDataUrl ? (
+              <img src={m.imageDataUrl} alt="Mantenimiento" style={{ maxHeight: 64, maxWidth: 140 }} />
+            ) : (
+              <span className="text-xs text-muted-foreground">Sin imagen</span>
+            )}
+          </div>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" disabled={!canEdit} onClick={() => fileRef.current?.click()}>
+                Upload
+              </Button>
+              <Button type="button" variant="outline" size="sm" disabled={!canEdit || !m.imageDataUrl} onClick={() => set({ imageDataUrl: "" })}>
+                Remove
+              </Button>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleFile(f);
+                e.target.value = "";
+              }}
+            />
+            {error && <p className="text-xs text-red-600">{error}</p>}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-4 rounded-md border p-3">
+        <div className="flex items-center gap-2">
+          <Switch checked={m.countdownEnabled} disabled={!canEdit} onCheckedChange={(v) => set({ countdownEnabled: v })} />
+          <Label className="text-xs">Countdown</Label>
+        </div>
+        {m.countdownEnabled && (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Fecha objetivo</Label>
+            <Input
+              type="datetime-local"
+              value={m.countdownTarget}
+              disabled={!canEdit}
+              className="h-8 text-xs"
+              onChange={(e) => set({ countdownTarget: e.target.value })}
+            />
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <Switch checked={m.showSocial} disabled={!canEdit} onCheckedChange={(v) => set({ showSocial: v })} />
+          <Label className="text-xs">Mostrar redes sociales</Label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Despachador de secciones ────────────────────────────────────────────────
 
 function SectionFields({
@@ -741,6 +1009,12 @@ function SectionFields({
       return <TypographySection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
     case "header":
       return <HeaderSection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
+    case "footer":
+      return <FooterSection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
+    case "auth":
+      return <AuthSection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
+    case "maintenance":
+      return <MaintenanceSection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
     default:
       return (
         <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
