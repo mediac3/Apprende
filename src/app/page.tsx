@@ -7,11 +7,19 @@ import { LandingPage } from "@/components/landing/landing-page";
 import { LoginDialog } from "@/components/shared/login-dialog";
 import { DemoSheet } from "@/components/shared/demo-sheet";
 import { InstitutionalPanel } from "@/components/panel/institutional-panel";
+import { MaintenanceScreen } from "@/components/shared/maintenance-screen";
+import { useThemeOptionsStore } from "@/store/theme-options-store";
 
 export default function Home() {
   const user = useAuthStore((s) => s.user);
   const [loginOpen, setLoginOpen] = useState(false);
   const setModule = useUIStore((s) => s.setModule);
+  // [theme-options] Modo Mantenimiento: visible para todos menos rector/administrativo
+  const sharedTheme = useThemeOptionsStore((s) => s.theme);
+  const roles = user?.roles?.length ? user.roles : user?.role ? [user.role] : [];
+  const maintenanceActive =
+    Boolean(sharedTheme?.maintenance.enabled) &&
+    (!user || !roles.some((r) => ["rector", "administrativo"].includes(r)));
 
   // Detectar query param ?module=... (para deep links desde PWA shortcuts)
   useEffect(() => {
@@ -34,7 +42,9 @@ export default function Home() {
 
   return (
     <>
-      {user ? (
+      {maintenanceActive ? (
+        <MaintenanceScreen />
+      ) : user ? (
         <InstitutionalPanel />
       ) : (
         <LandingPage onLogin={() => setLoginOpen(true)} />
