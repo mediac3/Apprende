@@ -219,6 +219,10 @@ export function GradesSpreadsheet(props: Props) {
   const colWidthsRef = useRef<number[]>(colWidths);
   colWidthsRef.current = colWidths;
 
+  // [theme-options-movil] Columnas inmovilizadas seleccionables (Estudiantes=1,
+  // +PROM=2, +DEF=3; 0 = ninguna). Default 1 = comportamiento actual.
+  const [freezeCount, setFreezeCount] = useState(1);
+
   // Estructura de la hoja (cambia solo con datos estructurales, no con cada tecla)
   const structureKey = useMemo(
     () =>
@@ -229,8 +233,9 @@ export function GradesSpreadsheet(props: Props) {
         pc: periodClosed,
         // [theme-options] reconstruir solo si algún valor del tema cambia
         gt: [gradesTheme.conditional ? 1 : 0, gradesTheme.threshold, gradesTheme.minColWidth],
+        fc: freezeCount,
       }),
-    [students, activities, concepts, periodClosed, gradesTheme]
+    [students, activities, concepts, periodClosed, gradesTheme, freezeCount]
   );
 
   // Estilo de una celda de nota según su valor (paridad con la tabla original)
@@ -367,7 +372,7 @@ export function GradesSpreadsheet(props: Props) {
               // la grilla crece hasta el último estudiante y el scroll vertical
               // es el de la página (el interno queda solo para horizontal).
               tableWidth: "100%",
-          freezeColumns: 1,
+          freezeColumns: freezeCount,
           editable: !periodClosed,
           columnResize: false,
           columnDrag: false,
@@ -507,6 +512,12 @@ export function GradesSpreadsheet(props: Props) {
           // Grupo fijo: columna de numeración + Estudiantes + PROM + DEF (4 columnas)
           const tdGroup = document.createElement("td");
           tdGroup.colSpan = 4;
+          // [theme-options-movil] fijar el grupo izquierdo si hay columnas inmovilizadas
+          if (freezeCount > 0) {
+            tdGroup.style.position = "sticky";
+            tdGroup.style.left = "0px";
+            tdGroup.style.zIndex = "4";
+          }
           Object.assign(tdGroup.style, {
             background: COLOR_HEADER_MUTED,
             color: "#374151",
@@ -655,5 +666,37 @@ export function GradesSpreadsheet(props: Props) {
   }
 
   // [C3] sin overflow-hidden ni altura fija: crece con el nº de estudiantes
-  return <div ref={containerRef} className="jss-planilla flex-1 rounded-xl border bg-card" />;
+  // [theme-options-movil] chips de inmovilización (solo móvil, md:hidden):
+  // semántica de freeze-panes — seleccionar PROM inmoviliza también Estudiantes.
+  const FREEZE_CHIPS: { label: string; value: number }[] = [
+    { label: "Estudiantes", value: 1 },
+    { label: "PROM", value: 2 },
+    { label: "DEF", value: 3 },
+  ];
+  return (
+    <div className="flex flex-col flex-1 min-w-0">
+      <div className="flex md:hidden items-center gap-1.5 mb-2 flex-wrap">
+        <span className="text-xs text-muted-foreground mr-1">Inmovilizar:</span>
+        {FREEZE_CHIPS.map((chip) => {
+          const active = freezeCount >= chip.value;
+          return (
+            <button
+              key={chip.label}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setFreezeCount(active ? chip.value - 1 : chip.value)}
+              className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                active
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-input"
+              }`}
+            >
+              {chip.label}
+            </button>
+          );
+        })}
+      </div>
+      <div ref={containerRef} className="jss-planilla flex-1 rounded-xl border bg-card" />
+    </div>
+  );
 }

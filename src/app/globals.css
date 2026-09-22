@@ -484,3 +484,22 @@
 [data-theme="nocturno"] .chip-alto { color: var(--perf-alto); }
 [data-theme="nocturno"] .chip-basico { color: var(--perf-basico); }
 [data-theme="nocturno"] .chip-bajo { color: var(--perf-bajo); }
+
+/* [theme-options-movil] Planilla de Notas parciales: barra de desplazamiento
+   horizontal visible en móvil para desplazarse hacia las actividades */
+@media (max-width: 767px) {
+  .jss-planilla .jss_content {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .jss-planilla .jss_content::-webkit-scrollbar {
+    height: 12px;
+  }
+  .jss-planilla .jss_content::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+  }
+  .jss-planilla .jss_content::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.32);
+    border-radius: 8px;
+  }
+}
