@@ -7,6 +7,7 @@
 // guardado, estado "dirty" y restablecimiento.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { HexColorPicker } from "react-colorful";
 import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
@@ -987,6 +988,72 @@ function MaintenanceSection({
   );
 }
 
+// ── Sección: Códigos Personalizados ─────────────────────────────────────────
+
+const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), {
+  ssr: false,
+  loading: () => <div className="h-40 animate-pulse rounded-md border bg-muted" />,
+});
+
+function CustomCodeSection({
+  theme,
+  canEdit,
+  updateSection,
+}: {
+  theme: ThemeData;
+  canEdit: boolean;
+  updateSection: SectionUpdater;
+}) {
+  const cc = theme.customCode;
+  const set = (patch: Partial<ThemeData["customCode"]>) => updateSection("customCode", patch);
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between rounded-md border p-3">
+        <div>
+          <p className="text-sm font-medium">Activar códigos personalizados</p>
+          <p className="text-xs text-muted-foreground">
+            El CSS/JS se inyecta en el sitio público. Solo debe editarlo personal administrativo.
+          </p>
+        </div>
+        <Switch checked={cc.enabled} disabled={!canEdit} onCheckedChange={(v) => set({ enabled: v })} />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs">CSS personalizado</Label>
+        <CodeMirror
+          value={cc.css}
+          height="200px"
+          theme="light"
+          editable={canEdit}
+          onChange={(v: string) => set({ css: v.slice(0, 100_000) })}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs">JavaScript personalizado</Label>
+        <CodeMirror
+          value={cc.js}
+          height="200px"
+          theme="light"
+          editable={canEdit}
+          onChange={(v: string) => set({ js: v.slice(0, 100_000) })}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs">Código de seguimiento (head)</Label>
+        <CodeMirror
+          value={cc.headCode}
+          height="140px"
+          theme="light"
+          editable={canEdit}
+          onChange={(v: string) => set({ headCode: v.slice(0, 50_000) })}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ── Despachador de secciones ────────────────────────────────────────────────
 
 function SectionFields({
@@ -1015,6 +1082,8 @@ function SectionFields({
       return <AuthSection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
     case "maintenance":
       return <MaintenanceSection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
+    case "customCode":
+      return <CustomCodeSection theme={theme} canEdit={canEdit} updateSection={updateSection} />;
     default:
       return (
         <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
