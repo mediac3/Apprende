@@ -32,6 +32,8 @@ export interface SheetConcept {
 export interface SheetActivity {
   id: string;
   name: string;
+  /** [UX] título visual en la columna; null → usar name */
+  label?: string | null;
   conceptId: string;
   isGeneral: boolean;
 }
@@ -286,7 +288,9 @@ export function GradesSpreadsheet(props: Props) {
             ...cols.map((col) =>
               col.kind === "activity"
                 ? {
-                    title: col.activity.isGeneral ? `${col.activity.name} ★` : col.activity.name,
+                    title: col.activity.isGeneral
+                      ? `${col.activity.label ?? col.activity.name} ★`
+                      : col.activity.label ?? col.activity.name,
                     width: 64,
                     readOnly: false,
                   }
@@ -315,6 +319,7 @@ export function GradesSpreadsheet(props: Props) {
           return;
         }
         const a = col.activity;
+        th.title = a.name; // tooltip: nombre completo de la actividad
         if (props.onEditActivity) {
           th.appendChild(
             makeHeaderButton({
@@ -353,9 +358,9 @@ export function GradesSpreadsheet(props: Props) {
         const stdRow = ws.headers?.[0]?.parentElement;
         if (thead && stdRow) {
           const tr = document.createElement("tr");
-          // Grupo fijo Estudiantes/PROM/DEF
+          // Grupo fijo: columna de numeración + Estudiantes + PROM + DEF (4 columnas)
           const tdGroup = document.createElement("td");
-          tdGroup.colSpan = 3;
+          tdGroup.colSpan = 4;
           Object.assign(tdGroup.style, {
             background: COLOR_HEADER_MUTED,
             color: "#374151",
@@ -374,6 +379,13 @@ export function GradesSpreadsheet(props: Props) {
             if (count === 0) continue;
             const td = document.createElement("td");
             td.colSpan = count;
+            // Refuerzo de layout: ancho = suma de las columnas que abarca
+            const widthSum = cols
+              .filter((col) =>
+                col.kind === "activity" ? col.activity.conceptId === c.id : col.conceptId === c.id
+              )
+              .reduce((n, col) => n + (col.kind === "activity" ? 64 : 150), 0);
+            if (widthSum > 0) td.style.width = `${widthSum}px`;
             const { header } = colorFor(c.order);
             Object.assign(td.style, {
               background: header,

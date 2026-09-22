@@ -214,9 +214,10 @@ export function CalificacionesView() {
             }))
           );
           setActivities(
-            (res.activities ?? []).map((a: { id: string; name: string; evaluativeConceptId: string; isGeneral: boolean }) => ({
+            (res.activities ?? []).map((a: { id: string; name: string; label?: string | null; evaluativeConceptId: string; isGeneral: boolean }) => ({
               id: a.id,
               name: a.name,
+              label: a.label ?? null,
               conceptId: a.evaluativeConceptId,
               isGeneral: a.isGeneral,
             }))
@@ -346,7 +347,12 @@ export function CalificacionesView() {
   // [F2] abrir modal de edición con nombre/tipo precargados (lápiz)
   const handleEditActivity = useCallback((a: SheetActivity) => {
     setModalPresetConceptId(null);
-    setEditingActivity({ id: a.id, name: a.name, conceptId: a.conceptId, isGeneral: a.isGeneral });
+    setEditingActivity({
+      id: a.id,
+      name: a.label ?? a.name, // se edita el título visual
+      conceptId: a.conceptId,
+      isGeneral: a.isGeneral,
+    });
     setModalOpen(true);
   }, []);
 

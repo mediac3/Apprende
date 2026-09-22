@@ -112,7 +112,38 @@ export async function POST(req: NextRequest) {
     });
     const nextOrder =
       existing.reduce((max, a) => Math.max(max, a.order), 0) + 1;
-    const name = rawName !== "" ? rawName : `N${nextOrder}`;
+    const defaultName = `N${nextOrder}`;
+
+    // [UX] Título por defecto POR CONCEPTO: cada concepto lleva su propia
+    // secuencia N1, N2, N3… El nombre en DB debe ser único en el periodo;
+    // si "N#" ya existe (otro concepto lo tomó), se genera un nombre interno
+    // único ("N1 Saber") y el título visual (label) se mantiene en "N1".
+    let name = defaultName;
+    let label: string | null = null;
+    if (rawName !== "") {
+      // Nombre manual: lo escrito es a la vez nombre y título visual
+      name = rawName;
+      label = rawName;
+    } else {
+      const taken = await db.activity.findFirst({
+        where: { groupId, subjectId, periodId, name: defaultName },
+        select: { id: true },
+      });
+      if (taken) {
+        label = defaultName;
+        name = `${defaultName} ${concept.name}`;
+        let suffix = 2;
+        while (
+          await db.activity.findFirst({
+            where: { groupId, subjectId, periodId, name },
+            select: { id: true },
+          })
+        ) {
+          name = `${defaultName} ${concept.name} ${suffix}`;
+          suffix++;
+        }
+      }
+    }
 
     const activity = await db.activity.create({
       data: {
@@ -122,6 +153,7 @@ export async function POST(req: NextRequest) {
         periodId,
         evaluativeConceptId,
         name,
+        label,
         isGeneral,
         order: nextOrder,
       },
@@ -156,7 +188,7 @@ export async function PUT(req: NextRequest) {
 
     const activity = await db.activity.findUnique({
       where: { id },
-      include: { period: true },
+      include: { period: true, evaluativeConcept: true },
     });
     if (!activity) {
       return NextResponse.json({ ok: false, error: "Actividad no encontrada" }, { status: 404 });
@@ -165,14 +197,23 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "El periodo está cerrado" }, { status: 409 });
     }
 
-    const data: { name?: string; isGeneral?: boolean; evaluativeConceptId?: string; order?: number } = {};
+    const data: {
+      name?: string;
+      label?: string | null;
+      isGeneral?: boolean;
+      evaluativeConceptId?: string;
+      order?: number;
+    } = {};
 
     if (typeof body.name === "string" && body.name.trim() !== "") {
       const name = body.name.trim();
       if (name.length > 60) {
         return NextResponse.json({ ok: false, error: "Nombre demasiado largo (máx. 60)" }, { status: 400 });
       }
+      // [UX] lo escrito es el título visual (label); el nombre interno se
+      // mantiene único con fallback "… <concepto>" si hay colisión
       data.name = name;
+      data.label = name;
     }
 
     if (typeof body.isGeneral === "boolean") {
@@ -204,11 +245,32 @@ export async function PUT(req: NextRequest) {
       data.order = (last?.order ?? 0) + 1;
     }
 
-    const updated = await db.activity.update({
-      where: { id },
-      data,
-      include: { evaluativeConcept: true },
-    });
+    let updated;
+    try {
+      updated = await db.activity.update({
+        where: { id },
+        data,
+        include: { evaluativeConcept: true },
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002" && data.name) {
+        // Colisión de nombre: nombre interno único, mismo título visual (label)
+        const targetConceptId =
+          (typeof data.evaluativeConceptId === "string" ? data.evaluativeConceptId : null) ??
+          activity.evaluativeConceptId;
+        const concept = await db.evaluativeConcept.findUnique({
+          where: { id: targetConceptId },
+          select: { name: true },
+        });
+        updated = await db.activity.update({
+          where: { id },
+          data: { ...data, name: `${data.name} ${concept?.name ?? ""}`.trim() },
+          include: { evaluativeConcept: true },
+        });
+      } else {
+        throw e;
+      }
+    }
     return NextResponse.json({ ok: true, activity: updated });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {

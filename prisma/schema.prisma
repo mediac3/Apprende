@@ -263,6 +263,9 @@ model Activity {
   evaluativeConceptId String
   evaluativeConcept   EvaluativeConcept @relation(fields: [evaluativeConceptId], references: [id], onDelete: Cascade)
   name                String    // "N1", "Taller 1"...
+  label               String?   // [UX] título visual en la planilla; null → usar name.
+                                // Permite nombre interno único (p.ej. "N1 Saber")
+                                // con título por defecto por concepto (p.ej. "N1")
   isGeneral           Boolean   @default(false)
   order               Int       @default(1)
   createdAt           DateTime  @default(now())

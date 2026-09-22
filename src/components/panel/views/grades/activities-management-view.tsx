@@ -91,6 +91,7 @@ interface GroupLite {
 interface BulkActivity {
   id: string;
   name: string;
+  label?: string | null;
   isGeneral: boolean;
   evaluativeConceptId: string;
   groupId: string;
@@ -456,12 +457,12 @@ export function ActivitiesManagementView() {
                           title={
                             periodClosed
                               ? `${act.name} — periodo cerrado`
-                              : `Editar "${act.name}" (${act._count.records} nota(s))`
+                              : `${act.name} · ${act._count.records} nota(s)`
                           }
                           className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800 transition hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           <ListChecks className="h-3 w-3" />
-                          {act.name}
+                          {act.label ?? act.name}
                           {act.isGeneral ? " ★" : ""}
                           {!periodClosed && <Pencil className="h-2.5 w-2.5 opacity-60" />}
                         </button>
@@ -680,7 +681,7 @@ export function ActivitiesManagementView() {
           editTarget
             ? {
                 id: editTarget.id,
-                name: editTarget.name,
+                name: editTarget.label ?? editTarget.name, // se edita el título visual
                 conceptId: editTarget.evaluativeConceptId,
                 isGeneral: editTarget.isGeneral,
               }
