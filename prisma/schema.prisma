@@ -25,6 +25,12 @@ model Institution {
   city          String?  // Ciudad (PDF pág 13)
   icfesCode     String?  // Código ICFES (PDF pág 13)
   decree        String?  // Decreto (PDF pág 2 - tabla años)
+  // Clasificación SIMAT (F1) — atributos de la sede
+  etc           String?  // Entidad Territorial Certificada (ej. ANTIOQUIA)
+  calendario    String?  // A, B, Otro
+  sector        String?  // Oficial, Privado, Mixto
+  zonaSede      String?  // Urbana, Rural
+  jornada       String?  // Mañana, Tarde, Nocturna, Única, Completa
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

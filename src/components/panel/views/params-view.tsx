@@ -1126,6 +1126,62 @@ function InstitutionForm() {
       </Card>
 
       <Card className="hairline">
+        <CardHeader><CardTitle className="text-sm">Clasificación SIMAT</CardTitle></CardHeader>
+        <CardContent className="grid sm:grid-cols-2 gap-4">
+          <div><Label>Etc</Label><Input value={form.etc || ""} onChange={(e) => setForm({ ...form, etc: e.target.value })} placeholder="Antioquia" /></div>
+          <div>
+            <Label>Calendario</Label>
+            <Select value={form.calendario || ""} onValueChange={(v) => setForm({ ...form, calendario: v === "none" ? "" : v })}>
+              <SelectTrigger><SelectValue placeholder="Sin especificar" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin especificar</SelectItem>
+                <SelectItem value="A">A</SelectItem>
+                <SelectItem value="B">B</SelectItem>
+                <SelectItem value="Otro">Otro</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Sector</Label>
+            <Select value={form.sector || ""} onValueChange={(v) => setForm({ ...form, sector: v === "none" ? "" : v })}>
+              <SelectTrigger><SelectValue placeholder="Sin especificar" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin especificar</SelectItem>
+                <SelectItem value="Oficial">Oficial</SelectItem>
+                <SelectItem value="Privado">Privado</SelectItem>
+                <SelectItem value="Mixto">Mixto</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Zona sede</Label>
+            <Select value={form.zonaSede || ""} onValueChange={(v) => setForm({ ...form, zonaSede: v === "none" ? "" : v })}>
+              <SelectTrigger><SelectValue placeholder="Sin especificar" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin especificar</SelectItem>
+                <SelectItem value="Urbana">Urbana</SelectItem>
+                <SelectItem value="Rural">Rural</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Jornada</Label>
+            <Select value={form.jornada || ""} onValueChange={(v) => setForm({ ...form, jornada: v === "none" ? "" : v })}>
+              <SelectTrigger><SelectValue placeholder="Sin especificar" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin especificar</SelectItem>
+                <SelectItem value="Mañana">Mañana</SelectItem>
+                <SelectItem value="Tarde">Tarde</SelectItem>
+                <SelectItem value="Nocturna">Nocturna</SelectItem>
+                <SelectItem value="Única">Única</SelectItem>
+                <SelectItem value="Completa">Completa</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="hairline">
         <CardHeader><CardTitle className="text-sm">Contacto y ubicación</CardTitle></CardHeader>
         <CardContent className="grid sm:grid-cols-2 gap-4">
           <div><Label>Ciudad</Label><Input value={form.city || ""} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Carepa - Antioquia" /></div>

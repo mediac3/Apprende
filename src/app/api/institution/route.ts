@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest) {
     const { id, userId, ...fields } = body;
     if (!id) return NextResponse.json({ ok: false, error: "id requerido" }, { status: 400 });
 
-    const allowed = ["name", "shortName", "nit", "dane", "logoUrl", "address", "phone", "email", "academicYear", "resolution", "city", "icfesCode", "decree"];
+    const allowed = ["name", "shortName", "nit", "dane", "logoUrl", "address", "phone", "email", "academicYear", "resolution", "city", "icfesCode", "decree", "etc", "calendario", "sector", "zonaSede", "jornada"];
     const update: any = {};
     for (const k of allowed) {
       if (fields[k] !== undefined) update[k] = fields[k];
