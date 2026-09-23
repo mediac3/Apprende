@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   BookOpen,
   FileText,
+  FileSpreadsheet,
   Bell,
   Library,
   GraduationCap,
@@ -79,6 +80,7 @@ import { GroupsView } from "./views/groups-view";
 import { ConceptsListView } from "./views/evaluative-concepts/concepts-list-view";
 import { ModelsListView } from "./views/educational-models/models-list-view";
 import { StudentsListView } from "./views/students/students-list-view";
+import { ImportStudentsView } from "./views/import-students-view";
 import {
   Collapsible,
   CollapsibleContent,
@@ -131,6 +133,7 @@ const NAV: NavItem[] = [
   { key: "usuarios", label: "Usuarios", icon: UserCog, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "gestion-grupos", label: "Gestión de Grupos", icon: Users, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "gestion-estudiantes", label: "Gestión de Estudiantes", icon: GraduationCap, group: "Administración", roles: ["rector", "administrativo"] },
+  { key: "importar-estudiantes", label: "Importar estudiantes", icon: FileSpreadsheet, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "modelos-educativos", label: "Modelos educativos", icon: School, group: "Administración", roles: ["rector", "coordinador", "administrativo"] },
   { key: "conceptos-evaluativos", label: "Conceptos evaluativos", icon: ClipboardList, group: "Administración", roles: ["rector", "administrativo"], hidden: true },
   { key: "libros", label: "Libros reglamentarios", icon: BookOpen, group: "Administración", roles: ["rector", "administrativo", "coordinador"] },
@@ -274,6 +277,8 @@ export function InstitutionalPanel() {
         return <GroupsView />;
       case "gestion-estudiantes":
         return <StudentsListView />;
+      case "importar-estudiantes":
+        return <ImportStudentsView />;
       case "modelos-educativos":
         return <ModelsListView />;
       case "conceptos-evaluativos":
