@@ -299,6 +299,7 @@ export function ActivitiesManagementView() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             institutionId,
+            userId: user.id,
             groupId: a.groupId,
             subjectId: a.subjectId,
             periodId: selectedPeriodId,
@@ -317,7 +318,7 @@ export function ActivitiesManagementView() {
         return false;
       }
     },
-    [assignments, institutionId, selectedPeriodId, loadActivities]
+    [assignments, institutionId, selectedPeriodId, loadActivities, user]
   );
 
   // Editar actividad (chip → lápiz)
@@ -327,7 +328,7 @@ export function ActivitiesManagementView() {
         const res = await fetch("/api/activities", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, ...data }),
+          body: JSON.stringify({ id, userId: user.id, ...data }),
         }).then((r) => r.json());
         if (res?.ok) {
           toast.success("Actividad actualizada");
@@ -342,7 +343,7 @@ export function ActivitiesManagementView() {
         return false;
       }
     },
-    [loadActivities]
+    [loadActivities, user]
   );
 
   // Eliminación masiva (todas las actividades de las asignaciones seleccionadas)
@@ -356,7 +357,7 @@ export function ActivitiesManagementView() {
     if (selectedActs.length === 0 || busy) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/activities?ids=${selectedActs.map((a) => a.id).join(",")}`, {
+      const res = await fetch(`/api/activities?ids=${selectedActs.map((a) => a.id).join(",")}&userId=${user.id}`, {
         method: "DELETE",
       }).then((r) => r.json());
       if (res?.ok) {
@@ -375,7 +376,7 @@ export function ActivitiesManagementView() {
     } finally {
       setBusy(false);
     }
-  }, [selectedActs, busy, loadActivities]);
+  }, [selectedActs, busy, loadActivities, user]);
 
   const toggleSelected = (key: string) => {
     setSelected((prev) => {

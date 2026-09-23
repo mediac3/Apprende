@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { canUserEditGrades, getActiveYear } from "@/lib/teaching-rules";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -66,6 +67,27 @@ export async function POST(req: NextRequest) {
 
     if (!institutionId || !studentId || !subjectId || !periodId || value === undefined) {
       return NextResponse.json({ ok: false, error: "Faltan datos" }, { status: 400 });
+    }
+
+    // [R1] Solo el docente asignado al par (grupo, asignatura) o un rol elevado
+    // puede escribir notas. La autoevaluación (isSelfEval) la registra el propio
+    // estudiante sobre sí mismo, fuera del control docente: no aplica la regla.
+    if (!isSelfEval) {
+      const editorUserId = String(userId || teacherId || "");
+      if (!editorUserId) {
+        return NextResponse.json({ ok: false, error: "userId requerido" }, { status: 400 });
+      }
+      const student = await db.student.findUnique({
+        where: { id: studentId },
+        select: { groupId: true },
+      });
+      const year = await getActiveYear(institutionId);
+      if (!student?.groupId || !(await canUserEditGrades(editorUserId, student.groupId, subjectId, year))) {
+        return NextResponse.json(
+          { ok: false, error: "FORBIDDEN", message: "Solo el docente asignado puede modificar las notas de este grupo" },
+          { status: 403 }
+        );
+      }
     }
 
     // Grade no tiene restricción única compuesta en el schema: upsert manual

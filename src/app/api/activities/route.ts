@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { canUserEditGrades, getActiveYear } from "@/lib/teaching-rules";
 
 // === Módulo Calificaciones: actividades evaluativas (sub-columnas N1, N2...) ===
 // Toda consulta usa el cliente Prisma (consultas parametrizadas).
@@ -85,6 +86,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { ok: false, error: "institutionId, groupId, subjectId, periodId y evaluativeConceptId requeridos" },
         { status: 400 }
+      );
+    }
+
+    // [R1] Solo el docente asignado al par (grupo, asignatura) o un rol elevado
+    // puede crear actividades. userId es obligatorio en el body.
+    const editorUserId = typeof body.userId === "string" ? body.userId : "";
+    if (!editorUserId) {
+      return NextResponse.json({ ok: false, error: "userId requerido" }, { status: 400 });
+    }
+    const year = await getActiveYear(institutionId);
+    if (!(await canUserEditGrades(editorUserId, groupId, subjectId, year))) {
+      return NextResponse.json(
+        { ok: false, error: "FORBIDDEN", message: "Solo el docente asignado puede modificar las actividades de este grupo" },
+        { status: 403 }
       );
     }
 
@@ -197,6 +212,19 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "El periodo está cerrado" }, { status: 409 });
     }
 
+    // [R1] Solo el docente asignado al par de la actividad (o rol elevado).
+    const editorUserId = typeof body?.userId === "string" ? body.userId : "";
+    if (!editorUserId) {
+      return NextResponse.json({ ok: false, error: "userId requerido" }, { status: 400 });
+    }
+    const year = await getActiveYear(activity.institutionId);
+    if (!(await canUserEditGrades(editorUserId, activity.groupId, activity.subjectId, year))) {
+      return NextResponse.json(
+        { ok: false, error: "FORBIDDEN", message: "Solo el docente asignado puede modificar las actividades de este grupo" },
+        { status: 403 }
+      );
+    }
+
     const data: {
       name?: string;
       label?: string | null;
@@ -306,6 +334,27 @@ export async function DELETE(req: NextRequest) {
     }
     if (activities.some((a) => a.period.closed)) {
       return NextResponse.json({ ok: false, error: "El periodo está cerrado" }, { status: 409 });
+    }
+
+    // [R1] El usuario debe poder editar TODOS los pares (grupo, asignatura) de las
+    // actividades a borrar; si alguno se le escapa, no se borra ninguna.
+    const editorUserId = searchParams.get("userId") ?? "";
+    if (!editorUserId) {
+      return NextResponse.json({ ok: false, error: "userId requerido" }, { status: 400 });
+    }
+    const year = await getActiveYear(activities[0].institutionId);
+    const pairs = Array.from(new Set(activities.map((a) => `${a.groupId}:${a.subjectId}`)));
+    const allowed = await Promise.all(
+      pairs.map((p) => {
+        const [groupId, subjectId] = p.split(":");
+        return canUserEditGrades(editorUserId, groupId, subjectId, year);
+      })
+    );
+    if (allowed.some((v) => !v)) {
+      return NextResponse.json(
+        { ok: false, error: "FORBIDDEN", message: "Solo el docente asignado puede modificar las actividades de este grupo" },
+        { status: 403 }
+      );
     }
 
     const recordsCount = activities.reduce((n, a) => n + a._count.records, 0);
