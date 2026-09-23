@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
       id: g.id,
       name: g.name,
       otherName: g.otherName, // Otro nombre (código SIMAT, ej. "601" para "6°A")
+      gradeLevelId: g.gradeLevelId,
       grade: g.gradeLevel?.code ?? null, // compat: código del grado (catálogo GradeLevel)
       gradeLevel: g.gradeLevel,
       section: g.section,

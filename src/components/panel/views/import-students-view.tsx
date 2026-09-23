@@ -37,6 +37,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Database,
+  AlertTriangle,
 } from "lucide-react";
 
 const XLSX_MIME = ".xlsx,.xls";
@@ -82,6 +83,7 @@ export function ImportStudentsView() {
 
   // Paso 3/4/5
   const [errors, setErrors] = useState<RowErrors>([]);
+  const [omitted, setOmitted] = useState<{ row: number; groupName: string }[]>([]);
   const [resolved, setResolved] = useState<Record<string, any>[]>([]);
   const [result, setResult] = useState<{ imported?: number; error?: string; detail?: any } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -152,9 +154,14 @@ export function ImportStudentsView() {
   const missingRequired = REQUIRED_FIELDS.filter((f) => !mappedFields.includes(f));
 
   // --- Paso 3: validación previa ---
-  const validate = useCallback((): { ok: boolean; errors: RowErrors; rows: Record<string, any>[] } => {
+  // Grupo vacío o inexistente => fila OMITIBLE (no bloquea la importación del resto).
+  // Errores bloqueantes: datos personales vacíos, duplicados, formatos inválidos.
+  const validate = useCallback((): {
+    ok: boolean; errors: RowErrors; rows: Record<string, any>[]; omitted: { row: number; groupName: string }[];
+  } => {
     const errs: RowErrors = [];
     const out: Record<string, any>[] = [];
+    const omitted: { row: number; groupName: string }[] = [];
     const seenDoc = new Map<string, number>();
     const gradeByName = new Map(grades.map((g) => [normHeader(g.name), g.id]));
 
@@ -170,8 +177,8 @@ export function ImportStudentsView() {
         if (error) { errs.push({ row: n, message: error }); row[field] = null; continue; }
         row[field] = v;
       }
-      // Requeridos
-      for (const req of ["documentNumber", "documentType", "lastName1", "firstName1", "grupo"]) {
+      // Requeridos bloqueantes (el grupo se maneja aparte: fila omitible)
+      for (const req of ["documentNumber", "documentType", "lastName1", "firstName1"]) {
         if (!String(row[req] ?? "").trim()) {
           const label = SIMAT_FIELDS.find((f) => f.key === req)?.label ?? req;
           errs.push({ row: n, message: `${label} vacío` });
@@ -183,42 +190,44 @@ export function ImportStudentsView() {
         if (seenDoc.has(doc)) errs.push({ row: n, message: `Documento ${doc} duplicado (también en fila ${seenDoc.get(doc)})` });
         else seenDoc.set(doc, n);
       }
-      // Resolver grupo por nombre exacto o por "Otro nombre" (código SIMAT, ej. 601 = 6°A)
+      // Grupo: resolver por nombre exacto o "Otro nombre" (código SIMAT, ej. 601 = 6°A)
       const groupName = String(row.grupo ?? "").trim();
-      if (groupName) {
-        const g = groups.find((gg) => gg.name.trim() === groupName || gg.otherName?.trim() === groupName);
-        if (!g) {
-          errs.push({ row: n, message: `Grupo "${groupName}" no existe en el sistema` });
-        } else {
-          row.groupId = g.id;
-          // Coherencia Grado ↔ Grupo
-          const gradeVal = String(row.grado ?? "").trim();
-          if (gradeVal && g.gradeLevelId) {
-            const expected = grades.find((x) => x.id === g.gradeLevelId);
-            if (expected && normHeader(expected.name) !== normHeader(gradeVal) && !gradeByName.has(normHeader(gradeVal))) {
-              errs.push({ row: n, message: `Grupo "${groupName}" no pertenece al grado "${gradeVal}"` });
-            } else if (expected && normHeader(expected.name) !== normHeader(gradeVal)) {
-              const byId = gradeByName.get(normHeader(gradeVal));
-              if (byId && byId !== g.gradeLevelId) {
-                errs.push({ row: n, message: `Grupo "${groupName}" no pertenece al grado "${gradeVal}"` });
-              }
-            }
-          }
+      const g = groupName ? groups.find((gg) => gg.name.trim() === groupName || gg.otherName?.trim() === groupName) : undefined;
+      if (!g) {
+        omitted.push({ row: n, groupName: groupName || "(vacío)" });
+        return;
+      }
+      row.groupId = g.id;
+      // Coherencia Grado ↔ Grupo (bloqueante: indicaría dato corrupto)
+      const gradeVal = String(row.grado ?? "").trim();
+      if (gradeVal && g.gradeLevelId) {
+        const byName = gradeByName.get(normHeader(gradeVal));
+        if (byName && byName !== g.gradeLevelId) {
+          errs.push({ row: n, message: `Grupo "${groupName}" no pertenece al grado "${gradeVal}"` });
         }
       }
       out.push(row);
     });
-    return { ok: errs.length === 0, errors: errs, rows: out };
+    return { ok: errs.length === 0, errors: errs, rows: out, omitted };
   }, [rowsRaw, mapping, groups, grades]);
 
+  // Desglose de filas omitibles agrupadas por grupo (para el paso 3)
+  const omittedBreakdown = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const o of omitted) map.set(o.groupName, (map.get(o.groupName) ?? 0) + 1);
+    return [...map.entries()].sort((a, b) => b[1] - a[1]);
+  }, [omitted]);
+
   function runValidate() {
-    const { ok, errors: errs, rows } = validate();
+    const { ok, errors: errs, rows, omitted: omi } = validate();
     setErrors(errs);
+    setOmitted(omi);
     setResolved(rows);
-    // Siempre avanza al paso 3: muestra el OK o la lista de errores con su CSV
+    // Siempre avanza al paso 3: muestra el OK, las omitibles y la lista de errores con su CSV
     setStep(3);
-    if (ok) toast.success(`${rows.length} filas validadas sin errores`);
-    else toast.error(`${errs.length} errores de validación`);
+    if (errs.length > 0) toast.error(`${errs.length} errores de validación`);
+    else if (omi.length > 0) toast.success(`${rows.length} filas listas · ${omi.length} se omitirán (grupo inexistente)`);
+    else toast.success(`${rows.length} filas validadas sin errores`);
   }
 
   // --- Paso 4: desglose por Grado → Grupo ---
@@ -413,7 +422,7 @@ export function ImportStudentsView() {
           <CardContent className="space-y-3">
             {errors.length === 0 ? (
               <p className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4" /> Todas las filas son válidas. Puedes continuar.
+                <CheckCircle2 className="h-4 w-4" /> {resolved.length} {resolved.length === 1 ? "fila lista" : "filas listas"} para importar.
               </p>
             ) : (
               <>
@@ -427,6 +436,35 @@ export function ImportStudentsView() {
                   {errors.length > 300 && <p className="text-xs">…y {errors.length - 300} errores más (descarga el CSV)</p>}
                 </div>
               </>
+            )}
+
+            {omitted.length > 0 && (
+              <div className="rounded-md border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3 space-y-2">
+                <p className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  {omitted.length} {omitted.length === 1 ? "fila se omitirá" : "filas se omitirán"}: su grupo no existe en el sistema. No bloquean la importación del resto — créalos en Gestión de Grupos (con su Otro nombre, ej. 401) y vuelve a subir el archivo si quieres incluirlas.
+                </p>
+                <div className="max-h-28 overflow-y-auto rounded border border-amber-200 dark:border-amber-900 p-2">
+                  {omittedBreakdown.slice(0, 50).map(([grupo, n]) => (
+                    <p key={grupo} className="text-xs text-amber-700 dark:text-amber-400">Grupo "{grupo}": {n} {n === 1 ? "fila" : "filas"}</p>
+                  ))}
+                  {omittedBreakdown.length > 50 && <p className="text-xs text-muted-foreground">…y {omittedBreakdown.length - 50} grupos más</p>}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    const idxs = new Set(omitted.map((o) => o.row - 1));
+                    downloadCsv(
+                      "filas-omitidas.csv",
+                      toCsv([...headers, "__fila_excel"], rowsRaw.map((r, i) => (idxs.has(i) ? [...r.map((c) => String(c)), i + 1] : null)).filter(Boolean) as string[][])
+                    );
+                  }}
+                >
+                  <Download className="h-3.5 w-3.5" /> Descargar filas omitidas (CSV)
+                </Button>
+              </div>
             )}
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setStep(1)} className="gap-1.5"><ArrowLeft className="h-4 w-4" /> Atrás</Button>
@@ -451,6 +489,11 @@ export function ImportStudentsView() {
           <CardHeader><CardTitle className="text-sm">Paso 4 · Vista previa por grupo</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm">Total de estudiantes a matricular: <strong>{resolved.length}</strong></p>
+            {omitted.length > 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5" /> Además se omitirán {omitted.length} filas por grupo inexistente (no se importarán).
+              </p>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -500,6 +543,7 @@ export function ImportStudentsView() {
             {result?.imported != null ? (
               <p className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4" /> {result.imported} estudiantes importados correctamente (matrícula {yearName || "año activo"}).
+                {omitted.length > 0 && <span className="text-amber-600 dark:text-amber-400">· {omitted.length} filas omitidas por grupo inexistente.</span>}
               </p>
             ) : (
               <>
