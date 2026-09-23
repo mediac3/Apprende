@@ -215,12 +215,10 @@ export function ImportStudentsView() {
     const { ok, errors: errs, rows } = validate();
     setErrors(errs);
     setResolved(rows);
-    if (ok) {
-      toast.success(`${rows.length} filas validadas sin errores`);
-      setStep(3);
-    } else {
-      toast.error(`${errs.length} errores de validación`);
-    }
+    // Siempre avanza al paso 3: muestra el OK o la lista de errores con su CSV
+    setStep(3);
+    if (ok) toast.success(`${rows.length} filas validadas sin errores`);
+    else toast.error(`${errs.length} errores de validación`);
   }
 
   // --- Paso 4: desglose por Grado → Grupo ---
@@ -400,9 +398,9 @@ export function ImportStudentsView() {
             )}
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setStep(0)} className="gap-1.5"><ArrowLeft className="h-4 w-4" /> Atrás</Button>
-              <Button disabled={missingRequired.length > 0 || rowsRaw.length === 0} onClick={() => { setStep(2); }} className="gap-1.5">
-                Validar filas <ArrowRight className="h-4 w-4" />
-              </Button>
+                <Button disabled={missingRequired.length > 0 || rowsRaw.length === 0} onClick={runValidate} className="gap-1.5">
+                  Validar filas <ArrowRight className="h-4 w-4" />
+                </Button>
             </div>
           </CardContent>
         </Card>
