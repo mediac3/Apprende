@@ -395,6 +395,7 @@ export function CalificacionesView() {
             groupId: activeSubject.groupId,
             subjectId: activeSubject.subjectId,
             periodId: selectedPeriodId,
+            userId: user?.id,
             ...data,
           }),
         }).then((r) => r.json());
@@ -410,7 +411,7 @@ export function CalificacionesView() {
         return false;
       }
     },
-    [activeSubject, institutionId, selectedPeriodId, loadSheet]
+    [activeSubject, institutionId, selectedPeriodId, loadSheet, user]
   );
 
   // [F1] abrir modal con concepto precargado (botón "+" del header del concepto)
@@ -450,7 +451,7 @@ export function CalificacionesView() {
         const res = await fetch("/api/activities", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, ...data }),
+          body: JSON.stringify({ id, userId: user?.id, ...data }),
         }).then((r) => r.json());
         if (res?.ok) {
           toast.success("Actividad actualizada");
@@ -464,7 +465,7 @@ export function CalificacionesView() {
         return false;
       }
     },
-    [activeSubject, selectedPeriodId, loadSheet]
+    [activeSubject, selectedPeriodId, loadSheet, user]
   );
 
   // [F2] eliminar actividad con confirmación (borra notas en cascada)
@@ -472,7 +473,7 @@ export function CalificacionesView() {
     if (!deletingActivity || !activeSubject || !selectedPeriodId || deleting) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/activities?id=${deletingActivity.id}`, {
+      const res = await fetch(`/api/activities?id=${deletingActivity.id}&userId=${user?.id ?? ""}`, {
         method: "DELETE",
       }).then((r) => r.json());
       if (res?.ok) {
@@ -491,7 +492,7 @@ export function CalificacionesView() {
     } finally {
       setDeleting(false);
     }
-  }, [deletingActivity, activeSubject, selectedPeriodId, loadSheet, deleting]);
+  }, [deletingActivity, activeSubject, selectedPeriodId, loadSheet, deleting, user]);
 
   if (loading) {
     return (
