@@ -36,7 +36,9 @@ export function PersonalInfoTab({ student }: { student: StudentRow }) {
   const [fDocType, setFDocType] = useState(student.documentType ?? "TI");
   const [fDocNumber, setFDocNumber] = useState(student.documentNumber ?? "");
   const [fFirstName, setFFirstName] = useState(student.firstName);
+  const [fFirstName2, setFFirstName2] = useState(student.firstName2 ?? "");
   const [fLastName, setFLastName] = useState(student.lastName);
+  const [fLastName2, setFLastName2] = useState(student.lastName2 ?? "");
   const [fGender, setFGender] = useState(student.gender ?? "M");
   const [fBirthDate, setFBirthDate] = useState(toISODate(student.birthDate));
   const [fBirthPlace, setFBirthPlace] = useState(student.birthPlace ?? "");
@@ -64,7 +66,9 @@ export function PersonalInfoTab({ student }: { student: StudentRow }) {
           documentType: fDocType,
           documentNumber: fDocNumber,
           firstName: fFirstName.trim(),
+          firstName2: fFirstName2.trim(),
           lastName: fLastName.trim(),
+          lastName2: fLastName2.trim(),
           gender: fGender,
           birthDate: fBirthDate || null,
           birthPlace: fBirthPlace,
@@ -115,12 +119,20 @@ export function PersonalInfoTab({ student }: { student: StudentRow }) {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Nombres</Label>
+            <Label className="text-xs text-muted-foreground">Nombre1</Label>
             <Input value={fFirstName} onChange={(e) => setFFirstName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Apellidos</Label>
+            <Label className="text-xs text-muted-foreground">Nombre2</Label>
+            <Input value={fFirstName2} onChange={(e) => setFFirstName2(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Apellido1</Label>
             <Input value={fLastName} onChange={(e) => setFLastName(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Apellido2</Label>
+            <Input value={fLastName2} onChange={(e) => setFLastName2(e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Fecha de nacimiento</Label>

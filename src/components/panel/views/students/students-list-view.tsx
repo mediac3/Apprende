@@ -67,6 +67,11 @@ const STATUS_CHIP: Record<string, string> = {
   sin_formalizar: "chip-basico",
 };
 
+// Nombre completo SIMAT: Apellido1 Apellido2 Nombre1 Nombre2 (los *2 pueden faltar)
+function fullName(s: { lastName: string; lastName2?: string | null; firstName: string; firstName2?: string | null }): string {
+  return [s.lastName, s.lastName2, s.firstName, s.firstName2].filter(Boolean).join(" ");
+}
+
 // Estado mostrado en el listado (PDF pág 3): matrícula del año seleccionado,
 // con fallback al estado del estudiante cuando no hay ficha de matrícula.
 function resolveStatus(student: StudentRow, enrollment?: EnrollmentRow): string {
@@ -168,7 +173,7 @@ export function StudentsListView() {
       const q = search.toLowerCase();
       list = list.filter(
         (r) =>
-          `${r.student.firstName} ${r.student.lastName}`.toLowerCase().includes(q) ||
+          fullName(r.student).toLowerCase().includes(q) ||
           r.student.guardianName?.toLowerCase().includes(q) ||
           r.student.documentNumber?.toLowerCase().includes(q)
       );
@@ -184,7 +189,7 @@ export function StudentsListView() {
     if (!user) return;
     if (
       !confirm(
-        `¿Eliminar al estudiante "${s.firstName} ${s.lastName}"?\n\nSe eliminarán también sus matrículas, calificaciones, observaciones y asistencias. Esta acción no se puede deshacer.`
+        `¿Eliminar al estudiante "${fullName(s)}"?\n\nSe eliminarán también sus matrículas, calificaciones, observaciones y asistencias. Esta acción no se puede deshacer.`
       )
     )
       return;
@@ -336,7 +341,7 @@ export function StudentsListView() {
                         {s.photoUrl ? (
                           <img
                             src={s.photoUrl}
-                            alt={`${s.firstName} ${s.lastName}`}
+                            alt={fullName(s)}
                             className="h-7 w-7 rounded-full object-cover"
                           />
                         ) : (
@@ -345,7 +350,7 @@ export function StudentsListView() {
                           </div>
                         )}
                         <div>
-                          <div className="font-medium">{s.firstName} {s.lastName}</div>
+                          <div className="font-medium">{fullName(s)}</div>
                           <div className="text-[10px] text-muted-foreground font-mono">
                             {s.documentNumber ? `T.I. ${s.documentNumber}` : s.code}
                           </div>

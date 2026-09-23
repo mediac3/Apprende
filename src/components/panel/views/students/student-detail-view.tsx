@@ -21,6 +21,8 @@ export interface StudentRow {
   code: string;
   firstName: string;
   lastName: string;
+  firstName2?: string | null;
+  lastName2?: string | null;
   status: string;
   birthDate?: string | null;
   gender?: string | null;
