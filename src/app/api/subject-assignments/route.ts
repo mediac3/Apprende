@@ -16,7 +16,11 @@ export async function GET(req: NextRequest) {
     where: { institutionId, year },
     select: { id: true, groupId: true, subjectId: true, teacherId: true, year: true },
   });
-  return NextResponse.json({ ok: true, year, assignments });
+  // [R1] canEdit se resuelve en servidor con los roles frescos de la BD: la sesión
+  // guardada en el navegador puede ser vieja y no reflejar los roles reales.
+  const userId = sp.get("userId") ?? "";
+  const canEdit = userId ? await hasElevatedRole(await getUserRoleCodes(userId)) : false;
+  return NextResponse.json({ ok: true, year, assignments, canEdit });
 }
 
 interface AssignmentChange {

@@ -315,8 +315,14 @@ function AsignacionView() {
   const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
   const [year, setYear] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-  // Espejo de ELEVATED_ROLES (src/lib/teaching-rules.ts): solo roles elevados editan la matriz.
-  const canEdit = !!user?.roles?.some((r) => ["rector", "coordinador", "administrativo"].includes(r));
+  // Espejo de ELEVATED_ROLES (src/lib/teaching-rules.ts) como estimado inicial:
+  // una sesión guardada vieja puede no traer `roles`, así que el valor real llega
+  // del servidor (canEdit en la respuesta) con los roles frescos de la BD.
+  const [canEdit, setCanEdit] = useState(
+    () =>
+      !!user?.roles?.some((r) => ["rector", "coordinador", "administrativo"].includes(r)) ||
+      ["rector", "coordinador", "administrativo"].includes(user?.role ?? "")
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -324,21 +330,28 @@ function AsignacionView() {
       fetch(`/api/groups?institutionId=${user.institution.id}`).then((r) => r.json()),
       fetch(`/api/subjects?institutionId=${user.institution.id}`).then((r) => r.json()),
       fetch(`/api/members?institutionId=${user.institution.id}`).then((r) => r.json()),
-      fetch(`/api/subject-assignments?institutionId=${user.institution.id}`).then((r) => r.json()),
+      fetch(`/api/subject-assignments?institutionId=${user.institution.id}&userId=${user.id}`).then((r) => r.json()),
     ])
       .then(([g, s, m, a]) => {
         if (g.ok) setGroups(g.groups);
+        else toast.error("No se pudieron cargar los grupos");
         if (s.ok) setSubjects(s.subjects);
+        else toast.error("No se pudieron cargar las asignaturas");
         if (m.ok) setTeachers(m.members.filter((x: Member) => x.role === "docente"));
+        else toast.error("No se pudo cargar la lista de docentes");
         if (a.ok) {
+          setCanEdit(a.canEdit === true);
           setYear(a.year);
           const map: Record<string, string> = {};
           a.assignments.forEach((x: { groupId: string; subjectId: string; teacherId: string | null }) => {
             map[`${x.subjectId}:${x.groupId}`] = x.teacherId ?? "";
           });
           setAssignments(map);
+        } else {
+          toast.error(a.error ?? "No se pudo cargar el estado de asignaciones");
         }
       })
+      .catch(() => toast.error("Error de red cargando la asignación académica"))
       .finally(() => setLoading(false));
   }, [user]);
 
