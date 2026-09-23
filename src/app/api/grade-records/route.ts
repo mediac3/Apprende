@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { canUserEditGrades, getActiveYear } from "@/lib/teaching-rules";
 
 // === Módulo Calificaciones: notas (GradeRecord) ===
 // Toda consulta usa el cliente Prisma (consultas parametrizadas).
@@ -13,6 +14,7 @@ export async function GET(req: NextRequest) {
   const groupId = searchParams.get("groupId");
   const subjectId = searchParams.get("subjectId");
   const periodId = searchParams.get("periodId");
+  const userId = searchParams.get("userId") ?? "";
 
   if (!groupId || !subjectId || !periodId) {
     return NextResponse.json(
@@ -22,7 +24,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const [students, activities, records] = await Promise.all([
+    const [students, activities, records, group] = await Promise.all([
       db.student.findMany({
         where: { groupId, status: "activo" },
         select: { id: true, code: true, firstName: true, lastName: true },
@@ -37,8 +39,14 @@ export async function GET(req: NextRequest) {
         where: { activity: { groupId, subjectId, periodId } },
         select: { studentId: true, activityId: true, value: true },
       }),
+      db.group.findUnique({ where: { id: groupId }, select: { institutionId: true } }),
     ]);
-    return NextResponse.json({ ok: true, students, activities, records });
+    // [R1] El cliente resuelve canEdit para pintar la planilla en solo lectura;
+    // la validación real se hace en el POST al guardar.
+    const canEdit = userId && group
+      ? await canUserEditGrades(userId, groupId, subjectId, await getActiveYear(group.institutionId))
+      : false;
+    return NextResponse.json({ ok: true, students, activities, records, canEdit });
   } catch (e) {
     console.error("[grade-records.sheet]", e);
     return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
@@ -87,10 +95,40 @@ export async function POST(req: NextRequest) {
     // El periodo de las actividades no debe estar cerrado
     const first = await db.activity.findFirst({
       where: { id: toSave[0]?.activityId ?? toDelete[0]?.activityId ?? "" },
-      select: { period: { select: { closed: true } } },
+      select: { institutionId: true, period: { select: { closed: true } } },
     });
     if (first?.period.closed) {
       return NextResponse.json({ ok: false, error: "El periodo está cerrado" }, { status: 409 });
+    }
+
+    // [R1] Solo el docente asignado al par (grupo, asignatura) de CADA actividad
+    // del lote (o un rol elevado) puede guardar. userId es obligatorio en el body.
+    const editorUserId = typeof body?.userId === "string" ? body.userId : "";
+    if (!editorUserId) {
+      return NextResponse.json({ ok: false, error: "userId requerido" }, { status: 400 });
+    }
+    if (first) {
+      const activityIds = Array.from(
+        new Set([...toSave.map((s) => s.activityId), ...toDelete.map((d) => d.activityId)])
+      );
+      const acts = await db.activity.findMany({
+        where: { id: { in: activityIds } },
+        select: { groupId: true, subjectId: true },
+      });
+      const year = await getActiveYear(first.institutionId);
+      const pairs = Array.from(new Set(acts.map((a) => `${a.groupId}:${a.subjectId}`)));
+      const allowed = await Promise.all(
+        pairs.map((p) => {
+          const [g, s] = p.split(":");
+          return canUserEditGrades(editorUserId, g, s, year);
+        })
+      );
+      if (allowed.some((v) => !v)) {
+        return NextResponse.json(
+          { ok: false, error: "FORBIDDEN", message: "Solo el docente asignado puede modificar las notas de este grupo" },
+          { status: 403 }
+        );
+      }
     }
 
     await db.$transaction(async (tx) => {

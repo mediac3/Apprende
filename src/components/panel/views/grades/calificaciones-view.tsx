@@ -120,6 +120,8 @@ export function CalificacionesView() {
   const [commentText, setCommentText] = useState("");
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  // [R1] lo resuelve el servidor al cargar la planilla (docente asignado o rol elevado)
+  const [canEdit, setCanEdit] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   // [F1] concepto precargado al abrir el modal desde el botón "+" del concepto
   const [modalPresetConceptId, setModalPresetConceptId] = useState<string | null>(null);
@@ -217,7 +219,7 @@ export function CalificacionesView() {
   const loadSheet = useCallback(
     (sel: SidebarSubject, periodId: string) => {
       fetch(
-        `/api/grade-records?groupId=${sel.groupId}&subjectId=${sel.subjectId}&periodId=${periodId}`
+        `/api/grade-records?groupId=${sel.groupId}&subjectId=${sel.subjectId}&periodId=${periodId}&userId=${user?.id ?? ""}`
       )
         .then((r) => r.json())
         .then((res) => {
@@ -225,6 +227,7 @@ export function CalificacionesView() {
             toast.error(res?.error ?? "Error cargando la planilla");
             return;
           }
+          setCanEdit(res.canEdit === true);
           setStudents(
             (res.students ?? []).map((s: { id: string; code: string; firstName: string; lastName: string }) => ({
               studentId: s.id,
@@ -259,7 +262,7 @@ export function CalificacionesView() {
         })
         .catch(() => {});
     },
-    []
+    [user]
   );
 
   useEffect(() => {
@@ -287,6 +290,8 @@ export function CalificacionesView() {
 
   const selectedPeriod = modelPeriods.find((p) => p.id === selectedPeriodId) ?? null;
   const periodClosed = selectedPeriod?.closed ?? false;
+  // [R1] edición efectiva: periodo abierto Y usuario autorizado por el servidor
+  const editable = !periodClosed && canEdit;
   const periodLabel = (p: PeriodLite) =>
     [yearLabel, p.name].filter(Boolean).join(" - ");
 
@@ -307,7 +312,11 @@ export function CalificacionesView() {
 
   // Guardar lote (transacción en servidor)
   const handleSave = useCallback(async () => {
-    if (!activeSubject || dirty.size === 0 || saving) return;
+    if (!user || !activeSubject || dirty.size === 0 || saving) return;
+    if (!canEdit) {
+      toast.error("Solo el docente asignado puede modificar las notas de este grupo");
+      return;
+    }
     setSaving(true);
     try {
       const records = [...dirty].map((k) => {
@@ -317,11 +326,13 @@ export function CalificacionesView() {
       const res = await fetch("/api/grade-records", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ records }),
+        body: JSON.stringify({ userId: user.id, records }),
       }).then((r) => r.json());
       if (res?.ok) {
         toast.success(`Notas guardadas (${records.length} celdas)`);
         setDirty(new Set());
+      } else if (res?.error === "FORBIDDEN") {
+        toast.error(res?.message ?? "Solo el docente asignado puede modificar las notas de este grupo");
       } else {
         toast.error(res?.error ?? "Error guardando notas");
       }
@@ -330,7 +341,7 @@ export function CalificacionesView() {
     } finally {
       setSaving(false);
     }
-  }, [activeSubject, dirty, saving, values]);
+  }, [activeSubject, canEdit, dirty, saving, user, values]);
 
   // [comentarios] guardar/eliminar el comentario de la celda; si había notas
   // sin guardar se persisten también: el comentario se guarda al instante y
@@ -537,13 +548,21 @@ export function CalificacionesView() {
               onAdd={openCreateModal}
               onSave={handleSave}
               saving={saving}
-              dirty={dirty.size > 0}
+              dirty={editable && dirty.size > 0}
+              canEdit={editable}
               commentMode={commentMode}
               onToggleCommentMode={() => setCommentMode((v) => !v)}
             />
-            {periodClosed && (
-              <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
-                El periodo está cerrado: las notas no se pueden editar.
+            {!editable && (
+              <p className={cn(
+                "rounded-lg border px-3 py-1.5 text-xs",
+                periodClosed
+                  ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300"
+                  : "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-300"
+              )}>
+                {periodClosed
+                  ? "El periodo está cerrado: las notas no se pueden editar."
+                  : "Solo el docente asignado puede modificar las notas de este grupo. La planilla se muestra en modo lectura."}
               </p>
             )}
             {commentMode && (
@@ -562,7 +581,7 @@ export function CalificacionesView() {
               activities={activities}
               values={values}
               calculations={calculations}
-              periodClosed={periodClosed}
+              periodClosed={!editable}
               onCellChange={handleCellChange}
               onAddActivityForConcept={handleAddForConcept}
               onEditActivity={handleEditActivity}

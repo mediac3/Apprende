@@ -14,6 +14,8 @@ export interface GradesToolbarProps {
   onSave: () => void;
   saving: boolean;
   dirty: boolean;
+  /** [R1] false → planilla en solo lectura (docente no asignado): Agregar/Guardar deshabilitados */
+  canEdit?: boolean;
   /** [comentarios] modo edición de comentarios por celda */
   commentMode?: boolean;
   onToggleCommentMode?: () => void;
@@ -28,6 +30,7 @@ export function GradesToolbar({
   onSave,
   saving,
   dirty,
+  canEdit = true,
   commentMode,
   onToggleCommentMode,
 }: GradesToolbarProps) {
@@ -63,14 +66,14 @@ export function GradesToolbar({
         >
           <MessageSquarePlus className="mr-1 h-4 w-4" /> Comentar
         </Button>
-        <Button variant="outline" size="sm" onClick={onAdd}>
+        <Button variant="outline" size="sm" onClick={onAdd} disabled={!canEdit}>
           <Plus className="mr-1 h-4 w-4" /> Agregar
         </Button>
         <Button
           size="sm"
           className="bg-emerald-600 hover:bg-emerald-700"
           onClick={onSave}
-          disabled={!dirty || saving}
+          disabled={!canEdit || !dirty || saving}
         >
           <Save className="mr-1 h-4 w-4" />
           {saving ? "Guardando…" : "Guardar"}
