@@ -312,6 +312,11 @@ function AsignacionView() {
   const [teachers, setTeachers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [assignments, setAssignments] = useState<Record<string, string>>({});
+  const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
+  const [year, setYear] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  // Espejo de ELEVATED_ROLES (src/lib/teaching-rules.ts): solo roles elevados editan la matriz.
+  const canEdit = !!user?.roles?.some((r) => ["rector", "coordinador", "administrativo"].includes(r));
 
   useEffect(() => {
     if (!user) return;
@@ -319,19 +324,59 @@ function AsignacionView() {
       fetch(`/api/groups?institutionId=${user.institution.id}`).then((r) => r.json()),
       fetch(`/api/subjects?institutionId=${user.institution.id}`).then((r) => r.json()),
       fetch(`/api/members?institutionId=${user.institution.id}`).then((r) => r.json()),
+      fetch(`/api/subject-assignments?institutionId=${user.institution.id}`).then((r) => r.json()),
     ])
-      .then(([g, s, m]) => {
+      .then(([g, s, m, a]) => {
         if (g.ok) setGroups(g.groups);
         if (s.ok) setSubjects(s.subjects);
         if (m.ok) setTeachers(m.members.filter((x: Member) => x.role === "docente"));
+        if (a.ok) {
+          setYear(a.year);
+          const map: Record<string, string> = {};
+          a.assignments.forEach((x: { groupId: string; subjectId: string; teacherId: string | null }) => {
+            map[`${x.subjectId}:${x.groupId}`] = x.teacherId ?? "";
+          });
+          setAssignments(map);
+        }
       })
       .finally(() => setLoading(false));
   }, [user]);
 
   function assignCell(subjectId: string, groupId: string, teacherId: string) {
+    if (!canEdit) return;
     const key = `${subjectId}:${groupId}`;
     setAssignments((p) => ({ ...p, [key]: teacherId }));
-    toast.success("Asignación registrada");
+    setDirtyKeys((p) => new Set(p).add(key));
+  }
+
+  async function saveAssignments() {
+    if (!user || !year || dirtyKeys.size === 0 || saving) return;
+    setSaving(true);
+    try {
+      const changes = Array.from(dirtyKeys).map((key) => {
+        const idx = key.indexOf(":");
+        const subjectId = key.slice(0, idx);
+        const groupId = key.slice(idx + 1);
+        const teacherId = assignments[key] ?? "";
+        return { subjectId, groupId, teacherId: teacherId || null };
+      });
+      const res = await fetch("/api/subject-assignments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ institutionId: user.institution.id, userId: user.id, year, changes }),
+      });
+      const d = await res.json();
+      if (res.ok && d.ok) {
+        toast.success("Asignaciones guardadas");
+        setDirtyKeys(new Set());
+      } else {
+        toast.error(d.message || d.error || "No se pudieron guardar las asignaciones");
+      }
+    } catch {
+      toast.error("No se pudieron guardar las asignaciones");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -350,6 +395,16 @@ function AsignacionView() {
           celda para definir quién imparte la asignatura en ese grupo. La asignación alimenta los
           planeadores, planillas de notas y reportes de supervisión.
         </p>
+        <div className="mt-3 flex items-center gap-2">
+          {!canEdit && (
+            <span className="text-xs text-muted-foreground">
+              Solo rector, coordinador o administrativo pueden editar la asignación.
+            </span>
+          )}
+          <Button onClick={saveAssignments} disabled={!canEdit || dirtyKeys.size === 0 || saving}>
+            {saving ? "Guardando…" : dirtyKeys.size > 0 ? `Guardar (${dirtyKeys.size})` : "Guardar"}
+          </Button>
+        </div>
       </header>
 
       <Card className="hairline rounded-xl">
@@ -371,7 +426,7 @@ function AsignacionView() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {subjects.slice(0, 10).map((s) => (
+                {subjects.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium sticky left-0 bg-card">
                       {s.name}
@@ -382,11 +437,16 @@ function AsignacionView() {
                       const teacherId = assignments[key] ?? "";
                       return (
                         <TableCell key={g.id}>
-                          <Select value={teacherId} onValueChange={(v) => assignCell(s.id, g.id, v)}>
+                          <Select
+                            value={teacherId || "__none__"}
+                            onValueChange={(v) => assignCell(s.id, g.id, v === "__none__" ? "" : v)}
+                            disabled={!canEdit}
+                          >
                             <SelectTrigger className="h-8 w-full min-w-[140px]" size="sm">
                               <SelectValue placeholder="—" />
                             </SelectTrigger>
                             <SelectContent>
+                              <SelectItem value="__none__">—</SelectItem>
                               {teachers.map((t) => (
                                 <SelectItem key={t.id} value={t.id}>{t.fullName}</SelectItem>
                               ))}
