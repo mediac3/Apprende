@@ -216,8 +216,13 @@ export function normalizeValue(field: SimatField, raw: string): { v?: string | b
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) return { error: `Correo inválido: "${s}"` };
       return { v: s };
     }
-    default:
+    default: {
+      // Campos de clasificación institucional [F1] en TitleCase para coincidir con los selects
+      if (["jornada", "zonaSede", "sector", "calendario", "etc"].includes(field)) {
+        return { v: s.toLowerCase().split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") };
+      }
       return { v: s };
+    }
   }
 }
 
