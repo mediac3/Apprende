@@ -10,7 +10,9 @@ import {
   ChevronRight,
   Eye,
   Trash2,
+  UserPlus,
 } from "lucide-react";
+import { NewStudentDialog } from "./modals/new-student-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +92,7 @@ export function StudentsListView() {
   const [filter, setFilter] = useState<"todos" | "activos" | "retirados" | "sin_formalizar">("todos");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<StudentRow | null>(null);
+  const [showNew, setShowNew] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   // Catálogo de años + estudiantes (callbacks async: sin setState síncrono en el effect)
@@ -285,7 +288,12 @@ export function StudentsListView() {
 
       <Card className="hairline rounded-xl">
         <CardHeader>
-          <CardTitle className="text-base">Listado de Estudiantes</CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-base">Listado de Estudiantes</CardTitle>
+            <Button size="sm" className="gap-1.5" onClick={() => setShowNew(true)}>
+              <UserPlus className="h-4 w-4" /> Nuevo estudiante
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -418,6 +426,15 @@ export function StudentsListView() {
           </div>
         </CardContent>
       </Card>
+
+      {user ? (
+        <NewStudentDialog
+          open={showNew}
+          onOpenChange={setShowNew}
+          institutionId={user.institution.id}
+          onCreated={() => setReloadKey((k) => k + 1)}
+        />
+      ) : null}
     </motion.div>
   );
 }

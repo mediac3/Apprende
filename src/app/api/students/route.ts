@@ -96,10 +96,45 @@ export async function POST(req: NextRequest) {
       status,
       enrollmentDate,
       userId,
+      // Campos SIMAT [F2]
+      lastName2,
+      firstName2,
+      documentType,
+      documentNumber,
+      birthPlace,
+      simatEstrato,
+      simatEps,
+      simatMunicipioExp,
+      simatNui,
+      simatRui,
+      simatSisben,
+      barrio,
+      email,
+      bloodType,
+      matriculaContratada,
+      fuenteRecursos,
+      internado,
+      apoyoAcademico,
+      discapacidad,
+      paisOrigen,
+      motivo,
     } = body;
 
     if (!institutionId || !code || !firstName || !lastName) {
       return NextResponse.json({ ok: false, error: "Faltan datos" }, { status: 400 });
+    }
+    // Regla dura [F2]: documento requerido con tipo, único en BD; correo con formato si viene.
+    if (documentNumber && !documentType) {
+      return NextResponse.json({ ok: false, error: "Tipo documento es requerido cuando se ingresa el documento" }, { status: 400 });
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ ok: false, error: "Correo con formato inválido" }, { status: 400 });
+    }
+    if (documentNumber) {
+      const dup = await db.student.findFirst({ where: { institutionId, documentNumber: String(documentNumber) }, select: { id: true } });
+      if (dup) {
+        return NextResponse.json({ ok: false, error: `Ya existe un estudiante con el documento ${documentNumber}` }, { status: 409 });
+      }
     }
 
     const data: any = {
@@ -117,6 +152,28 @@ export async function POST(req: NextRequest) {
       guardianRelation: guardianRelation || null,
       status: status || "activo",
       enrollmentDate: enrollmentDate ? new Date(enrollmentDate) : null,
+      // Campos SIMAT [F2]
+      lastName2: lastName2 || null,
+      firstName2: firstName2 || null,
+      documentType: documentType || null,
+      documentNumber: documentNumber || null,
+      birthPlace: birthPlace || null,
+      simatEstrato: simatEstrato || null,
+      simatEps: simatEps || null,
+      simatMunicipioExp: simatMunicipioExp || null,
+      simatNui: simatNui || null,
+      simatRui: simatRui || null,
+      simatSisben: simatSisben || null,
+      barrio: barrio || null,
+      email: email || null,
+      bloodType: bloodType || null,
+      matriculaContratada: typeof matriculaContratada === "boolean" ? matriculaContratada : null,
+      fuenteRecursos: fuenteRecursos || null,
+      internado: typeof internado === "boolean" ? internado : null,
+      apoyoAcademico: typeof apoyoAcademico === "boolean" ? apoyoAcademico : null,
+      discapacidad: discapacidad || null,
+      paisOrigen: paisOrigen || null,
+      motivo: motivo || null,
     };
 
     const student = await db.student.create({
@@ -164,14 +221,29 @@ export async function PATCH(req: NextRequest) {
       "simatEstrato", "simatEps", "simatMunicipioExp",
       "guardianName", "guardianPhone", "guardianEmail", "guardianRelation",
       "status", "code",
+      // Campos SIMAT [F2]
+      "lastName2", "firstName2", "simatNui", "simatRui", "simatSisben",
+      "barrio", "email", "bloodType", "fuenteRecursos", "discapacidad",
+      "paisOrigen", "motivo",
     ];
     const dateFields = ["birthDate", "enrollmentDate"];
-    const boolFields = ["baptized", "overage"];
+    const boolFields = ["baptized", "overage", "matriculaContratada", "internado", "apoyoAcademico"];
 
     for (const f of textFields) if (f in body) data[f] = body[f] === "" ? null : body[f];
     for (const f of dateFields) if (f in body) data[f] = body[f] ? new Date(body[f]) : null;
     for (const f of boolFields) if (f in body) data[f] = body[f] === null ? null : Boolean(body[f]);
     if ("groupId" in body) data.groupId = body.groupId || null;
+
+    // Regla dura [F2]: el documento no puede duplicar a otro estudiante.
+    if (data.documentNumber) {
+      const dup = await db.student.findFirst({
+        where: { institutionId, documentNumber: data.documentNumber, id: { not: id } },
+        select: { id: true },
+      });
+      if (dup) {
+        return NextResponse.json({ ok: false, error: `Ya existe un estudiante con el documento ${data.documentNumber}` }, { status: 409 });
+      }
+    }
 
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ ok: false, error: "Nada que actualizar" }, { status: 400 });

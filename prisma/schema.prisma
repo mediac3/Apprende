@@ -157,7 +157,7 @@ model Student {
   enrollmentDate DateTime?
   // Gestión de Estudiantes (PDF Módulo Gestionar Estudiante) — columnas aditivas
   documentType    String?  // RC, TI, CC, CE, PE
-  documentNumber  String?  // número de documento (T.I.)
+  documentNumber  String?  @unique // número de documento (único — regla dura importación)
   birthPlace      String?  // lugar de nacimiento (PDF pág 10)
   baptized        Boolean? // BAP: certificado de bautismo presentado (PDF pág 3)
   overage         Boolean? // EX/ED: extraedad (PDF pág 3)
@@ -167,6 +167,22 @@ model Student {
   simatEstrato       String? // 1-6
   simatEps           String? // entidad promotora de salud
   simatMunicipioExp  String? // municipio de expedición del documento
+  // Campos SIMAT [F2] — formulario Crear estudiante / importación masiva
+  lastName2             String?  // Apellido2
+  firstName2            String?  // Nombre2
+  simatNui              String?  // NUI: número único de identificación
+  simatRui              String?  // RUI
+  simatSisben           String?  // clasificación SISBEN (ej. A1)
+  barrio                String?  // barrio de residencia
+  email                 String?  // correo del estudiante
+  bloodType             String?  // tipo de sangre (O+, O-, A+, A-, B+, B-, AB+, AB-)
+  matriculaContratada   Boolean? // matrícula contratada (Sí/No)
+  fuenteRecursos        String?  // SGP, Recursos propios, Mixto, Otro
+  internado             Boolean? // internado (Sí/No)
+  apoyoAcademico        Boolean? // apoyo académico especial (Sí/No)
+  discapacidad          String?  // Ninguna, Visual, Auditiva, Intelectual, Psicosocial, Múltiple, Otra
+  paisOrigen            String?  // país de origen (default Colombia)
+  motivo                String?  // motivo de la matrícula
   createdAt      DateTime @default(now())
 
   grades        Grade[]
