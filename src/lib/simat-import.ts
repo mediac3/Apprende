@@ -58,13 +58,20 @@ export function normHeader(s: string): string {
     .replace(/[^a-z0-9]/g, "");
 }
 
+// Encabezados que nunca se mapean (metadatos del export SIMAT u otra entidad).
+// Evita que el fuzzy matching los capture (ej. "SEDE" no es "ZONA_SEDE",
+// "PER_ID" no es el documento del estudiante).
+const STOP_HEADERS = new Set([
+  "ano", "anio", "estado", "jerarquia", "institucion", "dane", "codigodanesede",
+  "consecutivo", "sede", "modelo", "fechafin", "numcontrato", "srpa", "perid", "per_id",
+]);
+
 // Diccionario de sinónimos: clave normalizada → campo. Calibrado con el
 // Excel SIMAT real (RELACION DEL SIMAT 2025) y variantes habituales.
 const SYNONYMS: Record<string, SimatField> = {
   // documento
   tipodoc: "documentType", tipodocumento: "documentType", tipode_documento: "documentType", tipoidentificacion: "documentType",
   doc: "documentNumber", documento: "documentNumber", numdocumento: "documentNumber", numerodocumento: "documentNumber", nrodocumento: "documentNumber", numdoc: "documentNumber",
-  perid: "documentNumber", per_id: "documentNumber",
   // nombres
   apellido1: "lastName1", primerapellido: "lastName1",
   apellido2: "lastName2", segundoapellido: "lastName2",
@@ -105,10 +112,10 @@ const SYNONYMS: Record<string, SimatField> = {
 // Fuzzy fallback: campo cuyo nombre normalizado contenga el header (o viceversa).
 export function suggestField(header: string): SimatField | null {
   const h = normHeader(header);
-  if (!h) return null;
+  if (!h || STOP_HEADERS.has(h)) return null;
   if (SYNONYMS[h]) return SYNONYMS[h];
   for (const [k, v] of Object.entries(SYNONYMS)) {
-    if (h.length >= 3 && (k.includes(h) || h.includes(k))) return v;
+    if (h.length >= 4 && k.length >= 6 && (k.includes(h) || h.includes(k))) return v;
   }
   return null;
 }
@@ -149,6 +156,8 @@ export function normalizeValue(field: SimatField, raw: string): { v?: string | b
       return { v: "Otro" };
     }
     case "estrato": {
+      const n = normHeader(s);
+      if (["noaplica", "ninguno", "na"].includes(n)) return { v: null };
       const m = s.match(/[0-6]/);
       if (!m) return { error: `Estrato inválido: "${s}" (esperado 0-6)` };
       return { v: m[0] };
@@ -162,9 +171,10 @@ export function normalizeValue(field: SimatField, raw: string): { v?: string | b
     case "matriculaContratada":
     case "internado":
     case "apoyoAcademico": {
-      const n = s.toUpperCase();
-      if (n === "S" || n === "SI" || n === "SÍ") return { v: true };
-      if (n === "N" || n === "NO") return { v: false };
+      // El Excel SIMAT real usa "NINGUNO"/"NO APLICA" para el caso negativo
+      const n = normHeader(s);
+      if (["s", "si", "verdadero", "true"].includes(n)) return { v: true };
+      if (["n", "no", "ninguno", "noaplica", "na", "falso", "false"].includes(n)) return { v: false };
       return { error: `Valor inválido para Sí/No: "${s}"` };
     }
     case "discapacidad": {
