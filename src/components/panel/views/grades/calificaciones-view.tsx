@@ -229,10 +229,10 @@ export function CalificacionesView() {
           }
           setCanEdit(res.canEdit === true);
           setStudents(
-            (res.students ?? []).map((s: { id: string; code: string; firstName: string; lastName: string }) => ({
+            (res.students ?? []).map((s: { id: string; code: string; firstName: string; firstName2?: string | null; lastName: string; lastName2?: string | null }) => ({
               studentId: s.id,
               code: s.code,
-              fullName: `${s.lastName} ${s.firstName}`.trim(),
+              fullName: [s.lastName, s.lastName2, s.firstName, s.firstName2].filter(Boolean).join(" "),
             }))
           );
           setActivities(

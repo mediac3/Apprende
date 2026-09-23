@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     // [R2] INVARIANTE: los estudiantes de la planilla vienen EXCLUSIVAMENTE de
     // Gestión de Estudiantes (StudentEnrollment del año activo, matriculado o
     // renovado) vía helper centralizado. Sin matrícula configurada → planilla vacía.
-    let students: { id: string; code: string; firstName: string; lastName: string }[] = [];
+    let students: { id: string; code: string; firstName: string; firstName2: string | null; lastName: string; lastName2: string | null }[] = [];
     if (group) {
       const activeYearId = (
         await db.academicYear.findFirst({
@@ -53,7 +53,9 @@ export async function GET(req: NextRequest) {
           id: e.student.id,
           code: e.student.code,
           firstName: e.student.firstName,
+          firstName2: e.student.firstName2,
           lastName: e.student.lastName,
+          lastName2: e.student.lastName2,
         }));
       }
     }
