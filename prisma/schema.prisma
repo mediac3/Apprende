@@ -202,11 +202,16 @@ model SubjectAssignment {
   subjectId     String
   teacherId     String?
   weeklyHours   Int      @default(1)
+  year          Int      // año académico de la asignación (AcademicYear.year)
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   teacher       User?    @relation("Teacher", fields: [teacherId], references: [id], onDelete: SetNull)
+
+  @@unique([groupId, subjectId, year])
+  @@index([teacherId, year])
 }
 
 model Period {
