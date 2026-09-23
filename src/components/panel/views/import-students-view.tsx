@@ -76,7 +76,7 @@ export function ImportStudentsView() {
 
   // Catálogos
   const [grades, setGrades] = useState<{ id: string; name: string }[]>([]);
-  const [groups, setGroups] = useState<{ id: string; name: string; gradeLevelId?: string | null }[]>([]);
+  const [groups, setGroups] = useState<{ id: string; name: string; otherName?: string | null; gradeLevelId?: string | null }[]>([]);
   const [yearId, setYearId] = useState("");
   const [yearName, setYearName] = useState("");
 
@@ -183,10 +183,10 @@ export function ImportStudentsView() {
         if (seenDoc.has(doc)) errs.push({ row: n, message: `Documento ${doc} duplicado (también en fila ${seenDoc.get(doc)})` });
         else seenDoc.set(doc, n);
       }
-      // Resolver grupo por nombre exacto (trim)
+      // Resolver grupo por nombre exacto o por "Otro nombre" (código SIMAT, ej. 601 = 6°A)
       const groupName = String(row.grupo ?? "").trim();
       if (groupName) {
-        const g = groups.find((gg) => gg.name.trim() === groupName);
+        const g = groups.find((gg) => gg.name.trim() === groupName || gg.otherName?.trim() === groupName);
         if (!g) {
           errs.push({ row: n, message: `Grupo "${groupName}" no existe en el sistema` });
         } else {
@@ -479,7 +479,7 @@ export function ImportStudentsView() {
             <div className="max-h-52 overflow-y-auto rounded border p-2">
               {resolved.slice(0, 200).map((r, i) => (
                 <p key={i} className="text-xs">
-                  {String(r.documentNumber)} · {[r.lastName1, r.lastName2, r.firstName1, r.firstName2].filter(Boolean).join(" ")} · {groups.find((g) => g.id === r.groupId)?.name}
+                  {String(r.documentNumber)} · {[r.lastName1, r.lastName2, r.firstName1, r.firstName2].filter(Boolean).join(" ")} · {(() => { const g = groups.find((x) => x.id === r.groupId); return g ? `${g.name}${g.otherName ? ` (${g.otherName})` : ""}` : "?"; })()}
                 </p>
               ))}
               {resolved.length > 200 && <p className="text-xs text-muted-foreground">…y {resolved.length - 200} más</p>}

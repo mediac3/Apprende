@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
     const result = groups.map((g) => ({
       id: g.id,
       name: g.name,
+      otherName: g.otherName, // Otro nombre (código SIMAT, ej. "601" para "6°A")
       grade: g.gradeLevel?.code ?? null, // compat: código del grado (catálogo GradeLevel)
       gradeLevel: g.gradeLevel,
       section: g.section,
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const {
-      institutionId, name, gradeLevelId, academicYearId, branchId, journeyId,
+      institutionId, name, otherName, gradeLevelId, academicYearId, branchId, journeyId,
       headTeacherId, userId,
     } = body;
 
@@ -82,11 +83,25 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    // "Otro nombre" (código SIMAT) único por año en la institución
+    if (otherName?.trim()) {
+      const dupOther = await db.group.findFirst({
+        where: { institutionId, otherName: otherName.trim(), academicYearId },
+        select: { id: true },
+      });
+      if (dupOther) {
+        return NextResponse.json(
+          { ok: false, error: `Ya existe un grupo con el otro nombre "${otherName.trim()}" para el año seleccionado` },
+          { status: 400 }
+        );
+      }
+    }
 
     const g = await db.group.create({
       data: {
         institutionId,
         name: name.trim(),
+        otherName: otherName?.trim() || null,
         gradeLevelId,
         academicYearId,
         branchId: branchId || null,
@@ -114,7 +129,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     const {
-      id, institutionId, name, branchId, journeyId,
+      id, institutionId, name, otherName, branchId, journeyId,
       headTeacherId, userId,
     } = body;
 
@@ -124,6 +139,7 @@ export async function PATCH(req: NextRequest) {
 
     const update: any = {};
     if (name !== undefined) update.name = String(name).trim();
+    if (otherName !== undefined) update.otherName = String(otherName || "").trim() || null;
     if (branchId !== undefined) update.branchId = branchId || null;
     if (journeyId !== undefined) update.journeyId = journeyId || null;
     if (headTeacherId !== undefined) update.headTeacherId = headTeacherId || null;

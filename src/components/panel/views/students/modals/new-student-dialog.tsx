@@ -26,7 +26,7 @@ import {
 import { toast } from "sonner";
 
 type GradeLevel = { id: string; name: string; code: string };
-type GroupRow = { id: string; name: string; gradeLevelId?: string | null };
+type GroupRow = { id: string; name: string; otherName?: string | null; gradeLevelId?: string | null };
 
 const TIPOS_DOCUMENTO = ["TI", "CC", "RC", "PPT", "Pasaporte", "Otro"] as const;
 const TIPOS_SANGRE = ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"] as const;
@@ -287,7 +287,9 @@ export function NewStudentDialog({
               <Select value={f.groupId || ""} onValueChange={(v) => set("groupId", v)}>
                 <SelectTrigger><SelectValue placeholder="Sin grupo" /></SelectTrigger>
                 <SelectContent>
-                  {groupsOfGrade.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                  {groupsOfGrade.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.otherName ? `${g.name} (${g.otherName})` : g.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </Field>

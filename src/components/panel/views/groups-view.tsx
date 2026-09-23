@@ -27,6 +27,7 @@ import { Plus, Edit, Trash2, Save, Users } from "lucide-react";
 interface GroupRow {
   id: string;
   name: string;
+  otherName?: string | null;
   gradeLevel?: { id: string; code: string; name: string } | null;
   academicYearId?: string | null;
   academicYear?: { id: string; year: number } | null;
@@ -120,6 +121,7 @@ export function GroupsView() {
   const [fBranch, setFBranch] = useState("");
   const [fJourney, setFJourney] = useState("");
   const [fName, setFName] = useState("");
+  const [fOtherName, setFOtherName] = useState("");
 
   function openCreate() {
     setEditing(null);
@@ -134,13 +136,14 @@ export function GroupsView() {
     setFBranch(g.branchId || "");
     setFJourney(g.journeyId || "");
     setFName(g.name);
+    setFOtherName(g.otherName || "");
     setShowForm(true);
   }
 
   async function save() {
     const body: any = {
       institutionId: instId, userId: user.id,
-      name: fName, branchId: fBranch, journeyId: fJourney,
+      name: fName, otherName: fOtherName, branchId: fBranch, journeyId: fJourney,
     };
     if (!editing) {
       body.gradeLevelId = fGrade;
@@ -171,7 +174,7 @@ export function GroupsView() {
 
   const activeYear = sortedYears.find((y: any) => y.id === yearId);
   const filtered = groups.filter((g) =>
-    !search || `${g.name} ${g.gradeLevel?.name || ""} ${g.branch?.name || ""}`.toLowerCase().includes(search.toLowerCase())
+    !search || `${g.name} ${g.otherName || ""} ${g.gradeLevel?.name || ""} ${g.branch?.name || ""}`.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -226,6 +229,7 @@ export function GroupsView() {
                       <td className="py-2 pr-3">{g.gradeLevel?.name || g.gradeLevel?.code || "—"}</td>
                       <td className="py-2 pr-3">
                         <span className="font-medium">{g.name}</span>
+                        {g.otherName && <span className="ml-1.5 text-[10px] text-muted-foreground">({g.otherName})</span>}
                         {!!g.studentCount && (
                           <Badge variant="outline" className="hairline ml-1.5 text-[10px]">{g.studentCount} est.</Badge>
                         )}
@@ -317,6 +321,10 @@ export function GroupsView() {
             <div>
               <Label>Nombre del grupo *</Label>
               <Input value={fName} onChange={(e) => setFName(e.target.value)} placeholder="8°A" />
+            </div>
+            <div>
+              <Label>Otro nombre</Label>
+              <Input value={fOtherName} onChange={(e) => setFOtherName(e.target.value)} placeholder="802" />
             </div>
           </div>
           <DialogFooter>
