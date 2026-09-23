@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { canUserEditGrades, getActiveYear } from "@/lib/teaching-rules";
+import { canUserEditGrades, getActiveStudentsOfGroup, getActiveYear } from "@/lib/teaching-rules";
 
 // === Módulo Calificaciones: notas (GradeRecord) ===
 // Toda consulta usa el cliente Prisma (consultas parametrizadas).
@@ -24,12 +24,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const [students, activities, records, group] = await Promise.all([
-      db.student.findMany({
-        where: { groupId, status: "activo" },
-        select: { id: true, code: true, firstName: true, lastName: true },
-        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-      }),
+    const [activities, records, group] = await Promise.all([
       db.activity.findMany({
         where: { groupId, subjectId, periodId },
         include: { evaluativeConcept: true },
@@ -41,6 +36,27 @@ export async function GET(req: NextRequest) {
       }),
       db.group.findUnique({ where: { id: groupId }, select: { institutionId: true } }),
     ]);
+    // [R2] INVARIANTE: los estudiantes de la planilla vienen EXCLUSIVAMENTE de
+    // Gestión de Estudiantes (StudentEnrollment del año activo, matriculado o
+    // renovado) vía helper centralizado. Sin matrícula configurada → planilla vacía.
+    let students: { id: string; code: string; firstName: string; lastName: string }[] = [];
+    if (group) {
+      const activeYearId = (
+        await db.academicYear.findFirst({
+          where: { institutionId: group.institutionId, active: true },
+          select: { id: true },
+        })
+      )?.id;
+      if (activeYearId) {
+        const enrollments = await getActiveStudentsOfGroup(groupId, activeYearId);
+        students = enrollments.map((e) => ({
+          id: e.student.id,
+          code: e.student.code,
+          firstName: e.student.firstName,
+          lastName: e.student.lastName,
+        }));
+      }
+    }
     // [R1] El cliente resuelve canEdit para pintar la planilla en solo lectura;
     // la validación real se hace en el POST al guardar.
     const canEdit = userId && group
