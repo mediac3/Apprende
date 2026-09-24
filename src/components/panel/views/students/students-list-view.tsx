@@ -33,6 +33,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { StudentDetailView, type StudentRow } from "./student-detail-view";
@@ -99,6 +110,10 @@ export function StudentsListView() {
   const [selected, setSelected] = useState<StudentRow | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  // [C1] Selección masiva (Set de IDs) + confirmación + estado de borrado
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Catálogo de años + estudiantes (callbacks async: sin setState síncrono en el effect)
   useEffect(() => {
@@ -189,7 +204,7 @@ export function StudentsListView() {
     if (!user) return;
     if (
       !confirm(
-        `¿Eliminar al estudiante "${fullName(s)}"?\n\nSe eliminarán también sus matrículas, calificaciones, observaciones y asistencias. Esta acción no se puede deshacer.`
+        `¿Eliminar al estudiante "${fullName(s)}"?\n\nSe eliminarán también sus matrículas, observaciones y asistencias. Si tiene calificaciones registradas, la eliminación será bloqueada. Esta acción no se puede deshacer.`
       )
     )
       return;
@@ -200,9 +215,67 @@ export function StudentsListView() {
     const d = await res.json();
     if (d.ok) {
       toast.success("Estudiante eliminado");
+      setChecked((prev) => {
+        const next = new Set(prev);
+        next.delete(s.id);
+        return next;
+      });
       setReloadKey((k) => k + 1);
     } else {
-      toast.error(d.error || "No se pudo eliminar el estudiante");
+      toast.error(d.error || "No se pudo eliminar el estudiante", { duration: 8000 });
+    }
+  }
+
+  // [C1] Selección masiva: toggles + eliminación por lote en transacción
+  function toggleChecked(id: string, v: boolean) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (v) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  function toggleAll(v: boolean) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      pageRows.forEach((r) => (v ? next.add(r.student.id) : next.delete(r.student.id)));
+      return next;
+    });
+  }
+
+  const allPageChecked = pageRows.length > 0 && pageRows.every((r) => checked.has(r.student.id));
+  const somePageChecked = pageRows.some((r) => checked.has(r.student.id)) && !allPageChecked;
+
+  async function handleBulkDelete() {
+    if (!user || checked.size === 0) return;
+    const ids = Array.from(checked);
+    setBulkDeleting(true);
+    try {
+      const res = await fetch("/api/students/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, institutionId: user.institution.id, userId: user.id }),
+      });
+      const d = await res.json();
+      if (d.ok) {
+        toast.success(`${d.deleted} estudiante(s) eliminado(s)`);
+        setChecked(new Set());
+        setBulkOpen(false);
+        setReloadKey((k) => k + 1);
+      } else {
+        // Bloqueo por notas: reportar qué estudiantes impiden la operación
+        setBulkOpen(false);
+        const names: string[] = (d.blockers ?? []).map((b: { name: string }) => b.name);
+        toast.error(d.error || "No se pudo eliminar", {
+          description: names.length > 0 ? `Bloquean: ${names.join(", ")}` : undefined,
+          duration: 10000,
+        });
+      }
+    } catch {
+      toast.error("No se pudo eliminar");
+    } finally {
+      setBulkDeleting(false);
     }
   }
 
@@ -321,6 +394,13 @@ export function StudentsListView() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      aria-label="Seleccionar todos los estudiantes de la página"
+                      checked={allPageChecked ? true : somePageChecked ? "indeterminate" : false}
+                      onCheckedChange={(v) => toggleAll(v === true)}
+                    />
+                  </TableHead>
                   <TableHead>Estudiante</TableHead>
                   <TableHead className="w-14">Sexo</TableHead>
                   <TableHead className="w-16">BAP</TableHead>
@@ -336,6 +416,13 @@ export function StudentsListView() {
               <TableBody>
                 {pageRows.map(({ student: s, enrollment, status }) => (
                   <TableRow key={s.id}>
+                    <TableCell>
+                      <Checkbox
+                        aria-label={`Seleccionar ${fullName(s)}`}
+                        checked={checked.has(s.id)}
+                        onCheckedChange={(v) => toggleChecked(s.id, v === true)}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {s.photoUrl ? (
@@ -431,6 +518,55 @@ export function StudentsListView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* [C1] Barra de acciones flotante al haber ≥1 estudiante seleccionado */}
+      {checked.size > 0 && (
+        <div className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4 pointer-events-none">
+          <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2 rounded-full border hairline bg-background/95 backdrop-blur px-3 py-2 shadow-lg">
+            <span className="text-xs font-medium tabular-nums px-1">
+              {checked.size} seleccionados
+            </span>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-8 gap-1.5"
+              onClick={() => setBulkOpen(true)}
+            >
+              <Trash2 className="h-4 w-4" /> Eliminar seleccionados
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8" onClick={() => setChecked(new Set())}>
+              Cancelar selección
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* [C1] Confirmación de eliminación masiva */}
+      <AlertDialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar {checked.size} estudiante(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminarán {checked.size} estudiantes. Esta acción no se puede deshacer.
+              Se borrarán sus matrículas, observaciones y asistencias; si alguno tiene
+              calificaciones registradas, la operación será bloqueada.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkDeleting}
+              onClick={(e) => {
+                e.preventDefault();
+                handleBulkDelete();
+              }}
+            >
+              {bulkDeleting ? "Eliminando…" : "Eliminar seleccionados"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {user ? (
         <NewStudentDialog

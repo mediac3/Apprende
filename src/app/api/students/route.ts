@@ -287,6 +287,23 @@ export async function DELETE(req: NextRequest) {
   }
 
   try {
+    // [C1] Regla dura: bloquear la eliminación si el estudiante tiene notas registradas
+    // (calificaciones consolidadas o notas de actividades del módulo Calificaciones).
+    const [gradeCount, gradeRecordCount] = await Promise.all([
+      db.grade.count({ where: { studentId: id } }),
+      db.gradeRecord.count({ where: { studentId: id } }),
+    ]);
+    if (gradeCount + gradeRecordCount > 0) {
+      const s = await db.student.findUnique({
+        where: { id },
+        select: { firstName: true, lastName: true, lastName2: true, firstName2: true },
+      });
+      const name = s ? [s.lastName, s.lastName2, s.firstName, s.firstName2].filter(Boolean).join(" ") : id;
+      return NextResponse.json(
+        { ok: false, error: `No se puede eliminar a "${name}": tiene ${gradeCount + gradeRecordCount} nota(s) registrada(s). Retire primero sus calificaciones.` },
+        { status: 409 }
+      );
+    }
     const student = await db.student.delete({ where: { id } });
 
     await db.auditLog.create({
