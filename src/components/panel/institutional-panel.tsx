@@ -40,6 +40,7 @@ import {
   School,
   ListChecks,
   Palette,
+  Table2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,7 @@ import {
 } from "@/components/ui/sheet";
 import { DashboardView } from "./views/dashboard-view";
 import { GradesView } from "./views/grades-view";
+import ConsolidadoView from "./views/consolidado/consolidado-view";
 import { ActivitiesManagementView } from "./views/grades/activities-management-view";
 import { AttendanceView } from "./views/attendance-view";
 import { ObserverView } from "./views/observer-view";
@@ -104,6 +106,8 @@ const NAV: NavItem[] = [
   // Académico
   { key: "planeador", label: "Planeador de clases", icon: BookOpen, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
   { key: "notas", label: "Notas parciales", icon: FileText, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
+  // [F2] Consolidado anual — junto a Notas parciales
+  { key: "consolidado", label: "Consolidado anual", icon: Table2, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
   // [F3] Gestión de Actividades — junto a Notas parciales (decisión del usuario)
   { key: "gestion-actividades", label: "Gestión de Actividades", icon: ListChecks, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
   { key: "pre-informe", label: "Pre-Informe", icon: Bell, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
@@ -242,6 +246,9 @@ export function InstitutionalPanel() {
       case "notas":
       case "indicadores":
         return <GradesView mode={activeModule === "indicadores" ? "indicadores" : "default"} />;
+      // [F2] Consolidado anual
+      case "consolidado":
+        return <ConsolidadoView />;
       // [F3] Gestión de Actividades
       case "gestion-actividades":
         return <ActivitiesManagementView />;
