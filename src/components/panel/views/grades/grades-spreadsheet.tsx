@@ -36,6 +36,8 @@ export interface SheetActivity {
   label?: string | null;
   conceptId: string;
   isGeneral: boolean;
+  /** [C5] secuencia estable dentro del concepto: base de la etiqueta N# */
+  order: number;
 }
 
 // Paleta determinística por orden de concepto (equivalente a la tabla original)
@@ -95,8 +97,104 @@ function fmt(v: number | null): string {
 
 const SVG_ATTRS = 'width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
 const SVG_PLUS = `<svg ${SVG_ATTRS}><path d="M5 12h14"/><path d="M12 5v14"/></svg>`;
-const SVG_PENCIL = `<svg ${SVG_ATTRS}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>`;
-const SVG_MINUS = `<svg ${SVG_ATTRS}><path d="M5 12h14"/></svg>`;
+
+// [C5] Etiqueta corta SIEMPRE "N{order}" (★ si es general); el nombre completo
+// solo se muestra en el tooltip nativo y en el menú contextual. Nunca se
+// reemplaza por la etiqueta/nombre editados.
+function shortActivityLabel(a: SheetActivity): string {
+  return a.isGeneral ? `N${a.order} ★` : `N${a.order}`;
+}
+
+// [C4] Menú contextual de actividad (DOM vanilla: los headers del spreadsheet
+// viven fuera del árbol React). Entrada siempre visible: chip "N#" clicable.
+let activityMenuEl: HTMLDivElement | null = null;
+function closeActivityMenu() {
+  if (!activityMenuEl) return;
+  activityMenuEl.remove();
+  activityMenuEl = null;
+  document.removeEventListener("mousedown", onActivityMenuOutside, true);
+  window.removeEventListener("scroll", closeActivityMenu, true);
+  document.removeEventListener("keydown", onActivityMenuKeydown);
+}
+function onActivityMenuOutside(e: MouseEvent) {
+  if (activityMenuEl && !activityMenuEl.contains(e.target as Node)) closeActivityMenu();
+}
+function onActivityMenuKeydown(e: KeyboardEvent) {
+  if (e.key === "Escape") closeActivityMenu();
+}
+function openActivityMenu(
+  anchor: HTMLElement,
+  activity: SheetActivity,
+  handlers: Pick<GradesSpreadsheetProps, "onEditActivity" | "onDeleteActivity">
+) {
+  closeActivityMenu();
+  const menu = document.createElement("div");
+  Object.assign(menu.style, {
+    position: "fixed",
+    zIndex: "70",
+    minWidth: "150px",
+    maxWidth: "240px",
+    background: "#ffffff",
+    color: "#1f2937",
+    border: "1px solid rgba(0,0,0,0.14)",
+    borderRadius: "10px",
+    boxShadow: "0 10px 28px rgba(0,0,0,0.22)",
+    padding: "4px",
+    fontSize: "12px",
+  } satisfies Partial<CSSStyleDeclaration>);
+  const head = document.createElement("div");
+  head.textContent = activity.name; // [C5] nombre completo visible también en móvil
+  Object.assign(head.style, {
+    padding: "6px 8px",
+    fontWeight: "600",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    borderBottom: "1px solid rgba(0,0,0,0.08)",
+    marginBottom: "2px",
+  } satisfies Partial<CSSStyleDeclaration>);
+  menu.appendChild(head);
+  const mkItem = (label: string, danger: boolean, fn?: () => void) => {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.textContent = label;
+    Object.assign(item.style, {
+      display: "block",
+      width: "100%",
+      textAlign: "left",
+      padding: "7px 10px",
+      minHeight: "32px",
+      border: "none",
+      borderRadius: "6px",
+      backgroundColor: "transparent",
+      cursor: "pointer",
+      font: "inherit",
+      color: danger ? "#b91c1c" : "#1f2937",
+    } satisfies Partial<CSSStyleDeclaration>);
+    item.addEventListener("mouseenter", () => {
+      item.style.backgroundColor = danger ? "#fee2e2" : "rgba(0,0,0,0.06)";
+    });
+    item.addEventListener("mouseleave", () => {
+      item.style.backgroundColor = "transparent";
+    });
+    item.addEventListener("click", () => {
+      closeActivityMenu();
+      fn?.();
+    });
+    menu.appendChild(item);
+  };
+  mkItem("Editar actividad", false, () => handlers.onEditActivity?.(activity));
+  mkItem("Eliminar actividad", true, () => handlers.onDeleteActivity?.(activity));
+  document.body.appendChild(menu);
+  activityMenuEl = menu;
+  const r = anchor.getBoundingClientRect();
+  const left = Math.min(Math.max(4, r.left), window.innerWidth - menu.offsetWidth - 4);
+  menu.style.left = `${left}px`;
+  menu.style.top = `${r.bottom + 4}px`;
+  document.addEventListener("mousedown", onActivityMenuOutside, true);
+  window.addEventListener("scroll", closeActivityMenu, true);
+  document.addEventListener("keydown", onActivityMenuKeydown);
+}
 
 function makeHeaderButton(opts: {
   html: string;
@@ -115,14 +213,16 @@ function makeHeaderButton(opts: {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    width: "18px",
-    height: "18px",
-    marginLeft: "4px",
-    padding: "0",
+    // [C6] hit area táctil 32px con visual de 18px (background-clip content-box)
+    width: "32px",
+    height: "32px",
+    marginLeft: "0px",
+    padding: "7px",
+    backgroundClip: "content-box",
     borderRadius: "9999px",
     border: "none",
     cursor: opts.disabled ? "not-allowed" : "pointer",
-    background: opts.color ?? "rgba(255,255,255,0.3)",
+    backgroundColor: opts.color ?? "rgba(255,255,255,0.3)",
     color: "inherit",
     opacity: opts.disabled ? "0.4" : "1",
     verticalAlign: "middle",
@@ -450,9 +550,10 @@ export function GradesSpreadsheet(props: Props) {
             ...cols.map((col, ci) =>
               col.kind === "activity"
                 ? {
+                    // [C5] la etiqueta N{order} nunca se reemplaza por label/name
                     title: col.activity.isGeneral
-                      ? `${col.activity.label ?? col.activity.name} ★`
-                      : col.activity.label ?? col.activity.name,
+                      ? `N${col.activity.order} ★`
+                      : `N${col.activity.order}`,
                     width: colWidths[ci] ?? ACTIVITY_COL_WIDTH,
                     readOnly: false,
                   }
@@ -568,35 +669,24 @@ export function GradesSpreadsheet(props: Props) {
           return;
         }
         const a = col.activity;
-        th.title = a.name; // tooltip: nombre completo de la actividad
-        if (props.onEditActivity) {
-          th.appendChild(
-            makeHeaderButton({
-              html: SVG_PENCIL,
-              title: "Editar actividad",
-              disabled: periodClosed,
-              onClick: () => propsRef.current.onEditActivity?.(a),
-            })
-          );
+        th.title = a.name; // [C5] tooltip nativo (hover desktop) con el nombre completo
+        // [C4] chip "N#" clicable → menú contextual Editar/Eliminar; siempre
+        // visible sin importar cuántas actividades haya por concepto.
+        th.textContent = "";
+        const chip = document.createElement("span");
+        chip.textContent = shortActivityLabel(a);
+        Object.assign(chip.style, {
+          padding: "8px 4px",
+          cursor: periodClosed ? "not-allowed" : "pointer",
+        } satisfies Partial<CSSStyleDeclaration>);
+        if (!periodClosed) {
+          chip.style.borderBottom = "1px dotted currentColor";
+          chip.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            openActivityMenu(chip, a, propsRef.current);
+          });
         }
-        if (props.onDeleteActivity) {
-          const del = makeHeaderButton({
-            html: SVG_MINUS,
-            title: "Eliminar actividad",
-            disabled: periodClosed,
-            onClick: () => propsRef.current.onDeleteActivity?.(a),
-          });
-          del.addEventListener("mouseenter", () => {
-            del.style.background = "#fee2e2";
-            del.style.color = "#b91c1c";
-          });
-          del.addEventListener("mouseleave", () => {
-            del.style.background = "rgba(0,0,0,0.06)";
-            del.style.color = "inherit";
-          });
-          del.style.background = "rgba(0,0,0,0.06)";
-          th.appendChild(del);
-        }
+        th.appendChild(chip);
       });
 
       // Fila 1 (conceptos): fila propia insertada en el thead, con colspans
@@ -607,8 +697,8 @@ export function GradesSpreadsheet(props: Props) {
         const stdRow = ws.headers?.[0]?.parentElement;
         if (thead && stdRow) {
           const tr = document.createElement("tr");
-          // [theme-options] alto configurable del header de conceptos
-          tr.style.height = "var(--grades-header-height, 40px)";
+          // [theme-options] alto configurable del header de conceptos ([C6] default 32px)
+          tr.style.height = "var(--grades-header-height, 32px)";
           // Grupo: columna de numeración + Estudiantes + PROM + DEF (4 columnas)
           // [theme-options-movil] la franja se divide para congelarse SOLO sobre
           // las columnas realmente congeladas por jss (Estudiantes + PROM/DEF

@@ -34,7 +34,7 @@ function gradesDecls(d: ThemeData): string[] {
     `--grades-concept-autoevaluacion-text:${c(g.concepts.autoevaluacion.text, "#FFFFFF")}`,
     `--grades-header-text:${c(g.headerTextColor, "#FFFFFF")}`,
     `--grades-header-font-size:${g.headerFontSize || 11}px`,
-    `--grades-header-height:${g.headerHeight || 40}px`,
+    `--grades-header-height:${g.headerHeight || 32}px`, // [C6] default compacto
     `--grades-cell-font-size:${g.cellFontSize || 13}px`,
     `--grades-student-font-size:${g.studentColFontSize || 13}px`,
     `--grades-student-align:${g.studentNameAlign || "left"}`,

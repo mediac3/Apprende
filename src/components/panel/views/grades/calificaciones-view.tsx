@@ -236,12 +236,13 @@ export function CalificacionesView() {
             }))
           );
           setActivities(
-            (res.activities ?? []).map((a: { id: string; name: string; label?: string | null; evaluativeConceptId: string; isGeneral: boolean }) => ({
+            (res.activities ?? []).map((a: { id: string; name: string; label?: string | null; evaluativeConceptId: string; isGeneral: boolean; order: number }) => ({
               id: a.id,
               name: a.name,
               label: a.label ?? null,
               conceptId: a.evaluativeConceptId,
               isGeneral: a.isGeneral,
+              order: a.order, // [C5] base de la etiqueta estable N#
             }))
           );
           const v: Record<string, string> = {};
