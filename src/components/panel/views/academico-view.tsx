@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/auth-store";
 import {
@@ -573,7 +573,28 @@ function PeriodosView() {
   );
 }
 
+// [C2] Store externo (localStorage + evento) para la inmovilización de columnas
+// de la planilla de Notas parciales (mismo key/evento que grades-spreadsheet.tsx).
+const FREEZE_STORAGE_KEY = "apprende:grades:freezeCount";
+function readFreezeSnapshot(): number {
+  const v = parseInt(window.localStorage.getItem(FREEZE_STORAGE_KEY) ?? "", 10);
+  return Number.isFinite(v) ? Math.min(3, Math.max(0, v)) : 1;
+}
+function subscribeFreeze(cb: () => void) {
+  window.addEventListener("apprende:grades:freeze-changed", cb);
+  window.addEventListener("storage", cb);
+  return () => {
+    window.removeEventListener("apprende:grades:freeze-changed", cb);
+    window.removeEventListener("storage", cb);
+  };
+}
+
 function ConfiguracionView() {
+  const freezePref = useSyncExternalStore(subscribeFreeze, readFreezeSnapshot, () => 1);
+  function setFreeze(v: number) {
+    window.localStorage.setItem(FREEZE_STORAGE_KEY, String(v));
+    window.dispatchEvent(new Event("apprende:grades:freeze-changed"));
+  }
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -673,6 +694,42 @@ function ConfiguracionView() {
               </TableRow>
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      {/* [C2] Control de inmovilización de columnas (movido desde Notas parciales) */}
+      <Card className="hairline rounded-xl">
+        <CardHeader>
+          <CardTitle className="text-base">Planilla de notas</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Inmovilizar columnas</Label>
+          <div className="flex flex-wrap items-center gap-2">
+            {([
+              [0, "Ninguna"],
+              [1, "Estudiantes"],
+              [2, "Estudiantes + PROM"],
+              [3, "Todas"],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={freezePref === value}
+                onClick={() => setFreeze(value)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  freezePref === value
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Columnas fijas al desplazar la planilla de Notas parciales (especialmente útil en
+            móvil). El cambio se aplica de inmediato.
+          </p>
         </CardContent>
       </Card>
 

@@ -56,6 +56,16 @@ function colorFor(order: number) {
   return CONCEPT_COLORS[i];
 }
 
+// [C2] Inmovilización de columnas: el control vive en Configuración institucional
+// (academico-view) y persiste en localStorage; esta planilla solo lo lee.
+const FREEZE_KEY = "apprende:grades:freezeCount";
+const FREEZE_EVENT = "apprende:grades:freeze-changed";
+function readFreezeCount(): number {
+  if (typeof window === "undefined") return 1;
+  const v = parseInt(window.localStorage.getItem(FREEZE_KEY) ?? "", 10);
+  return Number.isFinite(v) ? Math.min(3, Math.max(0, v)) : 1;
+}
+
 // [theme-options] Resuelve las vars CSS del tema por nombre de concepto.
 // Orden de match importa: "autoevaluación" antes que otros; "ser" al final
 // (startsWith no colisiona con "saber"). Fallbacks = paleta actual.
@@ -240,9 +250,20 @@ export function GradesSpreadsheet(props: Props) {
   const colWidthsRef = useRef<number[]>(colWidths);
   colWidthsRef.current = colWidths;
 
-  // [theme-options-movil] Columnas inmovilizadas seleccionables (Estudiantes=1,
-  // +PROM=2, +DEF=3; 0 = ninguna). Default 1 = comportamiento actual.
-  const [freezeCount, setFreezeCount] = useState(1);
+  // [C2] Columnas inmovilizadas (Estudiantes=1, +PROM=2, +DEF=3; 0 = ninguna).
+  // Default 1 = comportamiento actual. El control vive en Configuración
+  // institucional; aquí solo se lee (evento custom + storage).
+  const [freezeCount, setFreezeCount] = useState<number>(readFreezeCount);
+
+  useEffect(() => {
+    const apply = () => setFreezeCount(readFreezeCount());
+    window.addEventListener(FREEZE_EVENT, apply);
+    window.addEventListener("storage", apply);
+    return () => {
+      window.removeEventListener(FREEZE_EVENT, apply);
+      window.removeEventListener("storage", apply);
+    };
+  }, []);
 
   // Estructura de la hoja (cambia solo con datos estructurales, no con cada tecla)
   const structureKey = useMemo(
@@ -765,36 +786,10 @@ export function GradesSpreadsheet(props: Props) {
   }
 
   // [C3] sin overflow-hidden ni altura fija: crece con el nº de estudiantes
-  // [theme-options-movil] chips de inmovilización (solo móvil, md:hidden):
-  // semántica de freeze-panes — seleccionar PROM inmoviliza también Estudiantes.
-  const FREEZE_CHIPS: { label: string; value: number }[] = [
-    { label: "Estudiantes", value: 1 },
-    { label: "PROM", value: 2 },
-    { label: "DEF", value: 3 },
-  ];
+  // [C2] los chips de inmovilización se movieron a Configuración institucional;
+  // el valor llega por localStorage + evento "apprende:grades:freeze-changed".
   return (
     <div className="flex flex-col flex-1 min-w-0">
-      <div className="flex md:hidden items-center gap-1.5 mb-2 flex-wrap">
-        <span className="text-xs text-muted-foreground mr-1">Inmovilizar:</span>
-        {FREEZE_CHIPS.map((chip) => {
-          const active = freezeCount >= chip.value;
-          return (
-            <button
-              key={chip.label}
-              type="button"
-              aria-pressed={active}
-              onClick={() => setFreezeCount(active ? chip.value - 1 : chip.value)}
-              className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
-                active
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-muted-foreground border-input"
-              }`}
-            >
-              {chip.label}
-            </button>
-          );
-        })}
-      </div>
       <div ref={containerRef} className="jss-planilla flex-1 rounded-xl border bg-card" />
     </div>
   );
