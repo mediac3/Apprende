@@ -54,6 +54,7 @@ import {
 import { DashboardView } from "./views/dashboard-view";
 import { GradesView } from "./views/grades-view";
 import ConsolidadoView from "./views/consolidado/consolidado-view";
+import PromocionWizardView from "./views/promocion/promocion-wizard";
 import { ActivitiesManagementView } from "./views/grades/activities-management-view";
 import { AttendanceView } from "./views/attendance-view";
 import { ObserverView } from "./views/observer-view";
@@ -143,6 +144,8 @@ const NAV: NavItem[] = [
   { key: "libros", label: "Libros reglamentarios", icon: BookOpen, group: "Administración", roles: ["rector", "administrativo", "coordinador"] },
   { key: "actas", label: "Actas institucionales", icon: FileText, group: "Administración", roles: ["rector", "coordinador", "administrativo"] },
   { key: "matricula", label: "Matrícula", icon: ClipboardCheck, group: "Administración", roles: ["rector", "administrativo"] },
+  // [F3] Promoción de grado — junto a Matrícula
+  { key: "promocion", label: "Promoción de grado", icon: GraduationCap, group: "Administración", roles: ["rector", "administrativo"] },
   { key: "asignacion", label: "Asignación académica", icon: Building2, group: "Administración", roles: ["rector", "coordinador", "administrativo"] },
   { key: "periodos", label: "Periodos académicos", icon: Calendar, group: "Administración", roles: ["rector", "coordinador", "administrativo"], hidden: true },
   { key: "talento-humano", label: "Talento Humano", icon: Users, group: "Administración", roles: ["rector", "administrativo"] },
@@ -249,6 +252,9 @@ export function InstitutionalPanel() {
       // [F2] Consolidado anual
       case "consolidado":
         return <ConsolidadoView />;
+      // [F3] Promoción de grado
+      case "promocion":
+        return <PromocionWizardView />;
       // [F3] Gestión de Actividades
       case "gestion-actividades":
         return <ActivitiesManagementView />;
