@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, RefreshCw, Table2 } from "lucide-react";
 import { ConsolidadoTable } from "./consolidado-table";
+import { StudentDrilldownModal } from "./student-drilldown-modal";
 import { useConsolidado } from "./use-consolidado";
 
 // === [F2] Módulo "Consolidado anual" (grupo Académico) ===
@@ -30,6 +31,7 @@ export default function ConsolidadoView() {
     exportExcel,
   } = useConsolidado(institutionId);
   const [exporting, setExporting] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
 
   async function handleExport() {
     setExporting(true);
@@ -129,7 +131,12 @@ export default function ConsolidadoView() {
             {data.group.year ?? activeYear?.year ?? "—"} · Umbral de promoción:{" "}
             <span className="font-medium text-foreground">{data.umbral}</span>
           </p>
-          <ConsolidadoTable data={data} />
+          <ConsolidadoTable data={data} onStudentClick={setSelectedStudent} />
+          <StudentDrilldownModal
+            data={data}
+            studentId={selectedStudent}
+            onClose={() => setSelectedStudent(null)}
+          />
         </div>
       ) : !loading && !error ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">

@@ -36,6 +36,8 @@ export interface ConsolidadoStudentRow {
   id: string;
   fullName: string;
   code: string;
+  /** tipo + número de documento (drill-down) */
+  document: string | null;
   /** DEF por asignatura × periodo (crudo redondeado a 1 decimal) */
   def: Record<string, Record<string, number | null>>;
   /** DEF final por asignatura (ponderada por peso de periodos) */
@@ -330,6 +332,8 @@ export async function getConsolidadoAnual(params: {
       id: s.id,
       fullName: [s.lastName, s.lastName2].filter(Boolean).join(" ") + " " + [s.firstName, s.firstName2].filter(Boolean).join(" "),
       code: s.code,
+      document:
+        [s.documentType, s.documentNumber].filter(Boolean).join(" ") || null,
       def,
       defFinal,
       promPeriod,
