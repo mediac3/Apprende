@@ -72,9 +72,8 @@ export function GradesSidebar({
         side="left"
         className="w-80 gap-3 p-3 sm:max-w-none"
         onOpenAutoFocus={(e) => {
-          // Foco inicial en el buscador (spec [C4])
+          // [C3] sin foco automático al abrir: evita el teclado virtual en móvil
           e.preventDefault();
-          searchRef.current?.focus();
         }}
       >
         <SheetTitle className="flex items-center gap-2 text-sm font-semibold">
