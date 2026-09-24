@@ -485,6 +485,14 @@
 [data-theme="nocturno"] .chip-basico { color: var(--perf-basico); }
 [data-theme="nocturno"] .chip-bajo { color: var(--perf-bajo); }
 
+/* [ajuste usuario] Planilla de Notas parciales: encabezados congelados
+   (Estudiantes/PROM/DEF y grupos de conceptos) por encima de las celdas de
+   scroll. jss fija z-index:3 !important en .jss_freezed y las celdas vecinas
+   quedan con z-index inline 5 → sin esta regla las tapa al desplazar. */
+.jss-planilla thead td.grades-frozen-head {
+  z-index: 8 !important;
+}
+
 /* [theme-options-movil] Planilla de Notas parciales: barra de desplazamiento
    horizontal visible en móvil para desplazarse hacia las actividades */
 @media (max-width: 767px) {

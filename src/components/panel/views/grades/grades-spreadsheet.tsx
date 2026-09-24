@@ -285,7 +285,7 @@ export function GradesSpreadsheet(props: Props) {
   const [gradesTheme, setGradesTheme] = useState({
     conditional: true,
     threshold: APPROVAL_THRESHOLD,
-    minColWidth: 180,
+    minColWidth: 108, // [ajuste usuario] 180×0.6: bloques de concepto más compactos
   });
   useEffect(() => {
     const cs = getComputedStyle(document.documentElement);
@@ -297,7 +297,7 @@ export function GradesSpreadsheet(props: Props) {
     setGradesTheme({
       conditional: condRaw === "" ? true : condRaw !== "0",
       threshold: num("--grades-low-threshold", APPROVAL_THRESHOLD),
-      minColWidth: num("--grades-min-col-width", 180),
+      minColWidth: num("--grades-min-col-width", 108), // [ajuste usuario] -40%
     });
   }, []);
 
@@ -333,7 +333,8 @@ export function GradesSpreadsheet(props: Props) {
   // [theme-options] el mínimo configurable vive en --grades-min-col-width.
   // [theme-options-movil] en móvil columnas más angostas → más información visible.
   const STUDENT_COL_WIDTH = isMobile ? 150 : 220;
-  const ACTIVITY_COL_WIDTH = isMobile ? 52 : 64;
+  // [ajuste usuario] ancho de actividad -40%: 52→31 (móvil) y 64→38 (escritorio)
+  const ACTIVITY_COL_WIDTH = isMobile ? 31 : 38;
   const CONCEPT_MIN_WIDTH = gradesTheme.minColWidth;
   const colWidths = useMemo(() => {
     const counts = new Map<string, number>();
@@ -526,13 +527,12 @@ export function GradesSpreadsheet(props: Props) {
               data,
               style,
               tableOverflow: true,
-              // [C3] sin tableHeight → .jss_content sin maxHeight/overflow-y:
-              // la grilla crece hasta el último estudiante y el scroll vertical
-              // es el de la página (el interno queda solo para horizontal).
-              // [theme-options-movil] en móvil SIN tableWidth: la tabla conserva
-              // su ancho natural (suma de columnas) → hay desborde real y el
-              // scroll horizontal con dedo funciona junto a freezeColumns.
-              tableWidth: isMobile ? undefined : "100%",
+              // [ajuste usuario] SIN tableWidth en ningún tamaño: la tabla
+              // conserva su ancho natural (suma de columnas) → hay desborde
+              // real también en escritorio y freezeColumns funciona igual en
+              // móvil y escritorio (el scrollport es .jss_content, que se
+              // configura inline justo después del init).
+              tableWidth: undefined,
               freezeColumns: freezeCount,
           editable: !periodClosed,
           comments: commentsInit,
@@ -566,17 +566,20 @@ export function GradesSpreadsheet(props: Props) {
 
     wsRef.current = worksheets[0] ?? null;
 
-    // [theme-options-movil] Sin tableWidth (móvil), jss no limita el ancho del
-    // contenedor de la hoja (.jss_container inline-block crece con la tabla) ni
-    // del .jss_content (shrink-to-fit) → no hay desborde y el scroll no existe.
-    // Mismo mecanismo que jss aplica en escritorio vía tableWidth, pero inline:
-    if (isMobile && el) {
+    // [ajuste usuario] Móvil y escritorio por igual: .jss_content es el
+    // scrollport (x e y) de la hoja. Con altura acotada, los encabezados
+    // (conceptos + Estudiantes/PROM/DEF/N#) quedan fijos al desplazar la
+    // lista de estudiantes verticalmente, y freezeColumns también opera en
+    // escritorio (position:sticky requiere un scroll container real).
+    if (el) {
       const containerEl = el.querySelector<HTMLElement>(".jss_container");
       if (containerEl) containerEl.style.maxWidth = "100%";
       const contentEl = el.querySelector<HTMLElement>(".jss_content");
       if (contentEl) {
         contentEl.style.width = "100%";
-        contentEl.style.overflowX = "auto";
+        contentEl.style.overflow = "auto";
+        contentEl.style.maxHeight = "calc(100dvh - 170px)";
+        contentEl.style.overscrollBehavior = "contain";
       }
     }
 
@@ -800,6 +803,48 @@ export function GradesSpreadsheet(props: Props) {
             tr.appendChild(td);
           }
           thead.insertBefore(tr, stdRow);
+          // [ajuste usuario] Encabezados fijos al desplazar la lista en
+          // vertical: la fila de conceptos pega en top 0 y la fila estándar
+          // (Estudiantes/PROM/DEF/N#) justo debajo. Sticky opera dentro del
+          // scrollport .jss_content (altura acotada tras el init).
+          for (let hci = 0; hci < tr.children.length; hci++) {
+            const hc = tr.children[hci] as HTMLElement;
+            hc.style.position = "sticky";
+            hc.style.top = "0px";
+            hc.style.zIndex = "6";
+          }
+          const conceptHeaderH = `${tr.offsetHeight || 32}px`;
+          for (let hci = 0; hci < stdRow.children.length; hci++) {
+            const hc = stdRow.children[hci] as HTMLElement;
+            hc.style.position = "sticky";
+            hc.style.top = conceptHeaderH;
+            hc.style.zIndex = "5";
+          }
+          // [ajuste usuario] Congelación horizontal de los encabezados: sticky
+          // con inset left por columna (la clase grades-frozen-head eleva el
+          // z-index sobre las celdas de scroll; ver globals.css).
+          if (freezeCount > 0) {
+            let accLeft = 0;
+            for (let k = 1; k <= freezeCount; k++) {
+              const hc = stdRow.children[k] as HTMLElement | undefined;
+              if (!hc) break;
+              hc.classList.add("grades-frozen-head");
+              hc.style.left = `${accLeft}px`;
+              accLeft += hc.offsetWidth || 0;
+            }
+            const cEst = tr.children[1] as HTMLElement | undefined;
+            if (cEst) {
+              cEst.classList.add("grades-frozen-head");
+              cEst.style.left = "0px";
+            }
+            if (freezeCount >= 2) {
+              const cGroup = tr.children[2] as HTMLElement | undefined;
+              if (cGroup) {
+                cGroup.classList.add("grades-frozen-head");
+                cGroup.style.left = `${(stdRow.children[1] as HTMLElement)?.offsetWidth || 0}px`;
+              }
+            }
+          }
         }
       }
     }

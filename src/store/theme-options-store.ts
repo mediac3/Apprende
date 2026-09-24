@@ -40,7 +40,7 @@ function gradesDecls(d: ThemeData): string[] {
     `--grades-student-align:${g.studentNameAlign || "left"}`,
     `--grades-student-color:${g.studentNameColor || "inherit"}`,
     `--grades-row-height:${rowHeight}`,
-    `--grades-min-col-width:${g.minColumnWidth || 180}px`,
+    `--grades-min-col-width:${g.minColumnWidth || 108}px`, // [ajuste usuario] -40%
     `--grades-prom-bg:${c(g.promBg, "#e0f2fe")}`,
     `--grades-def-bg:${c(g.defBg, "#ecfdf5")}`,
     `--grades-conditional:${g.conditionalNotes ? 1 : 0}`,
