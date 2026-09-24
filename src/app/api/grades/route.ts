@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     const grades = await db.grade.findMany({
       where,
       include: {
-        student: { select: { id: true, firstName: true, lastName: true, code: true, groupId: true } },
+        student: { select: { id: true, firstName: true, firstName2: true, lastName: true, lastName2: true, code: true, groupId: true } },
         subject: { select: { id: true, name: true, area: true } },
         period: { select: { id: true, name: true } },
         teacher: { select: { id: true, fullName: true } },

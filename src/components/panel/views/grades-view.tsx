@@ -42,7 +42,7 @@ interface Grade {
   value: number | null;
   performance: string | null;
   observations: string | null;
-  student: { id: string; firstName: string; lastName: string; code: string; };
+  student: { id: string; firstName: string; firstName2?: string | null; lastName: string; lastName2?: string | null; code: string; groupId?: string | null; };
   studentId: string;
   subjectId: string;
   periodId: string;
@@ -51,8 +51,15 @@ interface Student {
   id: string;
   code: string;
   firstName: string;
+  firstName2?: string | null;
   lastName: string;
+  lastName2?: string | null;
   groupId?: string | null;
+}
+
+// Nombre completo SIMAT: Apellido1 Apellido2 Nombre1 Nombre2
+function fullName(s: { lastName: string; lastName2?: string | null; firstName: string; firstName2?: string | null }): string {
+  return [s.lastName, s.lastName2, s.firstName, s.firstName2].filter(Boolean).join(" ");
 }
 
 const INDICADORES = ["Razonamiento", "Comunicación", "Resolución de problemas"];
@@ -122,7 +129,9 @@ function LegacyNotasView({ mode = "indicadores" }: { mode?: "default" | "indicad
                 id: g.student.id,
                 code: g.student.code,
                 firstName: g.student.firstName,
+                firstName2: g.student.firstName2,
                 lastName: g.student.lastName,
+                lastName2: g.student.lastName2,
                 groupId,
               };
             }
@@ -176,7 +185,7 @@ function LegacyNotasView({ mode = "indicadores" }: { mode?: "default" | "indicad
             performance,
             observations: obs,
             student: student
-              ? { id: student.id, firstName: student.firstName, lastName: student.lastName, code: student.code }
+              ? { id: student.id, firstName: student.firstName, firstName2: student.firstName2, lastName: student.lastName, lastName2: student.lastName2, code: student.code }
               : { id: studentId, firstName: "", lastName: "", code: "" },
             studentId,
             subjectId,
@@ -249,13 +258,16 @@ function LegacyNotasView({ mode = "indicadores" }: { mode?: "default" | "indicad
     };
   }, [grades]);
 
-  const rows = students.length > 0 ? students : grades.map((g) => ({
+  const rows: Student[] = students.length > 0 ? students : grades.map((g) => ({
     id: g.student.id,
     code: g.student.code,
     firstName: g.student.firstName,
+    firstName2: g.student.firstName2,
     lastName: g.student.lastName,
+    lastName2: g.student.lastName2,
+    groupId: g.student.groupId,
   }));
-  const uniqueRows = Array.from(new Map(rows.map((r) => [r.id, r])).values());
+  const uniqueRows = Array.from(new Map(rows.map((r) => [r.id, r] as [string, Student])).values());
 
   return (
     <motion.div
@@ -391,7 +403,7 @@ function LegacyNotasView({ mode = "indicadores" }: { mode?: "default" | "indicad
                     <TableRow key={s.id}>
                       <TableCell className="font-mono text-xs">{s.code}</TableCell>
                       <TableCell className="font-medium">
-                        {s.firstName} {s.lastName}
+                        {fullName(s)}
                       </TableCell>
                       <TableCell>
                         <Input
@@ -403,7 +415,7 @@ function LegacyNotasView({ mode = "indicadores" }: { mode?: "default" | "indicad
                           onChange={(e) => onNoteChange(s.id, e.target.value)}
                           onBlur={(e) => saveGrade(s.id, e.target.value, drafts[s.id]?.obs ?? obs)}
                           className="h-8 w-24 tabular-nums"
-                          aria-label={`Nota de ${s.firstName} ${s.lastName}`}
+                          aria-label={`Nota de ${fullName(s)}`}
                         />
                         {saving[s.id] && (
                           <span className="text-[10px] text-muted-foreground ml-1">guardando…</span>
