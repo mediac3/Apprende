@@ -23,6 +23,9 @@ export interface ConsolidadoSubject {
   areaAbbreviation: string | null;
   percentage: number; // % dentro del área (Subject.percentage)
   averages: boolean; // si false no entra al promedio (ej. Comportamiento)
+  /** docente asignado en el grupo/año (SubjectAssignment) — filtro docente */
+  teacherId: string | null;
+  teacherName: string | null;
 }
 
 export interface ConsolidadoPeriod {
@@ -105,6 +108,8 @@ export interface ConsolidadoStudentRow {
   estado: EstadoPromocion;
   /** false si a algún (asignatura, periodo) del grupo le faltan notas propias */
   defCompleta: boolean;
+  /** nº de celdas (asignatura, periodo) del grupo sin nota propia — filtro notas en blanco */
+  blankCount: number;
 }
 
 export interface ConsolidadoResult {
@@ -198,7 +203,43 @@ export async function getConsolidadoAnual(params: {
       areaAbbreviation: it.subject.area?.abbreviation ?? null,
       percentage: it.subject.percentage,
       averages: it.subject.averages,
+      teacherId: null,
+      teacherName: null,
     });
+  }
+
+  // Docente por asignatura (SubjectAssignment del grupo/año; única por
+  // @@unique([groupId, subjectId, year])) — filtro docente del consolidado.
+  let yearNumber = group.academicYear?.year ?? null;
+  if (yearNumber === null && academicYearId) {
+    const ayRow = await db.academicYear.findUnique({
+      where: { id: academicYearId },
+      select: { year: true },
+    });
+    yearNumber = ayRow?.year ?? null;
+  }
+  const assignments = yearNumber
+    ? await db.subjectAssignment.findMany({
+        where: { groupId, year: yearNumber },
+        select: {
+          subjectId: true,
+          teacherId: true,
+          teacher: { select: { fullName: true } },
+        },
+      })
+    : [];
+  const teacherBySubject = new Map(
+    assignments.map((a) => [
+      a.subjectId,
+      { id: a.teacherId, name: a.teacher?.fullName ?? null },
+    ])
+  );
+  for (const subj of subjects) {
+    const t = teacherBySubject.get(subj.id);
+    if (t) {
+      subj.teacherId = t.id;
+      subj.teacherName = t.name;
+    }
   }
 
   // Actividades y periodos del grupo
@@ -432,15 +473,14 @@ export async function getConsolidadoAnual(params: {
     const pctInasistencia =
       totalAtt > 0 ? round1(((attAusente.get(s.id) ?? 0) / totalAtt) * 100) : null;
 
-    // DEF completa: tiene nota propia en todas las celdas del grupo
-    let defCompleta = groupCells.size > 0;
+    // DEF completa: tiene nota propia en todas las celdas del grupo;
+    // blankCount cuenta las celdas sin nota (filtro notas en blanco)
+    let blankCount = 0;
     for (const key of groupCells) {
       const [subjectId, periodId] = key.split("|");
-      if (def[subjectId]?.[periodId] == null) {
-        defCompleta = false;
-        break;
-      }
+      if (def[subjectId]?.[periodId] == null) blankCount++;
     }
+    const defCompleta = groupCells.size > 0 && blankCount === 0;
 
     rows.push({
       id: s.id,
@@ -469,6 +509,7 @@ export async function getConsolidadoAnual(params: {
         maxAreasNivelacion
       ),
       defCompleta,
+      blankCount,
     });
   }
 

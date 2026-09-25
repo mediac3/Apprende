@@ -58,7 +58,7 @@ export function ConsolidadoTable({
                 key={s.id}
                 colSpan={periods.length + 1}
                 className="border px-2 py-1 text-left font-semibold whitespace-nowrap"
-                title={s.areaName ?? undefined}
+                title={[s.areaName, s.teacherName].filter(Boolean).join(" · ") || undefined}
               >
                 {s.abbreviation ?? s.name}
                 {!s.averages && <span className="ml-1 text-muted-foreground">(no prom.)</span>}
@@ -93,8 +93,13 @@ export function ConsolidadoTable({
               <td className={`border px-2 py-1 tabular-nums text-muted-foreground ${stickyLeft}`}>{i + 1}</td>
               <td className={`border px-2 py-1 whitespace-nowrap ${stickyLeft}`}>
                 {st.fullName}
-                {st.defCompleta === false && (
-                  <span className="ml-1 text-amber-600" title="DEF incompleta: faltan notas en algún periodo">•</span>
+                {st.blankCount > 0 && (
+                  <span
+                    className="ml-1 inline-flex min-w-4 justify-center rounded bg-amber-100 px-1 align-middle text-[10px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                    title={`${st.blankCount} nota(s) en blanco`}
+                  >
+                    {st.blankCount}
+                  </span>
                 )}
               </td>
               {subjects.map((s) =>

@@ -1,12 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ConsolidadoResult } from "@/lib/queries/consolidado";
 
 // === [F2] Consolidado anual: hook de carga y filtros ===
 // Filtros: año académico (default: activo) → grado → grupo → periodo
 // (año completo o acumulado hasta Px). Exporta a Excel vía xlsx
 // (dependencia existente en package.json).
+// Filtros de presentación (estado local, sin URL; se resetean al cambiar de
+// grupo): docente (oculta columnas de asignaturas) → áreas en bajo → notas
+// en blanco → mejores promedios (top N con empates). El promedio final del
+// estudiante NUNCA se recalcula con las asignaturas visibles.
 
 export interface ConsolidadoFilters {
   yearId: string;
@@ -14,6 +18,22 @@ export interface ConsolidadoFilters {
   groupId: string;
   hasta: string; // "" = año completo | "1".."6" = acumulado hasta ese periodo
 }
+
+export interface ConsolidadoDisplayFilters {
+  teacherId: string; // "" = todos los docentes
+  areasMode: "all" | "reprobadas" | "aprobadas";
+  blankOnly: boolean; // solo estudiantes con notas en blanco (excluye topBest)
+  topBest: boolean; // mejores promedios descendente
+  topN: number; // cantidad de puestos (default 10)
+}
+
+const DEFAULT_DISPLAY: ConsolidadoDisplayFilters = {
+  teacherId: "",
+  areasMode: "all",
+  blankOnly: false,
+  topBest: false,
+  topN: 10,
+};
 
 interface YearRow { id: string; year: number; active: boolean }
 interface GradeLevelRow { id: string; name: string; code: string }
@@ -37,6 +57,12 @@ export function useConsolidado(institutionId: string | undefined) {
   const [data, setData] = useState<ConsolidadoResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [display, setDisplay] = useState<ConsolidadoDisplayFilters>(DEFAULT_DISPLAY);
+
+  // Filtros de presentación: reset al cambiar de grupo (estado local)
+  useEffect(() => {
+    setDisplay(DEFAULT_DISPLAY);
+  }, [data?.group.id]);
 
   // Años y grados: una sola carga
   useEffect(() => {
@@ -136,10 +162,80 @@ export function useConsolidado(institutionId: string | undefined) {
     });
   }, []);
 
+  const setDisplayFilter = useCallback(
+    <K extends keyof ConsolidadoDisplayFilters>(
+      key: K,
+      value: ConsolidadoDisplayFilters[K]
+    ) => {
+      setDisplay((d) => {
+        const next = { ...d, [key]: value };
+        // [F4] ⊕ [F3]: mutuamente excluyentes — activar uno desactiva el otro
+        if (key === "blankOnly" && value === true) next.topBest = false;
+        if (key === "topBest" && value === true) next.blankOnly = false;
+        return next;
+      });
+    },
+    []
+  );
+
+  const resetDisplay = useCallback(() => setDisplay(DEFAULT_DISPLAY), []);
+
+  // Docentes con asignación en el grupo cargado (dropdown del filtro docente;
+  // los docentes sin asignación no aparecen)
+  const teachers = useMemo(() => {
+    if (!data) return [];
+    const map = new Map<string, string>();
+    for (const s of data.subjects) {
+      if (s.teacherId && s.teacherName) map.set(s.teacherId, s.teacherName);
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [data]);
+
+  // Vista filtrada (orden de aplicación): [F2] docente (oculta columnas de
+  // asignaturas) → [F5] áreas → [F4] notas en blanco → [F3] mejores promedios.
+  // Conserva filas completas: promFinal, pt, estado y áreasBajo NO se
+  // recalculan con las asignaturas visibles.
+  const view = useMemo<ConsolidadoResult | null>(() => {
+    if (!data) return null;
+    const subjects =
+      display.teacherId === ""
+        ? data.subjects
+        : data.subjects.filter((s) => s.teacherId === display.teacherId);
+    let students = data.students;
+    if (display.areasMode === "reprobadas") {
+      students = students.filter((st) => st.areasBajo.length > 0);
+    } else if (display.areasMode === "aprobadas") {
+      // todas las áreas aprobadas; excluye estudiantes sin datos
+      students = students.filter(
+        (st) => st.areasBajo.length === 0 && st.promFinal !== null
+      );
+    }
+    if (display.blankOnly) {
+      students = students.filter((st) => st.blankCount > 0);
+    }
+    if (display.topBest && !display.blankOnly) {
+      const n = Math.max(1, Math.floor(display.topN) || 1);
+      const ranked = students
+        .filter((st) => st.promFinal !== null)
+        .sort(
+          (a, b) =>
+            (b.promFinal as number) - (a.promFinal as number) ||
+            a.fullName.localeCompare(b.fullName)
+        );
+      // empates en el puesto N: se incluyen todos (corte por valor, no por posición)
+      const cutoff =
+        ranked.length > n ? (ranked[n - 1].promFinal as number) : -Infinity;
+      students = ranked.filter((st) => (st.promFinal as number) >= cutoff);
+    }
+    return { ...data, subjects, students };
+  }, [data, display]);
+
   const exportExcel = useCallback(async () => {
-    if (!data) return;
+    if (!view) return;
     const XLSX = await import("xlsx");
-    const g = data.group;
+    const g = view.group;
     const aoa: (string | number | null)[][] = [];
     aoa.push([
       g.institutionName,
@@ -147,14 +243,14 @@ export function useConsolidado(institutionId: string | undefined) {
       "CONSOLIDADO ANUAL",
       `${g.gradeLevelName ?? ""} — ${g.name}`,
       `Año ${g.year ?? ""}`,
-      `Umbral de promoción: ${data.umbral}`,
+      `Umbral de promoción: ${view.umbral}`,
     ]);
     const head1: (string | number | null)[] = ["#", "ESTUDIANTE"];
     const head2: (string | number | null)[] = ["", ""];
-    for (const s of data.subjects) {
+    for (const s of view.subjects) {
       head1.push(s.abbreviation ?? s.name);
-      for (let i = 0; i < data.periods.length; i++) head1.push("");
-      for (const p of data.periods) head2.push(p.order ? `P${p.order}` : p.name);
+      for (let i = 0; i < view.periods.length; i++) head1.push("");
+      for (const p of view.periods) head2.push(p.order ? `P${p.order}` : p.name);
       head2.push("DEF");
     }
     head1.push("%", "DBJ", "PT", "Inas", "% Ina.", "ÁREAS EN BAJO", "NIVELACIÓN (PÁR. 3)", "ESTADO");
@@ -170,13 +266,13 @@ export function useConsolidado(institutionId: string | undefined) {
         default: return "SIN DATOS";
       }
     };
-    for (const st of data.students) {
+    for (const st of view.students) {
       const row: (string | number | null)[] = [
         st.pt ?? "",
         st.fullName,
       ];
-      for (const subj of data.subjects) {
-        for (const p of data.periods) row.push(st.def[subj.id]?.[p.id] ?? null);
+      for (const subj of view.subjects) {
+        for (const p of view.periods) row.push(st.def[subj.id]?.[p.id] ?? null);
         row.push(st.defFinal[subj.id] ?? null);
       }
       row.push(
@@ -193,13 +289,13 @@ export function useConsolidado(institutionId: string | undefined) {
     }
     const promRow: (string | number | null)[] = ["", "Prom"];
     const nmRow: (string | number | null)[] = ["", "NM"];
-    for (const subj of data.subjects) {
-      for (let i = 0; i < data.periods.length; i++) {
+    for (const subj of view.subjects) {
+      for (let i = 0; i < view.periods.length; i++) {
         promRow.push("");
         nmRow.push("");
       }
-      promRow.push(data.resumen[subj.id]?.prom ?? null);
-      nmRow.push(data.resumen[subj.id]?.nm ?? null);
+      promRow.push(view.resumen[subj.id]?.prom ?? null);
+      nmRow.push(view.resumen[subj.id]?.nm ?? null);
     }
     promRow.push("", "", "", "", "", "", "", "");
     nmRow.push("", "", "", "", "", "", "", "");
@@ -209,8 +305,8 @@ export function useConsolidado(institutionId: string | undefined) {
     ws["!cols"] = [
       { wch: 4 },
       { wch: 32 },
-      ...data.subjects.flatMap(() => [
-        ...data.periods.map(() => ({ wch: 5 })),
+      ...view.subjects.flatMap(() => [
+        ...view.periods.map(() => ({ wch: 5 })),
         { wch: 6 },
       ]),
       { wch: 5 },
@@ -222,7 +318,7 @@ export function useConsolidado(institutionId: string | undefined) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Consolidado");
     XLSX.writeFile(wb, `consolidado-${g.name}-${g.year ?? ""}.xlsx`);
-  }, [data]);
+  }, [view]);
 
   return {
     years,
@@ -231,6 +327,11 @@ export function useConsolidado(institutionId: string | undefined) {
     filters,
     setFilter,
     data,
+    view,
+    teachers,
+    display,
+    setDisplayFilter,
+    resetDisplay,
     loading,
     error,
     reload: load,
