@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const years = await db.academicYear.findMany({
       where: { institutionId },
       orderBy: { year: "desc" },
-      include: { _count: { select: { evalModels: true } } },
+      include: { _count: { select: { evalModels: true, groups: true } } },
     });
     return NextResponse.json({ ok: true, years });
   } catch (e) {

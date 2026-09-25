@@ -90,7 +90,9 @@ export default function ConsolidadoView() {
             <SelectContent>
               {years.map((y) => (
                 <SelectItem key={y.id} value={y.id}>
-                  {y.year}{y.active ? " (activo)" : ""}
+                  {y.year}
+                  {y.active ? " (activo)" : ""}
+                  {y.groupsCount === 0 ? " (sin grupos)" : ""}
                 </SelectItem>
               ))}
             </SelectContent>

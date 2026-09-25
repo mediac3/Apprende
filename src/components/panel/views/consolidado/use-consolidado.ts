@@ -35,7 +35,7 @@ const DEFAULT_DISPLAY: ConsolidadoDisplayFilters = {
   topN: 10,
 };
 
-interface YearRow { id: string; year: number; active: boolean }
+interface YearRow { id: string; year: number; active: boolean; groupsCount?: number }
 interface GradeLevelRow { id: string; name: string; code: string }
 interface GroupRow {
   id: string;
@@ -77,7 +77,14 @@ export function useConsolidado(institutionId: string | undefined) {
         const yr = await yrRes.json();
         const gl = await glRes.json();
         if (!alive) return;
-        const ys: YearRow[] = yr.ok ? yr.years : [];
+        const ys: YearRow[] = yr.ok
+          ? (yr.years ?? []).map((y: { id: string; year: number; active: boolean; _count?: { groups?: number } }) => ({
+              id: y.id,
+              year: y.year,
+              active: y.active,
+              groupsCount: y._count?.groups ?? 0,
+            }))
+          : [];
         setYears(ys);
         setGradeLevels(gl.ok ? gl.gradeLevels : []);
         const active = ys.find((y) => y.active) ?? ys[0];
