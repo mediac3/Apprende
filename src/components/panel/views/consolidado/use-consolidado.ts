@@ -157,9 +157,19 @@ export function useConsolidado(institutionId: string | undefined) {
       for (const p of data.periods) head2.push(p.order ? `P${p.order}` : p.name);
       head2.push("DEF");
     }
-    head1.push("%", "DBJ", "PT", "Inas", "ESTADO");
-    head2.push("%", "DBJ", "PT", "Inas", "ESTADO");
+    head1.push("%", "DBJ", "PT", "Inas", "% Ina.", "ÁREAS EN BAJO", "NIVELACIÓN (PÁR. 3)", "ESTADO");
+    head2.push("%", "DBJ", "PT", "Inas", "% Ina.", "ÁREAS EN BAJO", "NIVELACIÓN (PÁR. 3)", "ESTADO");
     aoa.push(head1, head2);
+    const estadoLabel = (estado: string): string => {
+      switch (estado) {
+        case "promovido": return "PROMOVIDO";
+        case "promovido_nivelacion": return "PROMOVIDO CON NIVELACIÓN";
+        case "nivelacion": return "SUJETO A NIVELACIÓN (1-2 ÁREAS)";
+        case "no_promovido": return "NO PROMOVIDO (3+ ÁREAS)";
+        case "no_promovido_inasistencia": return "NO PROMOVIDO POR INASISTENCIA";
+        default: return "SIN DATOS";
+      }
+    };
     for (const st of data.students) {
       const row: (string | number | null)[] = [
         st.pt ?? "",
@@ -174,7 +184,10 @@ export function useConsolidado(institutionId: string | undefined) {
         st.dbj,
         st.pt ?? "",
         st.inas,
-        st.estado === "promovido" ? "PROMOVIDO" : st.estado === "no_promovido" ? "NO PROMOVIDO" : "SIN DATOS"
+        st.pctInasistencia !== null ? `${st.pctInasistencia}%` : "",
+        st.areasBajo.join("; "),
+        st.pendientesNivelacion.join("; "),
+        estadoLabel(st.estado)
       );
       aoa.push(row);
     }
@@ -188,8 +201,8 @@ export function useConsolidado(institutionId: string | undefined) {
       promRow.push(data.resumen[subj.id]?.prom ?? null);
       nmRow.push(data.resumen[subj.id]?.nm ?? null);
     }
-    promRow.push("", "", "", "", "");
-    nmRow.push("", "", "", "", "");
+    promRow.push("", "", "", "", "", "", "", "");
+    nmRow.push("", "", "", "", "", "", "", "");
     aoa.push(promRow, nmRow);
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);

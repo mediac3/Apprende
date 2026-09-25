@@ -23,12 +23,21 @@ function defClass(v: number | null, umbral: number): string {
     : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300";
 }
 
-function EstadoBadge({ estado }: { estado: ConsolidadoStudentRow["estado"] }) {
-  if (estado === "promovido")
-    return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">PROMOVIDO</Badge>;
-  if (estado === "no_promovido")
-    return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">NO PROMOVIDO</Badge>;
-  return <Badge variant="secondary">SIN DATOS</Badge>;
+function EstadoBadge({ estado }: { estado: string }) {
+  switch (estado) {
+    case "promovido":
+      return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">PROMOVIDO</Badge>;
+    case "promovido_nivelacion":
+      return <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">PROM. CON NIVELACIÓN</Badge>;
+    case "nivelacion":
+      return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">NIVELACIÓN (1-2 ÁREAS)</Badge>;
+    case "no_promovido":
+      return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">NO PROMOVIDO</Badge>;
+    case "no_promovido_inasistencia":
+      return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">NO PROM. INA.</Badge>;
+    default:
+      return <Badge variant="secondary">SIN DATOS</Badge>;
+  }
 }
 
 export function StudentDrilldownModal({
@@ -92,6 +101,31 @@ export function StudentDrilldownModal({
                 <p className="text-xl font-semibold tabular-nums">{st.inas}</p>
               </div>
             </div>
+
+            {(st.areasBajo.length > 0 || st.pendientesNivelacion.length > 0) && (
+              <div className="space-y-1 rounded-lg border p-2 text-xs">
+                <p>
+                  <span className="font-medium">Áreas en bajo:</span>{" "}
+                  {st.areasBajo.length ? (
+                    <span className="text-red-700">{st.areasBajo.join(" · ")}</span>
+                  ) : (
+                    <span className="text-muted-foreground">ninguna</span>
+                  )}
+                </p>
+                <p>
+                  <span className="font-medium">Pendientes de nivelación (Pár. 3):</span>{" "}
+                  {st.pendientesNivelacion.length ? (
+                    <span className="text-amber-700">{st.pendientesNivelacion.join(" · ")}</span>
+                  ) : (
+                    <span className="text-muted-foreground">ninguna</span>
+                  )}
+                </p>
+                <p>
+                  <span className="font-medium">Inasistencia injustificada:</span>{" "}
+                  {st.pctInasistencia !== null ? `${st.pctInasistencia}% (${st.inas} ausencias)` : "sin registros"}
+                </p>
+              </div>
+            )}
 
             <div className="overflow-auto rounded-lg border">
               <table className="min-w-max border-collapse text-xs">

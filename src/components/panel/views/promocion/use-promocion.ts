@@ -3,20 +3,27 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 // === [F3] Wizard "Promoción de grado": hook de estado y llamadas ===
-// Preview y execute vía POST /api/promocion. La selección viene pre-marcada
-// con los estudiantes que cumplen el umbral; los no promovibles (promedio <
-// umbral o sin notas) quedan deshabilitados (re-validado en servidor).
+// Criterios oficiales de la comisión: valoración por áreas, nivelación
+// (Parágrafo 3), inasistencia injustificada ≥ umbral (configurable),
+// preescolar automático y decisiones de comisión con justificación
+// obligatoria al desviar el cálculo. Preview/execute vía POST /api/promocion.
 
 export interface PromocionRow {
   id: string;
   fullName: string;
   promFinal: number | null;
   defCompleta: boolean;
-  promovido: boolean;
+  areasBajo: string[];
+  pendientesNivelacion: string[];
+  pctInasistencia: number | null;
+  estado: string; // EstadoPromocion
+  promovible: boolean;
 }
 
 export interface PromocionMeta {
   umbral: number;
+  umbralInasistencia: number;
+  preescolar: boolean;
   from: { id: string; name: string; gradeLevelName: string | null; year: number | null };
   to: { id: string; name: string; gradeLevelName: string | null; year: number | null };
 }
@@ -25,10 +32,25 @@ export interface PromocionPreview extends PromocionMeta {
   students: PromocionRow[];
 }
 
+export interface PromocionDecision {
+  id: string;
+  decision: string;
+  justificacion: string;
+}
+
 export interface PromocionResult extends PromocionMeta {
   promovidos: string[];
+  decisions: PromocionDecision[];
   rechazados: { id: string; fullName: string; reason: string }[];
 }
+
+/** Opciones de decisión de comisión (criterios oficiales) */
+export const DECISIONES_COMISION = [
+  { value: "promovido_piar", label: "Promovido — análisis PIAR / ajustes razonables" },
+  { value: "promovido_trayectoria", label: "Promovido — trayectoria ≥ 80% del plan" },
+  { value: "no_promovido_repeticion", label: "No promovido — repetición solicitada por la familia (Pár. 2)" },
+  { value: "no_sujeto_asistente", label: "No sujeto a promoción — asistente (calendario B / exterior)" },
+] as const;
 
 interface YearRow { id: string; year: number; active: boolean }
 interface GradeLevelRow { id: string; name: string; code: string; sortOrder: number }
@@ -44,11 +66,13 @@ export function usePromocion(institutionId: string | undefined, userId: string |
   const [fromGroupId, setFromGroupId] = useState("");
   const [toYearId, setToYearId] = useState("");
   const [toGroupId, setToGroupId] = useState("");
+  const [umbralInasistencia, setUmbralInasistencia] = useState(25);
 
   const [step, setStep] = useState(1);
   const [preview, setPreview] = useState<PromocionPreview | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [tab, setTab] = useState<"todos" | "promovidos" | "no">("todos");
+  const [tab, setTab] = useState<"todos" | "promovidos" | "nivelacion" | "no">("todos");
+  const [decisions, setDecisions] = useState<Record<string, PromocionDecision>>({});
   const [loading, setLoading] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +110,6 @@ export function usePromocion(institutionId: string | undefined, userId: string |
     };
   }, [institutionId]);
 
-  // Grupos de cada año seleccionado
   useEffect(() => {
     if (!institutionId || !fromYearId) {
       setGroupsFrom([]);
@@ -157,7 +180,6 @@ export function usePromocion(institutionId: string | undefined, userId: string |
           setError(j.error ?? "No se pudo crear el grupo destino.");
           return null;
         }
-        // recargar grupos destino y seleccionar el nuevo
         const r2 = await fetch(`/api/groups?institutionId=${institutionId}&yearId=${toYearId}`);
         const j2 = await r2.json();
         const gs: GroupRow[] = j2.ok ? j2.groups ?? [] : [];
@@ -180,15 +202,26 @@ export function usePromocion(institutionId: string | undefined, userId: string |
       const res = await fetch("/api/promocion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "preview", fromGroupId, toGroupId }),
+        body: JSON.stringify({
+          action: "preview",
+          fromGroupId,
+          toGroupId,
+          umbralInasistencia,
+        }),
       });
       const j = await res.json();
       if (!j.ok) {
         setError(j.error ?? "Error al calcular la promoción.");
         return;
       }
-      setPreview(j as PromocionPreview);
-      setSelected(new Set((j.students as PromocionRow[]).filter((s) => s.promovido).map((s) => s.id)));
+      const pv = j as PromocionPreview;
+      setPreview(pv);
+      setDecisions({});
+      // Preselección: promovidos, promovidos con nivelación y sujetos a
+      // nivelación (promovido condicionado — decisión de la comisión)
+      setSelected(
+        new Set(pv.students.filter((s) => s.promovible).map((s) => s.id))
+      );
       setTab("todos");
       setStep(2);
     } catch {
@@ -196,7 +229,7 @@ export function usePromocion(institutionId: string | undefined, userId: string |
     } finally {
       setLoading(false);
     }
-  }, [fromGroupId, toGroupId]);
+  }, [fromGroupId, toGroupId, umbralInasistencia]);
 
   const toggle = useCallback((id: string) => {
     setSelected((prev) => {
@@ -207,11 +240,40 @@ export function usePromocion(institutionId: string | undefined, userId: string |
     });
   }, []);
 
+  /** Un estudiante no promovible se habilita solo con decisión + justificación */
+  const canSelect = useCallback(
+    (row: PromocionRow) => {
+      if (row.promovible) return true;
+      const d = decisions[row.id];
+      return (
+        !!d &&
+        d.decision.startsWith("promovido") &&
+        d.justificacion.trim().length >= 10
+      );
+    },
+    [decisions]
+  );
+
+  const setDecision = useCallback((id: string, decision: string, justificacion: string) => {
+    setDecisions((prev) => {
+      const next = { ...prev };
+      if (!decision && !justificacion) {
+        delete next[id];
+        return next;
+      }
+      next[id] = { id, decision, justificacion };
+      return next;
+    });
+  }, []);
+
   const execute = useCallback(async () => {
     if (!preview || selected.size === 0) return;
     setExecuting(true);
     setError(null);
     try {
+      const decisionsEnviadas = Object.values(decisions).filter((d) =>
+        selected.has(d.id) ? d.decision && d.justificacion.trim() : true
+      );
       const res = await fetch("/api/promocion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -220,6 +282,8 @@ export function usePromocion(institutionId: string | undefined, userId: string |
           fromGroupId: preview.from.id,
           toGroupId: preview.to.id,
           studentIds: [...selected],
+          umbralInasistencia,
+          decisions: decisionsEnviadas,
         }),
       });
       const j = await res.json();
@@ -234,12 +298,13 @@ export function usePromocion(institutionId: string | undefined, userId: string |
     } finally {
       setExecuting(false);
     }
-  }, [preview, selected]);
+  }, [preview, selected, decisions, umbralInasistencia]);
 
   const reset = useCallback(() => {
     setPreview(null);
     setResult(null);
     setSelected(new Set());
+    setDecisions({});
     setStep(1);
     setError(null);
   }, []);
@@ -250,35 +315,122 @@ export function usePromocion(institutionId: string | undefined, userId: string |
     return m ? fromGroup.name.replace(/^\d+/, nextLevel.code) : nextLevel.name;
   }, [fromGroup, nextLevel]);
 
+  const estadoLabel = useCallback((estado: string): string => {
+    switch (estado) {
+      case "promovido": return "PROMOVIDO";
+      case "promovido_nivelacion": return "PROMOVIDO CON NIVELACIÓN";
+      case "nivelacion": return "SUJETO A NIVELACIÓN (1-2 áreas)";
+      case "no_promovido": return "NO PROMOVIDO (3+ áreas en bajo)";
+      case "no_promovido_inasistencia": return "NO PROMOVIDO POR INASISTENCIA";
+      default: return "SIN DATOS";
+    }
+  }, []);
+
+  /** CSV con criterios, decisiones y justificaciones */
   const exportCsv = useCallback(() => {
     if (!preview) return;
     const meta = result ?? preview;
-    const promotedSet = result ? new Set(result.promovidos) : selected;
+    const promotedSet = new Set(result ? result.promovidos : [...selected]);
     const lines: string[][] = [
-      ["ESTUDIANTE", "PROMEDIO FINAL", "DEF COMPLETA", "ESTADO", "GRUPO ORIGEN", "GRUPO DESTINO", "RESULTADO"],
+      ["ACTA DE COMISIÓN DE PROMOCIÓN — RESUMEN"],
+      ["Origen", `${meta.from.name} (${meta.from.year ?? ""})`],
+      ["Destino", `${meta.to.name} (${meta.to.year ?? ""})`],
+      ["Umbral de áreas", String(meta.umbral)],
+      ["Umbral de inasistencia", `${meta.umbralInasistencia}%`],
+      ["Preescolar (promoción automática)", meta.preescolar ? "Sí" : "No"],
+      [],
+      ["ESTUDIANTE", "PROMEDIO", "ÁREAS EN BAJO", "PENDIENTES DE NIVELACIÓN", "% INA.", "ESTADO CALCULADO", "DECISIÓN COMISIÓN", "JUSTIFICACIÓN", "RESULTADO"],
     ];
     for (const s of preview.students) {
-      const wasSelected = promotedSet.has(s.id);
+      const d = decisions[s.id] ?? result?.decisions.find((x) => x.id === s.id);
       const rechazo = result?.rechazados.find((r) => r.id === s.id);
+      const promovido = promotedSet.has(s.id);
       lines.push([
         s.fullName,
         s.promFinal !== null ? String(s.promFinal) : "",
-        s.defCompleta ? "Sí" : "No",
-        s.promovido ? "PROMOVIDO" : "NO PROMOVIDO",
-        `${meta.from.name} (${meta.from.year ?? ""})`,
-        `${meta.to.name} (${meta.to.year ?? ""})`,
-        rechazo ? `NO PROMOVIDO: ${rechazo.reason}` : wasSelected ? "PROMOVIDO" : "NO INCLUIDO",
+        s.areasBajo.join("; "),
+        s.pendientesNivelacion.join("; "),
+        s.pctInasistencia !== null ? `${s.pctInasistencia}%` : "",
+        estadoLabel(s.estado),
+        d?.decision ?? "",
+        d?.justificacion ?? "",
+        rechazo ? `NO PROMOVIDO: ${rechazo.reason}` : promovido ? "PROMOVIDO" : "NO INCLUIDO",
       ]);
     }
-    const csv = lines.map((l) => l.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = lines.map((l) => l.map((c) => `"${(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `promocion-${meta.from.name}-a-${meta.to.name}.csv`;
+    a.download = `acta-promocion-${meta.from.name}-a-${meta.to.name}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [preview, result, selected]);
+  }, [preview, result, selected, decisions, estadoLabel]);
+
+  /** Acta de comisión imprimible (guardar como PDF desde el navegador) */
+  const printActa = useCallback(() => {
+    if (!preview) return;
+    const meta = result ?? preview;
+    const promotedSet = new Set(result ? result.promovidos : [...selected]);
+    const esc = (t: string) =>
+      t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const filas = preview.students
+      .map((s) => {
+        const d = decisions[s.id] ?? result?.decisions.find((x) => x.id === s.id);
+        const rechazo = result?.rechazados.find((r) => r.id === s.id);
+        const res = rechazo
+          ? `No promovido — ${esc(rechazo.reason)}`
+          : promotedSet.has(s.id)
+            ? "<b>Promovido</b>"
+            : "No incluido";
+        return `<tr>
+          <td>${esc(s.fullName)}</td>
+          <td class="c">${s.promFinal ?? "—"}</td>
+          <td>${esc(s.areasBajo.join("; ")) || "—"}</td>
+          <td>${esc(s.pendientesNivelacion.join("; ")) || "—"}</td>
+          <td class="c">${s.pctInasistencia !== null ? s.pctInasistencia + "%" : "—"}</td>
+          <td>${esc(estadoLabel(s.estado))}</td>
+          <td>${d ? esc(d.decision) : ""}${d?.justificacion ? `<br><i>${esc(d.justificacion)}</i>` : ""}</td>
+          <td>${res}</td>
+        </tr>`;
+      })
+      .join("");
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+      <title>Acta de comisión de promoción</title>
+      <style>
+        body { font-family: Georgia, serif; margin: 32px; color: #111; }
+        h1 { font-size: 18px; text-align: center; margin-bottom: 4px; }
+        .sub { text-align: center; color: #444; font-size: 13px; margin-bottom: 16px; }
+        table { border-collapse: collapse; width: 100%; font-size: 11px; }
+        th, td { border: 1px solid #666; padding: 4px 6px; text-align: left; vertical-align: top; }
+        th { background: #eee; }
+        .c { text-align: center; }
+        .meta { font-size: 13px; margin-bottom: 12px; }
+        @media print { .noprint { display: none; } }
+      </style></head><body>
+      <h1>Acta de Comisión de Promoción</h1>
+      <p class="sub">${esc(meta.from.name)} (${meta.from.year ?? ""}) → ${esc(meta.to.name)} (${meta.to.year ?? ""})</p>
+      <p class="meta">
+        Umbral de áreas: <b>${meta.umbral}</b> · Umbral de inasistencia injustificada: <b>${meta.umbralInasistencia}%</b>
+        ${meta.preescolar ? " · <b>Preescolar: promoción automática (Pár. 1, Decreto 1411 de 2022)</b>" : ""}<br>
+        Criterios: valoración final de todas las áreas en básico o superior; asignatura en bajo
+        dentro de área aprobada → nivelación (Pár. 3); 1–2 áreas en bajo → nivelación especial;
+        inasistencia injustificada ≥ ${meta.umbralInasistencia}% → no promovido.
+      </p>
+      <table><thead><tr>
+        <th>Estudiante</th><th class="c">Prom.</th><th>Áreas en bajo</th>
+        <th>Pendientes de nivelación</th><th class="c">% Ina.</th>
+        <th>Estado</th><th>Decisión de comisión</th><th>Resultado</th>
+      </tr></thead><tbody>${filas}</tbody></table>
+      <p class="meta" style="margin-top:24px">
+        Firmas de la comisión: ____________________ &nbsp; ____________________ &nbsp; ____________________
+      </p>
+      <p class="noprint"><button onclick="window.print()">Imprimir / Guardar como PDF</button></p>
+      </body></html>`;
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  }, [preview, result, selected, decisions, estadoLabel]);
 
   return {
     years,
@@ -299,6 +451,8 @@ export function usePromocion(institutionId: string | undefined, userId: string |
     },
     toGroupId,
     setToGroupId,
+    umbralInasistencia,
+    setUmbralInasistencia,
     fromGroup,
     toGroup,
     toYear,
@@ -311,6 +465,9 @@ export function usePromocion(institutionId: string | undefined, userId: string |
     preview,
     selected,
     toggle,
+    canSelect,
+    decisions,
+    setDecision,
     tab,
     setTab,
     loading,
@@ -321,5 +478,7 @@ export function usePromocion(institutionId: string | undefined, userId: string |
     execute,
     reset,
     exportCsv,
+    printActa,
+    estadoLabel,
   };
 }

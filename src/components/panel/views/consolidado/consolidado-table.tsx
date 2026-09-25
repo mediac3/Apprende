@@ -18,6 +18,23 @@ function periodLabel(p: { name: string; order: number | null }): string {
   return p.order ? `P${p.order}` : p.name;
 }
 
+function EstadoBadge({ estado }: { estado: string }) {
+  switch (estado) {
+    case "promovido":
+      return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">PROMOVIDO</Badge>;
+    case "promovido_nivelacion":
+      return <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">PROM. CON NIVELACIÓN</Badge>;
+    case "nivelacion":
+      return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">NIVELACIÓN</Badge>;
+    case "no_promovido":
+      return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">NO PROMOVIDO</Badge>;
+    case "no_promovido_inasistencia":
+      return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">NO PROM. INA.</Badge>;
+    default:
+      return <Badge variant="secondary">SIN DATOS</Badge>;
+  }
+}
+
 export function ConsolidadoTable({
   data,
   onStudentClick,
@@ -51,6 +68,7 @@ export function ConsolidadoTable({
             <th rowSpan={2} className="border px-2 py-1">DBJ</th>
             <th rowSpan={2} className="border px-2 py-1">PT</th>
             <th rowSpan={2} className="border px-2 py-1">Inas</th>
+            <th rowSpan={2} className="border px-2 py-1">% Ina.</th>
             <th rowSpan={2} className="border px-2 py-1">ESTADO</th>
           </tr>
           <tr>
@@ -96,14 +114,11 @@ export function ConsolidadoTable({
               <td className="border px-2 py-1 text-center tabular-nums">{st.dbj}</td>
               <td className="border px-2 py-1 text-center tabular-nums">{st.pt ?? "—"}</td>
               <td className="border px-2 py-1 text-center tabular-nums">{st.inas}</td>
+              <td className="border px-2 py-1 text-center tabular-nums">
+                {st.pctInasistencia !== null ? `${st.pctInasistencia}%` : "—"}
+              </td>
               <td className="border px-2 py-1 text-center whitespace-nowrap">
-                {st.estado === "promovido" ? (
-                  <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">PROMOVIDO</Badge>
-                ) : st.estado === "no_promovido" ? (
-                  <Badge className="bg-red-100 text-red-700 hover:bg-red-100">NO PROMOVIDO</Badge>
-                ) : (
-                  <Badge variant="secondary">SIN DATOS</Badge>
-                )}
+                <EstadoBadge estado={st.estado} />
               </td>
             </tr>
           ))}
@@ -120,7 +135,7 @@ export function ConsolidadoTable({
                 </td>
               )
             )}
-            <td colSpan={5} className="border" />
+            <td colSpan={6} className="border" />
           </tr>
           <tr className="bg-muted/60">
             <td colSpan={2} className={`border px-2 py-1 ${stickyLeft}`}>NM</td>
@@ -133,7 +148,7 @@ export function ConsolidadoTable({
                 </td>
               )
             )}
-            <td colSpan={5} className="border" />
+            <td colSpan={6} className="border" />
           </tr>
         </tfoot>
       </table>

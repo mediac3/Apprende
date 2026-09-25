@@ -32,6 +32,50 @@ export interface ConsolidadoPeriod {
   weight: number;
 }
 
+export type EstadoPromocion =
+  | "promovido"
+  | "promovido_nivelacion"
+  | "nivelacion"
+  | "no_promovido"
+  | "no_promovido_inasistencia"
+  | "sin_datos";
+
+/** Estados desde los cuales la comisión puede promover */
+export const ESTADOS_PROMOVIBLES: EstadoPromocion[] = [
+  "promovido",
+  "promovido_nivelacion",
+  "nivelacion",
+];
+
+/**
+ * Regla oficial de promoción (comisión de promoción):
+ * - Inasistencia injustificada ≥ umbral → NO promovido (prevalece).
+ * - ≥3 áreas en bajo → NO promovido.
+ * - 1–2 áreas en bajo → SUJETO A NIVELACIÓN (estrategia antes de matrícula,
+ *   2ª evaluación en enero; promovido condicionado).
+ * - Áreas aprobadas pero con asignatura en bajo dentro del área → PROMOVIDO
+ *   CON NIVELACIÓN (Parágrafo 3; nivelación con definitivo 3.0 en refuerzos).
+ * - Resto → PROMOVIDO.
+ */
+export function estadoPromocionDe(
+  params: {
+    sinDatos: boolean;
+    areasBajoCount: number;
+    pendientesCount: number;
+    pctInasistencia: number | null;
+  },
+  umbralInasistencia = 25
+): EstadoPromocion {
+  const { sinDatos, areasBajoCount, pendientesCount, pctInasistencia } = params;
+  if (sinDatos) return "sin_datos";
+  if (pctInasistencia !== null && pctInasistencia >= umbralInasistencia)
+    return "no_promovido_inasistencia";
+  if (areasBajoCount >= 3) return "no_promovido";
+  if (areasBajoCount >= 1) return "nivelacion";
+  if (pendientesCount > 0) return "promovido_nivelacion";
+  return "promovido";
+}
+
 export interface ConsolidadoStudentRow {
   id: string;
   fullName: string;
@@ -47,11 +91,17 @@ export interface ConsolidadoStudentRow {
   promFinal: number | null;
   /** asignaturas (averages=true) con DEF final < umbral */
   dbj: number;
-  /** inasistencias (status "ausente") del año en el grupo */
+  /** ausencias (status "ausente", sin excusa) del año en el grupo */
   inas: number;
+  /** % de ausencias sin excusa sobre el total de registros del año */
+  pctInasistencia: number | null;
+  /** áreas con valoración final < umbral (nombres) */
+  areasBajo: string[];
+  /** asignaturas en bajo dentro de áreas aprobadas (Parágrafo 3) */
+  pendientesNivelacion: string[];
   /** puesto dentro del grupo por promedio final (1 = mejor) */
   pt: number | null;
-  estado: "promovido" | "no_promovido" | "sin_datos";
+  estado: EstadoPromocion;
   /** false si a algún (asignatura, periodo) del grupo le faltan notas propias */
   defCompleta: boolean;
 }
@@ -69,6 +119,8 @@ export interface ConsolidadoResult {
   umbral: number;
   periods: ConsolidadoPeriod[];
   subjects: ConsolidadoSubject[];
+  /** áreas del plan (orden del boletín) con sus asignaturas */
+  areas: { name: string; subjectIds: string[] }[];
   students: ConsolidadoStudentRow[];
   /** resumen por asignatura: Prom (promedio del grupo) y NM (nivel mínimo) */
   resumen: Record<string, { prom: number | null; nm: number | null }>;
@@ -178,14 +230,22 @@ export async function getConsolidadoAnual(params: {
     ? await getActiveStudentsOfGroup(groupId, academicYearId)
     : [];
   const studentIds = enrollments.map((e) => e.studentId);
-  const inasRows = studentIds.length
+  const attRows = studentIds.length
     ? await db.attendance.groupBy({
-        by: ["studentId"],
-        where: { groupId, studentId: { in: studentIds }, status: "ausente" },
+        by: ["studentId", "status"],
+        where: { groupId, studentId: { in: studentIds } },
         _count: { _all: true },
       })
     : [];
-  const inasByStudent = new Map(inasRows.map((r) => [r.studentId, r._count._all]));
+  // total de registros y ausencias sin excusa por estudiante
+  const attTotal = new Map<string, number>();
+  const attAusente = new Map<string, number>();
+  for (const r of attRows) {
+    attTotal.set(r.studentId, (attTotal.get(r.studentId) ?? 0) + r._count._all);
+    if (r.status === "ausente")
+      attAusente.set(r.studentId, (attAusente.get(r.studentId) ?? 0) + r._count._all);
+  }
+  const inasByStudent = attAusente;
 
   // Notas en una sola consulta
   const records =
@@ -248,6 +308,15 @@ export async function getConsolidadoAnual(params: {
   const groupCells = new Set(
     relevant.map((a) => `${a.subjectId}|${a.periodId}`)
   );
+
+  // Áreas del plan (orden del boletín): agrupación de asignaturas por área
+  const areaOfSubject = new Map<string, string>();
+  const areaNames: string[] = [];
+  for (const subj of subjects) {
+    const a = subj.areaName ?? subj.name;
+    if (!areaNames.includes(a)) areaNames.push(a);
+    areaOfSubject.set(subj.id, a);
+  }
 
   const rows: ConsolidadoStudentRow[] = [];
   for (const e of enrollments) {
@@ -318,6 +387,39 @@ export async function getConsolidadoAnual(params: {
     }
     const promFinal = fSum > 0 ? round1(fAcc / fSum) : null;
 
+    // Valoración final por área: Σ(DEF asignatura × %) dentro del área.
+    // Área en bajo = DEF del área < umbral. Asignatura en bajo dentro de
+    // área aprobada = pendiente de nivelación (Parágrafo 3).
+    const areasBajo: string[] = [];
+    const pendientes: string[] = [];
+    for (const a of areaNames) {
+      const subs = subjects.filter((x) => areaOfSubject.get(x.id) === a);
+      let accA = 0;
+      let wA = 0;
+      for (const x of subs) {
+        const d = defFinal[x.id];
+        if (x.averages && d !== null) {
+          accA += d * x.percentage;
+          wA += x.percentage;
+        }
+      }
+      const defArea = wA > 0 ? accA / wA : null;
+      if (defArea !== null && defArea < umbral) {
+        areasBajo.push(a);
+      } else if (defArea !== null) {
+        for (const x of subs) {
+          const d = defFinal[x.id];
+          if (x.averages && d !== null && d < umbral)
+            pendientes.push(`${x.name} (${a})`);
+        }
+      }
+    }
+
+    // Inasistencia: % de ausencias sin excusa sobre el total de registros
+    const totalAtt = attTotal.get(s.id) ?? 0;
+    const pctInasistencia =
+      totalAtt > 0 ? round1(((attAusente.get(s.id) ?? 0) / totalAtt) * 100) : null;
+
     // DEF completa: tiene nota propia en todas las celdas del grupo
     let defCompleta = groupCells.size > 0;
     for (const key of groupCells) {
@@ -340,13 +442,16 @@ export async function getConsolidadoAnual(params: {
       promFinal,
       dbj,
       inas: inasByStudent.get(s.id) ?? 0,
+      pctInasistencia,
+      areasBajo,
+      pendientesNivelacion: pendientes,
       pt: null,
-      estado:
-        promFinal === null
-          ? "sin_datos"
-          : promFinal >= umbral
-            ? "promovido"
-            : "no_promovido",
+      estado: estadoPromocionDe({
+        sinDatos: promFinal === null,
+        areasBajoCount: areasBajo.length,
+        pendientesCount: pendientes.length,
+        pctInasistencia,
+      }),
       defCompleta,
     });
   }
@@ -384,6 +489,12 @@ export async function getConsolidadoAnual(params: {
     umbral,
     periods,
     subjects,
+    areas: areaNames.map((a) => ({
+      name: a,
+      subjectIds: subjects
+        .filter((x) => areaOfSubject.get(x.id) === a)
+        .map((x) => x.id),
+    })),
     students: rows,
     resumen,
   };

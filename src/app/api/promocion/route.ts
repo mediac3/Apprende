@@ -1,26 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getConsolidadoAnual } from "@/lib/queries/consolidado";
+import {
+  ESTADOS_PROMOVIBLES,
+  estadoPromocionDe,
+  getConsolidadoAnual,
+  type EstadoPromocion,
+} from "@/lib/queries/consolidado";
 import {
   ACTIVE_ENROLLMENT_STATUSES,
 } from "@/lib/teaching-rules";
 
-// === [F3] Wizard "Promoción de grado" ===
+// === [F3] Wizard "Promoción de grado" — criterios oficiales de la comisión ===
 // POST /api/promocion
-//   { action: "preview", fromGroupId, toGroupId }
-//     → vista previa: promedio final, estado y elegibilidad por estudiante.
-//   { action: "execute", fromGroupId, toGroupId, studentIds }
-//     → ejecución transaccional: cierra la StudentEnrollment del año origen
-//       con status "promovido", crea la del año destino con status
-//       "matriculado" en el grupo destino y registra EnrollmentEvent.
-// Reglas duras: NO se promueve si promedio final < umbral (re-validado en
-// servidor); transacción atómica con rollback completo si algo falla;
-// guard anti-duplicado de matrícula en el año destino.
+//   { action: "preview", fromGroupId, toGroupId, umbralInasistencia? }
+//   { action: "execute", fromGroupId, toGroupId, studentIds, umbralInasistencia?,
+//     decisions?: [{ id, decision, justificacion }] }
+//
+// Regla oficial (comisión de promoción):
+// - Inasistencia injustificada ≥ umbral (default 25%) → NO promovido.
+// - ≥3 áreas en bajo → NO promovido. 1–2 áreas → SUJETO A NIVELACIÓN
+//   (promovido condicionado). Asignatura en bajo dentro de área aprobada →
+//   PROMOVIDO CON NIVELACIÓN (Parágrafo 3).
+// - Preescolar (PJ/J/T): promoción automática (Parágrafo 1, Decreto 1411).
+// - La comisión puede desviar el cálculo SOLO con decisión + justificación
+//   (PIAR, trayectoria ≥80%, repetición solicitada Pár. 2, asistente).
+// Reglas duras: transacción atómica con rollback completo; guard
+// anti-duplicado de matrícula en el año destino; re-validación server-side.
+
+interface DecisionIn {
+  id: string;
+  decision: string;
+  justificacion: string;
+}
 
 interface Rechazado {
   id: string;
   fullName: string;
   reason: string;
+}
+
+const CODIGOS_PREESCOLAR = ["PJ", "J", "T"];
+
+/** Decisión de comisión válida con justificación suficiente */
+function decisionValida(d: DecisionIn | undefined): d is DecisionIn {
+  return (
+    !!d &&
+    typeof d.decision === "string" &&
+    d.decision.trim().length > 0 &&
+    typeof d.justificacion === "string" &&
+    d.justificacion.trim().length >= 10
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -29,6 +58,8 @@ export async function POST(req: NextRequest) {
     const action = body?.action as string;
     const fromGroupId = body?.fromGroupId as string | undefined;
     const toGroupId = body?.toGroupId as string | undefined;
+    const umbralInasistencia =
+      typeof body?.umbralInasistencia === "number" ? body.umbralInasistencia : 25;
     if (!fromGroupId || !toGroupId) {
       return NextResponse.json(
         { ok: false, error: "fromGroupId y toGroupId requeridos" },
@@ -70,7 +101,9 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    const esPreescolar = CODIGOS_PREESCOLAR.includes(fromGroup.gradeLevel?.code ?? "");
     if (
+      !esPreescolar &&
       fromGroup.academicYear?.year != null &&
       toGroup.academicYear?.year != null &&
       toGroup.academicYear.year !== fromGroup.academicYear.year + 1
@@ -84,6 +117,7 @@ export async function POST(req: NextRequest) {
       );
     }
     if (
+      !esPreescolar &&
       fromGroup.gradeLevel?.sortOrder != null &&
       toGroup.gradeLevel?.sortOrder != null &&
       toGroup.gradeLevel.sortOrder !== fromGroup.gradeLevel.sortOrder + 1
@@ -105,15 +139,35 @@ export async function POST(req: NextRequest) {
       );
     }
     const umbral = consolidado.umbral;
-    const rows = consolidado.students.map((s) => ({
-      id: s.id,
-      fullName: s.fullName,
-      promFinal: s.promFinal,
-      defCompleta: s.defCompleta,
-      promovido: s.promFinal !== null && s.promFinal >= umbral,
-    }));
+    // Recalcular estado con el umbral de inasistencia de la comisión
+    const rowsBase = consolidado.students.map((s) => {
+      const estado: EstadoPromocion = esPreescolar
+        ? "promovido"
+        : estadoPromocionDe(
+            {
+              sinDatos: s.promFinal === null,
+              areasBajoCount: s.areasBajo.length,
+              pendientesCount: s.pendientesNivelacion.length,
+              pctInasistencia: s.pctInasistencia,
+            },
+            umbralInasistencia
+          );
+      return {
+        id: s.id,
+        fullName: s.fullName,
+        promFinal: s.promFinal,
+        defCompleta: s.defCompleta,
+        areasBajo: s.areasBajo,
+        pendientesNivelacion: s.pendientesNivelacion,
+        pctInasistencia: s.pctInasistencia,
+        estado,
+        promovible: ESTADOS_PROMOVIBLES.includes(estado),
+      };
+    });
     const meta = {
       umbral,
+      umbralInasistencia,
+      preescolar: esPreescolar,
       from: {
         id: fromGroup.id,
         name: fromGroup.name,
@@ -129,32 +183,63 @@ export async function POST(req: NextRequest) {
     };
 
     if (action === "preview") {
-      return NextResponse.json({ ok: true, ...meta, students: rows });
+      return NextResponse.json({ ok: true, ...meta, students: rowsBase });
     }
 
     if (action === "execute") {
       const ids: string[] = Array.isArray(body?.studentIds) ? body.studentIds : [];
+      const decisionsIn: DecisionIn[] = Array.isArray(body?.decisions)
+        ? body.decisions
+        : [];
       if (ids.length === 0) {
         return NextResponse.json(
           { ok: false, error: "studentIds requerido" },
           { status: 400 }
         );
       }
-      // Re-validación server-side: regla dura — sin umbral no hay promoción
-      const byId = new Map(rows.map((r) => [r.id, r]));
+      const byId = new Map(rowsBase.map((r) => [r.id, r]));
+      const decisionsById = new Map(decisionsIn.map((d) => [d.id, d]));
       const rechazados: Rechazado[] = [];
-      const validIds: string[] = [];
+      const validos: {
+        id: string;
+        notaComision: string | null;
+      }[] = [];
       for (const id of ids) {
         const r = byId.get(id);
         if (!r) {
           rechazados.push({ id, fullName: "(desconocido)", reason: "No pertenece al grupo origen" });
-        } else if (r.promFinal === null) {
-          rechazados.push({ ...r, reason: "Sin notas registradas" });
-        } else if (r.promFinal < umbral) {
-          rechazados.push({ ...r, reason: `Promedio ${r.promFinal} < umbral ${umbral}` });
-        } else {
-          validIds.push(id);
+          continue;
         }
+        if (r.promovible) {
+          const d = decisionsById.get(id);
+          validos.push({
+            id,
+            notaComision:
+              d && d.justificacion.trim()
+                ? `${d.decision}: ${d.justificacion.trim()}`
+                : null,
+          });
+          continue;
+        }
+        // Desviación del cálculo: exige decisión de comisión con justificación
+        const d = decisionsById.get(id);
+        if (!decisionValida(d)) {
+          rechazados.push({
+            id,
+            fullName: r.fullName,
+            reason:
+              r.estado === "no_promovido_inasistencia"
+                ? `Inasistencia ${r.pctInasistencia ?? "—"}% ≥ ${umbralInasistencia}%`
+                : r.estado === "no_promovido"
+                  ? `${r.areasBajo.length} áreas en bajo`
+                  : "Sin notas registradas",
+          });
+          continue;
+        }
+        validos.push({
+          id,
+          notaComision: `Decisión de comisión (${d.decision}): ${d.justificacion.trim()}`,
+        });
       }
 
       const fromYearId = fromGroup.academicYearId as string;
@@ -163,23 +248,23 @@ export async function POST(req: NextRequest) {
       const promovidos = await db.$transaction(
         async (tx) => {
           const done: string[] = [];
-          for (const studentId of validIds) {
+          for (const v of validos) {
             const enrollment = await tx.studentEnrollment.findFirst({
               where: {
-                studentId,
+                studentId: v.id,
                 groupId: fromGroupId,
                 academicYearId: fromYearId,
                 status: { in: [...ACTIVE_ENROLLMENT_STATUSES] },
               },
             });
             if (!enrollment) {
-              throw new Error(`Sin matrícula activa en el grupo origen (student ${studentId})`);
+              throw new Error(`Sin matrícula activa en el grupo origen (student ${v.id})`);
             }
             const existing = await tx.studentEnrollment.findFirst({
-              where: { studentId, academicYearId: toYearId },
+              where: { studentId: v.id, academicYearId: toYearId },
             });
             if (existing) {
-              throw new Error(`El estudiante ${studentId} ya tiene matrícula en el año destino`);
+              throw new Error(`El estudiante ${v.id} ya tiene matrícula en el año destino`);
             }
             await tx.studentEnrollment.update({
               where: { id: enrollment.id },
@@ -188,7 +273,7 @@ export async function POST(req: NextRequest) {
             await tx.studentEnrollment.create({
               data: {
                 institutionId: fromGroup.institutionId,
-                studentId,
+                studentId: v.id,
                 academicYearId: toYearId,
                 groupId: toGroupId,
                 status: "matriculado",
@@ -200,18 +285,26 @@ export async function POST(req: NextRequest) {
                 {
                   enrollmentId: enrollment.id,
                   type: "otra",
-                  reason: `Promovido a ${toGroup.name} (${toGroup.academicYear?.year ?? ""})`,
+                  reason:
+                    `Promovido a ${toGroup.name} (${toGroup.academicYear?.year ?? ""})` +
+                    (v.notaComision ? ` — ${v.notaComision}` : ""),
                 },
               ],
             });
-            done.push(studentId);
+            done.push(v.id);
           }
           return done;
         },
         { timeout: 20000 }
       );
 
-      return NextResponse.json({ ok: true, ...meta, promovidos, rechazados });
+      return NextResponse.json({
+        ok: true,
+        ...meta,
+        promovidos,
+        decisions: decisionsIn.filter((d) => promovidos.includes(d.id)),
+        rechazados,
+      });
     }
 
     return NextResponse.json({ ok: false, error: "action inválido" }, { status: 400 });
