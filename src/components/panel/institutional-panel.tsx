@@ -170,6 +170,8 @@ const NAV: NavItem[] = [
   { key: "param-journeys", label: "Jornadas", icon: Clock, group: "Parámetros", roles: ["rector", "administrativo"] },
   { key: "param-report-templates", label: "Plantillas de reportes", icon: FileText, group: "Parámetros", roles: ["rector", "administrativo"] },
   { key: "param-report-variables", label: "Variables de reporte", icon: Variable, group: "Parámetros", roles: ["rector", "administrativo"] },
+  // [F3] Criterios de promoción escolar
+  { key: "param-promocion", label: "Promoción escolar", icon: GraduationCap, group: "Parámetros", roles: ["rector", "administrativo"] },
 ];
 
 export function InstitutionalPanel() {
@@ -321,6 +323,9 @@ export function InstitutionalPanel() {
         return <ModuleApprovalsView />;
       case "param-academic-years":
         return <ParamsView module="academic-years" />;
+      // [F3] Criterios de promoción escolar
+      case "param-promocion":
+        return <ParamsView module="promocion" />;
       case "param-subjects":
         return <ParamsView module="subjects" />;
       case "param-curriculum-plans":

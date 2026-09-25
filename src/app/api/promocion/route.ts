@@ -39,8 +39,6 @@ interface Rechazado {
   reason: string;
 }
 
-const CODIGOS_PREESCOLAR = ["PJ", "J", "T"];
-
 /** Decisión de comisión válida con justificación suficiente */
 function decisionValida(d: DecisionIn | undefined): d is DecisionIn {
   return (
@@ -58,8 +56,6 @@ export async function POST(req: NextRequest) {
     const action = body?.action as string;
     const fromGroupId = body?.fromGroupId as string | undefined;
     const toGroupId = body?.toGroupId as string | undefined;
-    const umbralInasistencia =
-      typeof body?.umbralInasistencia === "number" ? body.umbralInasistencia : 25;
     if (!fromGroupId || !toGroupId) {
       return NextResponse.json(
         { ok: false, error: "fromGroupId y toGroupId requeridos" },
@@ -101,7 +97,17 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    const esPreescolar = CODIGOS_PREESCOLAR.includes(fromGroup.gradeLevel?.code ?? "");
+    // Parámetros institucionales (PromotionConfig; defaults si no hay fila)
+    const cfg = await db.promotionConfig.findUnique({
+      where: { institutionId: fromGroup.institutionId },
+    });
+    const umbralInasistencia = cfg?.umbralInasistencia ?? 25;
+    const maxAreasNivelacion = cfg?.maxAreasNivelacion ?? 2;
+    const codigosPreescolar = (cfg?.preescolarCodes ?? "PJ,J,T")
+      .split(",")
+      .map((c) => c.trim().toUpperCase())
+      .filter(Boolean);
+    const esPreescolar = codigosPreescolar.includes(fromGroup.gradeLevel?.code ?? "");
     if (
       !esPreescolar &&
       fromGroup.academicYear?.year != null &&
@@ -150,7 +156,8 @@ export async function POST(req: NextRequest) {
               pendientesCount: s.pendientesNivelacion.length,
               pctInasistencia: s.pctInasistencia,
             },
-            umbralInasistencia
+            umbralInasistencia,
+            maxAreasNivelacion
           );
       return {
         id: s.id,
@@ -167,6 +174,7 @@ export async function POST(req: NextRequest) {
     const meta = {
       umbral,
       umbralInasistencia,
+      maxAreasNivelacion,
       preescolar: esPreescolar,
       from: {
         id: fromGroup.id,

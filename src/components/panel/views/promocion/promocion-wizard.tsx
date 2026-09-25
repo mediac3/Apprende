@@ -185,23 +185,35 @@ export default function PromocionWizardView() {
                   </Button>
                 )}
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 sm:col-span-2">
                 <p className="text-xs font-medium text-muted-foreground">
-                  UMBRAL DE INASISTENCIA INJUSTIFICADA (%)
+                  PARÁMETROS DE PROMOCIÓN (configuración institucional)
                 </p>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={w.umbralInasistencia}
-                    onChange={(e) => w.setUmbralInasistencia(Number(e.target.value) || 25)}
-                    className="w-24"
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    Causal de no promoción (default 25% — ausencias sin excusa / total)
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="rounded-md border px-2 py-1">
+                    Umbral de áreas: <b>{w.params ? (w.params.umbralArea ?? "auto (escalas valorativas)") : "…"}</b>
                   </span>
+                  <span className="rounded-md border px-2 py-1">
+                    Inasistencia máx.: <b>{w.params ? `${w.params.umbralInasistencia}%` : "…"}</b>
+                  </span>
+                  <span className="rounded-md border px-2 py-1">
+                    Máx. áreas p/ nivelación: <b>{w.params?.maxAreasNivelacion ?? "…"}</b>
+                  </span>
+                  <span className="rounded-md border px-2 py-1">
+                    Preescolar: <b>{w.params?.preescolarCodes ?? "…"}</b>
+                  </span>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-6 px-1"
+                    onClick={() => setModule("param-promocion")}
+                  >
+                    Configurar
+                  </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  La causal de inasistencia cuenta ausencias sin excusa sobre el total de registros del año.
+                </p>
               </div>
             </div>
             {w.fromGroup && !w.nextLevel && (

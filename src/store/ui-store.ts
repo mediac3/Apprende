@@ -57,6 +57,7 @@ export type ModuleKey =
   | "param-journeys"
   | "param-report-templates"
   | "param-report-variables"
+  | "param-promocion"
   // Módulos personalizados publicados — se usa el prefijo `custom:<moduleId>`
   | string; // permite cualquier string para soportar custom:<id>
 

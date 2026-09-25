@@ -16,8 +16,9 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { CurriculumView } from "./curriculum-view";
+import PromocionConfigView from "./promocion/promocion-config-view";
 import {
-  Plus, Edit, Trash2, Calendar, FileText, Scale, BookOpen, Building2, MapPin, Clock, Variable, Save, X, ArrowLeft, ListTree,
+  Plus, Edit, Trash2, Calendar, FileText, Scale, BookOpen, Building2, MapPin, Clock, Variable, Save, X, ArrowLeft, ListTree, GraduationCap,
 } from "lucide-react";
 
 type ModuleType =
@@ -30,7 +31,8 @@ type ModuleType =
   | "branches"
   | "journeys"
   | "report-templates"
-  | "report-variables";
+  | "report-variables"
+  | "promocion";
 
 interface Props {
   module: ModuleType;
@@ -47,6 +49,7 @@ const MODULE_CONFIG: Record<ModuleType, { title: string; description: string; ic
   "journeys": { title: "Jornadas", description: "Jornadas con modelos educativos asociados.", icon: Clock, apiBase: "/api/journeys" },
   "report-templates": { title: "Plantillas de reportes", description: "Constancias, certificados e informes con encabezado, cuerpo y pie.", icon: FileText, apiBase: "/api/report-templates" },
   "report-variables": { title: "Variables de reporte", description: "Variables dinámicas para informes valorativos.", icon: Variable, apiBase: "/api/report-variables" },
+  "promocion": { title: "Promoción escolar", description: "Criterios de promoción: umbral de áreas, inasistencia injustificada máxima, nivelación por áreas en bajo y preescolar automático.", icon: GraduationCap, apiBase: "/api/promocion-config" },
 };
 
 const EDUCATIONAL_MODELS = [
@@ -77,6 +80,11 @@ export function ParamsView({ module }: Props) {
   // Plan de estudios: módulo con pestañas (planes / grados / áreas)
   if (module === "curriculum-plans") {
     return <CurriculumView />;
+  }
+
+  // Promoción escolar: formulario de parámetros [F3]
+  if (module === "promocion") {
+    return <PromocionConfigView />;
   }
 
   return (

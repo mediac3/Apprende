@@ -39,6 +39,7 @@ model Institution {
   spaces        Space[]
   posts         Post[]
   students      Student[]
+  promotionConfig PromotionConfig?
   groups        Group[]
   subjects      Subject[]
   periods       Period[]
@@ -1064,4 +1065,18 @@ model GradeCellComment {
 
   @@unique([studentId, activityId])
   @@index([activityId])
+}
+
+// [F3] Parámetros de promoción escolar — 1 fila por institución.
+// Si no existe fila, el código usa los defaults indicados.
+model PromotionConfig {
+  id                 String      @id @default(cuid())
+  institutionId      String      @unique
+  institution        Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  umbralArea         Float?      // aprobación de áreas; null = derivar de Escalas valorativas (fallback 3.0)
+  umbralInasistencia Int         @default(25) // % ausencias injustificadas → causal de no promoción
+  maxAreasNivelacion Int         @default(2) // áreas en bajo ≤ N → promovido condicionado (nivelación); > N → no promovido
+  preescolarCodes    String      @default("PJ,J,T") // grados con promoción automática (Pár. 1, Decreto 1411 de 2022)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 }

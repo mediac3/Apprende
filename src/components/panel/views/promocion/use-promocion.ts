@@ -66,7 +66,12 @@ export function usePromocion(institutionId: string | undefined, userId: string |
   const [fromGroupId, setFromGroupId] = useState("");
   const [toYearId, setToYearId] = useState("");
   const [toGroupId, setToGroupId] = useState("");
-  const [umbralInasistencia, setUmbralInasistencia] = useState(25);
+  const [params, setParams] = useState<{
+    umbralArea: number | null;
+    umbralInasistencia: number;
+    maxAreasNivelacion: number;
+    preescolarCodes: string;
+  } | null>(null);
 
   const [step, setStep] = useState(1);
   const [preview, setPreview] = useState<PromocionPreview | null>(null);
@@ -142,6 +147,22 @@ export function usePromocion(institutionId: string | undefined, userId: string |
     };
   }, [institutionId, toYearId]);
 
+  // Parámetros institucionales de promoción (solo lectura en el wizard;
+  // se configuran en Parámetros → Promoción escolar)
+  useEffect(() => {
+    if (!institutionId) return;
+    let alive = true;
+    fetch(`/api/promocion-config?institutionId=${institutionId}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (alive && j.ok) setParams(j.config);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [institutionId]);
+
   const fromGroup = groupsFrom.find((g) => g.id === fromGroupId) ?? null;
   const toGroup = groupsTo.find((g) => g.id === toGroupId) ?? null;
   const toYear = years.find((y) => y.id === toYearId) ?? null;
@@ -202,12 +223,7 @@ export function usePromocion(institutionId: string | undefined, userId: string |
       const res = await fetch("/api/promocion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "preview",
-          fromGroupId,
-          toGroupId,
-          umbralInasistencia,
-        }),
+        body: JSON.stringify({ action: "preview", fromGroupId, toGroupId }),
       });
       const j = await res.json();
       if (!j.ok) {
@@ -229,7 +245,7 @@ export function usePromocion(institutionId: string | undefined, userId: string |
     } finally {
       setLoading(false);
     }
-  }, [fromGroupId, toGroupId, umbralInasistencia]);
+  }, [fromGroupId, toGroupId]);
 
   const toggle = useCallback((id: string) => {
     setSelected((prev) => {
@@ -282,7 +298,6 @@ export function usePromocion(institutionId: string | undefined, userId: string |
           fromGroupId: preview.from.id,
           toGroupId: preview.to.id,
           studentIds: [...selected],
-          umbralInasistencia,
           decisions: decisionsEnviadas,
         }),
       });
@@ -298,7 +313,7 @@ export function usePromocion(institutionId: string | undefined, userId: string |
     } finally {
       setExecuting(false);
     }
-  }, [preview, selected, decisions, umbralInasistencia]);
+  }, [preview, selected, decisions]);
 
   const reset = useCallback(() => {
     setPreview(null);
@@ -451,8 +466,7 @@ export function usePromocion(institutionId: string | undefined, userId: string |
     },
     toGroupId,
     setToGroupId,
-    umbralInasistencia,
-    setUmbralInasistencia,
+    params,
     fromGroup,
     toGroup,
     toYear,

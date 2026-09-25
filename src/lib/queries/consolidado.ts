@@ -50,9 +50,9 @@ export const ESTADOS_PROMOVIBLES: EstadoPromocion[] = [
 /**
  * Regla oficial de promoción (comisión de promoción):
  * - Inasistencia injustificada ≥ umbral → NO promovido (prevalece).
- * - ≥3 áreas en bajo → NO promovido.
- * - 1–2 áreas en bajo → SUJETO A NIVELACIÓN (estrategia antes de matrícula,
- *   2ª evaluación en enero; promovido condicionado).
+ * - Más de maxAreasNivelacion áreas en bajo → NO promovido.
+ * - 1–maxAreasNivelacion áreas en bajo → SUJETO A NIVELACIÓN (estrategia
+ *   antes de matrícula, 2ª evaluación en enero; promovido condicionado).
  * - Áreas aprobadas pero con asignatura en bajo dentro del área → PROMOVIDO
  *   CON NIVELACIÓN (Parágrafo 3; nivelación con definitivo 3.0 en refuerzos).
  * - Resto → PROMOVIDO.
@@ -64,13 +64,14 @@ export function estadoPromocionDe(
     pendientesCount: number;
     pctInasistencia: number | null;
   },
-  umbralInasistencia = 25
+  umbralInasistencia = 25,
+  maxAreasNivelacion = 2
 ): EstadoPromocion {
   const { sinDatos, areasBajoCount, pendientesCount, pctInasistencia } = params;
   if (sinDatos) return "sin_datos";
   if (pctInasistencia !== null && pctInasistencia >= umbralInasistencia)
     return "no_promovido_inasistencia";
-  if (areasBajoCount >= 3) return "no_promovido";
+  if (areasBajoCount > maxAreasNivelacion) return "no_promovido";
   if (areasBajoCount >= 1) return "nivelacion";
   if (pendientesCount > 0) return "promovido_nivelacion";
   return "promovido";
@@ -117,6 +118,10 @@ export interface ConsolidadoResult {
     branchName: string | null;
   };
   umbral: number;
+  /** umbral de inasistencia injustificada usado (% — desde PromotionConfig) */
+  umbralInasistencia: number;
+  /** máx. áreas en bajo para promovido condicionado (desde PromotionConfig) */
+  maxAreasNivelacion: number;
   periods: ConsolidadoPeriod[];
   subjects: ConsolidadoSubject[];
   /** áreas del plan (orden del boletín) con sus asignaturas */
@@ -259,14 +264,21 @@ export async function getConsolidadoAnual(params: {
         })
       : [];
 
-  // Umbral de promoción: tope de la escala más baja + salto (2ª escala por
-  // minValue). Con Bajo[0–2.9] / Básico[3–3.9]… → 3.0. Fallback 3.0.
+  // Parámetros de promoción: config por institución (PromotionConfig);
+  // si no hay fila se usan los defaults documentados en el schema.
+  const cfg = await db.promotionConfig.findUnique({
+    where: { institutionId: group.institution.id },
+  });
+  // Umbral de aprobación de áreas: config → derivar de Escalas valorativas
+  // (2ª escala por minValue; Bajo[0–2.9]/Básico[3–3.9]… → 3.0) → 3.0.
   const scales = await db.evaluationScale.findMany({
     where: { institutionId: group.institution.id },
     select: { minValue: true },
     orderBy: { minValue: "asc" },
   });
-  const umbral = scales.length >= 2 ? scales[1].minValue : 3.0;
+  const umbral = cfg?.umbralArea ?? (scales.length >= 2 ? scales[1].minValue : 3.0);
+  const umbralInasistenciaCfg = cfg?.umbralInasistencia ?? 25;
+  const maxAreasNivelacion = cfg?.maxAreasNivelacion ?? 2;
 
   // === Cálculos ===
   const actById = new Map(relevant.map((a) => [a.id, a]));
@@ -446,12 +458,16 @@ export async function getConsolidadoAnual(params: {
       areasBajo,
       pendientesNivelacion: pendientes,
       pt: null,
-      estado: estadoPromocionDe({
-        sinDatos: promFinal === null,
-        areasBajoCount: areasBajo.length,
-        pendientesCount: pendientes.length,
-        pctInasistencia,
-      }),
+      estado: estadoPromocionDe(
+        {
+          sinDatos: promFinal === null,
+          areasBajoCount: areasBajo.length,
+          pendientesCount: pendientes.length,
+          pctInasistencia,
+        },
+        umbralInasistenciaCfg,
+        maxAreasNivelacion
+      ),
       defCompleta,
     });
   }
@@ -487,6 +503,8 @@ export async function getConsolidadoAnual(params: {
       branchName: group.branch?.name ?? null,
     },
     umbral,
+    umbralInasistencia: umbralInasistenciaCfg,
+    maxAreasNivelacion,
     periods,
     subjects,
     areas: areaNames.map((a) => ({
