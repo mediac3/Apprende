@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ConsolidadoResult } from "@/lib/queries/consolidado";
+import type { ConsolidadoAnoResumen, ConsolidadoResult } from "@/lib/queries/consolidado";
 
 // === [F2] Consolidado anual: hook de carga y filtros ===
 // Filtros: año académico (default: activo) → grado → grupo → periodo
@@ -55,6 +55,8 @@ export function useConsolidado(institutionId: string | undefined) {
     hasta: "",
   });
   const [data, setData] = useState<ConsolidadoResult | null>(null);
+  const [resumen, setResumen] = useState<ConsolidadoAnoResumen[] | null>(null);
+  const [resumenLoading, setResumenLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [display, setDisplay] = useState<ConsolidadoDisplayFilters>(DEFAULT_DISPLAY);
@@ -98,9 +100,9 @@ export function useConsolidado(institutionId: string | undefined) {
     };
   }, [institutionId]);
 
-  // Grupos del año seleccionado
+  // Grupos del año seleccionado (no aplica en modo "Todos los años")
   useEffect(() => {
-    if (!institutionId || !filters.yearId) {
+    if (!institutionId || !filters.yearId || filters.yearId === "all") {
       setGroups([]);
       return;
     }
@@ -156,6 +158,30 @@ export function useConsolidado(institutionId: string | undefined) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Modo "Todos los años": resumen por año → grupo (año completo)
+  useEffect(() => {
+    if (filters.yearId !== "all" || !institutionId) {
+      setResumen(null);
+      return;
+    }
+    let alive = true;
+    setResumenLoading(true);
+    (async () => {
+      try {
+        const res = await fetch(`/api/consolidado/resumen?institutionId=${institutionId}`);
+        const j = await res.json();
+        if (alive) setResumen(j.ok ? (j.years ?? []) : []);
+      } catch {
+        if (alive) setResumen([]);
+      } finally {
+        if (alive) setResumenLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [filters.yearId, institutionId]);
 
   const setFilter = useCallback((key: keyof ConsolidadoFilters, value: string) => {
     setFilters((f) => {
@@ -335,6 +361,8 @@ export function useConsolidado(institutionId: string | undefined) {
     setFilter,
     data,
     view,
+    resumen,
+    resumenLoading,
     teachers,
     display,
     setDisplayFilter,

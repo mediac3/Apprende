@@ -558,3 +558,93 @@ export async function getConsolidadoAnual(params: {
     resumen,
   };
 }
+
+// === Vista "Todos los años": resumen por año → grupo (reutiliza
+// getConsolidadoAnual; no recalcula DEF ni promedios) ===
+
+export interface ConsolidadoGrupoResumen {
+  groupId: string;
+  groupName: string;
+  gradeLevelId: string | null;
+  gradeLevelName: string | null;
+  /** estudiantes activos en el grupo */
+  students: number;
+  /** estudiantes con promedio calculable */
+  conDatos: number;
+  /** promedio de los promedios finales del grupo (1 decimal) */
+  promGrupo: number | null;
+  promovidos: number;
+  /** estado "promovido_nivelacion" (Parágrafo 3) */
+  promovidosNivelacion: number;
+  /** estado "nivelacion" (1-2 áreas en bajo) */
+  enNivelacion: number;
+  /** no_promovido + no_promovido_inasistencia */
+  noPromovidos: number;
+}
+
+export interface ConsolidadoAnoResumen {
+  yearId: string;
+  year: number;
+  active: boolean;
+  grupos: ConsolidadoGrupoResumen[];
+}
+
+export async function getConsolidadoResumenInstitucion(params: {
+  institutionId: string;
+}): Promise<ConsolidadoAnoResumen[]> {
+  const { institutionId } = params;
+  const years = await db.academicYear.findMany({
+    where: { institutionId },
+    orderBy: { year: "desc" },
+    select: { id: true, year: true, active: true },
+  });
+  const yearById = new Map(years.map((y) => [y.id, y]));
+  const groups = await db.group.findMany({
+    where: { institutionId },
+    select: {
+      id: true,
+      name: true,
+      academicYearId: true,
+      gradeLevel: { select: { id: true, name: true } },
+    },
+    orderBy: { name: "asc" },
+  });
+
+  const porAno = new Map<string, ConsolidadoGrupoResumen[]>();
+  for (const g of groups) {
+    if (!g.academicYearId || !yearById.has(g.academicYearId)) continue;
+    const res = await getConsolidadoAnual({ groupId: g.id });
+    if (!res) continue;
+    const conDatos = res.students.filter((s) => s.promFinal !== null);
+    const summary: ConsolidadoGrupoResumen = {
+      groupId: g.id,
+      groupName: g.name,
+      gradeLevelId: g.gradeLevel?.id ?? null,
+      gradeLevelName: g.gradeLevel?.name ?? null,
+      students: res.students.length,
+      conDatos: conDatos.length,
+      promGrupo: conDatos.length
+        ? round1(conDatos.reduce((a, s) => a + (s.promFinal as number), 0) / conDatos.length)
+        : null,
+      promovidos: res.students.filter((s) => s.estado === "promovido").length,
+      promovidosNivelacion: res.students.filter((s) => s.estado === "promovido_nivelacion").length,
+      enNivelacion: res.students.filter((s) => s.estado === "nivelacion").length,
+      noPromovidos: res.students.filter(
+        (s) => s.estado === "no_promovido" || s.estado === "no_promovido_inasistencia"
+      ).length,
+    };
+    const arr = porAno.get(g.academicYearId);
+    if (arr) arr.push(summary);
+    else porAno.set(g.academicYearId, [summary]);
+  }
+
+  // Sólo años con grupos (los vacíos quedan marcados en el dropdown)
+  return years
+    .filter((y) => (porAno.get(y.id)?.length ?? 0) > 0)
+    .map((y) => ({
+      yearId: y.id,
+      year: y.year,
+      active: y.active,
+      grupos: porAno.get(y.id) ?? [],
+    }));
+}

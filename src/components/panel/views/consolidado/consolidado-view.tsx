@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,8 @@ export default function ConsolidadoView() {
     setFilter,
     data,
     view,
+    resumen,
+    resumenLoading,
     teachers,
     display,
     setDisplayFilter,
@@ -53,6 +56,13 @@ export default function ConsolidadoView() {
   }
 
   const activeYear = years.find((y) => y.id === filters.yearId);
+  const modoTodosLosAnos = filters.yearId === "all";
+
+  // Perforar desde el resumen "Todos los años" al consolidado del grupo
+  function verConsolidado(yearId: string, groupId: string) {
+    setFilter("yearId", yearId);
+    setFilter("groupId", groupId);
+  }
   const activeDisplayCount =
     (display.teacherId !== "" ? 1 : 0) +
     (display.areasMode !== "all" ? 1 : 0) +
@@ -88,6 +98,7 @@ export default function ConsolidadoView() {
           <Select value={filters.yearId} onValueChange={(v) => setFilter("yearId", v)}>
             <SelectTrigger className="w-[140px]"><SelectValue placeholder="Año" /></SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">Todos los años</SelectItem>
               {years.map((y) => (
                 <SelectItem key={y.id} value={y.id}>
                   {y.year}
@@ -108,7 +119,7 @@ export default function ConsolidadoView() {
             </SelectContent>
           </Select>
 
-          <Select value={filters.groupId} onValueChange={(v) => setFilter("groupId", v)}>
+          <Select value={filters.groupId} onValueChange={(v) => setFilter("groupId", v)} disabled={modoTodosLosAnos}>
             <SelectTrigger className="w-[160px]"><SelectValue placeholder="Grupo" /></SelectTrigger>
             <SelectContent>
               {groups.length === 0 && (
@@ -120,7 +131,8 @@ export default function ConsolidadoView() {
             </SelectContent>
           </Select>
 
-          <Select value={filters.hasta} onValueChange={(v) => setFilter("hasta", v)}>
+          <Select value={filters.hasta} onValueChange={(v) => setFilter("hasta", v)} disabled={modoTodosLosAnos}
+            title={modoTodosLosAnos ? "Disponible al ver el consolidado de un grupo" : undefined}>
             <SelectTrigger className="w-[210px]"><SelectValue placeholder="Periodo" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Año completo (final)</SelectItem>
@@ -245,7 +257,108 @@ export default function ConsolidadoView() {
         </CardContent>
       </Card>
 
-      {!filters.groupId ? (
+      {modoTodosLosAnos ? (
+        resumenLoading ? (
+          <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+            Calculando resumen de todos los años…
+          </div>
+        ) : resumen && resumen.length > 0 ? (
+          <div className="space-y-4">
+            {resumen.map((ano) => {
+              const grupos =
+                filters.gradeLevelId && filters.gradeLevelId !== "all"
+                  ? ano.grupos.filter((g) => g.gradeLevelId === filters.gradeLevelId)
+                  : ano.grupos;
+              const totalEst = grupos.reduce((a, g) => a + g.students, 0);
+              return (
+                <Card key={ano.yearId}>
+                  <CardContent className="py-3">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <h2 className="flex items-center gap-2 text-base font-semibold">
+                        Año {ano.year}
+                        {ano.active && (
+                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">activo</Badge>
+                        )}
+                      </h2>
+                      <span className="text-sm text-muted-foreground">
+                        {grupos.length} {grupos.length === 1 ? "grupo" : "grupos"} · {totalEst}{" "}
+                        {totalEst === 1 ? "estudiante" : "estudiantes"}
+                      </span>
+                    </div>
+                    <div className="overflow-auto rounded-lg border">
+                      <table className="w-full border-collapse text-xs">
+                        <thead className="bg-muted dark:bg-card">
+                          <tr>
+                            <th className="border px-2 py-1 text-left">GRUPO</th>
+                            <th className="border px-2 py-1 text-left">GRADO</th>
+                            <th className="border px-2 py-1">ESTUDIANTES</th>
+                            <th className="border px-2 py-1">CON DATOS</th>
+                            <th className="border px-2 py-1">PROM. GRUPO</th>
+                            <th className="border px-2 py-1">PROMOVIDOS</th>
+                            <th className="border px-2 py-1">PROM. C/NIVELACIÓN</th>
+                            <th className="border px-2 py-1">EN NIVELACIÓN</th>
+                            <th className="border px-2 py-1">NO PROMOVIDOS</th>
+                            <th className="border px-2 py-1"><span className="sr-only">Acciones</span></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {grupos.map((g) => (
+                            <tr key={g.groupId} className="hover:bg-muted/40">
+                              <td className="border px-2 py-1 font-medium">{g.groupName}</td>
+                              <td className="border px-2 py-1 whitespace-nowrap">{g.gradeLevelName ?? "—"}</td>
+                              <td className="border px-2 py-1 text-center tabular-nums">{g.students}</td>
+                              <td className="border px-2 py-1 text-center tabular-nums">{g.conDatos}</td>
+                              <td className="border px-2 py-1 text-center font-semibold tabular-nums">
+                                {g.promGrupo ?? "—"}
+                              </td>
+                              <td className="border px-2 py-1 text-center tabular-nums">{g.promovidos}</td>
+                              <td className="border px-2 py-1 text-center tabular-nums">{g.promovidosNivelacion}</td>
+                              <td className="border px-2 py-1 text-center tabular-nums">
+                                {g.enNivelacion > 0 ? (
+                                  <span className="font-semibold text-amber-600 dark:text-amber-400">{g.enNivelacion}</span>
+                                ) : (
+                                  0
+                                )}
+                              </td>
+                              <td className="border px-2 py-1 text-center tabular-nums">
+                                {g.noPromovidos > 0 ? (
+                                  <span className="font-semibold text-red-600 dark:text-red-400">{g.noPromovidos}</span>
+                                ) : (
+                                  0
+                                )}
+                              </td>
+                              <td className="border px-2 py-1 text-center">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => verConsolidado(ano.yearId, g.groupId)}
+                                >
+                                  Ver consolidado
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                          {grupos.length === 0 && (
+                            <tr>
+                              <td colSpan={10} className="border px-2 py-3 text-center text-muted-foreground">
+                                Sin grupos para el filtro de grado actual.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+            Ningún año tiene grupos con datos.
+          </div>
+        )
+      ) : !filters.groupId ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
           Selecciona un año y un grupo para generar el consolidado.
         </div>
