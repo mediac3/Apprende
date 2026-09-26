@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/auth-store";
+import { useUIStore } from "@/store/ui-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,9 +23,11 @@ import { useConsolidado, type ConsolidadoDisplayFilters } from "./use-consolidad
 
 export default function ConsolidadoView() {
   const user = useAuthStore((s) => s.user);
+  const setAiContext = useUIStore((s) => s.setAiContext);
   const institutionId = user?.institution?.id;
   const {
     years,
+    branches,
     gradeLevels,
     groups,
     filters,
@@ -57,6 +60,93 @@ export default function ConsolidadoView() {
 
   const activeYear = years.find((y) => y.id === filters.yearId);
   const modoTodosLosAnos = filters.yearId === "all";
+
+  // Publica el contexto del módulo para el asistente de IA (agregados +
+  // estudiantes en riesgo con nombre — decisión del usuario)
+  useEffect(() => {
+    if (modoTodosLosAnos && resumen) {
+      setAiContext({
+        moduleId: "consolidado",
+        moduleTitle: "Consolidado anual — resumen de todos los años",
+        data: {
+          vista: "resumen por año y grupo (promedios sobre notas completas del año)",
+          anios: resumen.map((ano) => ({
+            anio: ano.year,
+            activo: ano.active,
+            grupos: ano.grupos.map((g) => ({
+              grupo: g.groupName,
+              sede: g.branchName,
+              grado: g.gradeLevelName,
+              estudiantes: g.students,
+              conDatos: g.conDatos,
+              promedioGrupo: g.promGrupo,
+              promovidos: g.promovidos,
+              promovidosConNivelacion: g.promovidosNivelacion,
+              enNivelacion: g.enNivelacion,
+              noPromovidos: g.noPromovidos,
+            })),
+          })),
+        },
+      });
+      return;
+    }
+    if (data && view && filters.groupId) {
+      const enRiesgo = view.students
+        .filter(
+          (st) =>
+            st.areasBajo.length > 0 ||
+            (st.promFinal !== null && st.promFinal < data.umbral) ||
+            (st.pctInasistencia !== null && st.pctInasistencia >= data.umbralInasistencia)
+        )
+        .sort((a, b) => (a.promFinal ?? 5) - (b.promFinal ?? 5))
+        .slice(0, 15)
+        .map((st) => ({
+          estudiante: st.fullName,
+          promedioFinal: st.promFinal,
+          asignaturasEnBajo: st.dbj,
+          areasEnBajo: st.areasBajo,
+          pendientesNivelacion: st.pendientesNivelacion,
+          pctInasistencia: st.pctInasistencia,
+          estado: st.estado,
+        }));
+      const conDatos = view.students.filter((st) => st.promFinal !== null);
+      const distribucion: Record<string, number> = {};
+      for (const st of view.students) distribucion[st.estado] = (distribucion[st.estado] ?? 0) + 1;
+      setAiContext({
+        moduleId: "consolidado",
+        moduleTitle: `Consolidado anual — ${data.group.name} (${data.group.year})`,
+        data: {
+          institucion: data.group.institutionName,
+          sede: data.group.branchName,
+          grupo: data.group.name,
+          anio: data.group.year,
+          umbralAprobacion: data.umbral,
+          umbralInasistenciaPct: data.umbralInasistencia,
+          asignaturas: data.subjects.map((s) => s.name),
+          resumenPorAsignatura: data.subjects.map((s) => ({
+            asignatura: s.name,
+            area: s.areaName,
+            promedioGrupo: data.resumen[s.id]?.prom ?? null,
+            nivelMinimo: data.resumen[s.id]?.nm ?? null,
+          })),
+          totalEstudiantes: view.students.length,
+          estudiantesConDatos: conDatos.length,
+          promedioGrupo: conDatos.length
+            ? Math.round((conDatos.reduce((a, s) => a + (s.promFinal as number), 0) / conDatos.length) * 10) / 10
+            : null,
+          distribucionEstados: distribucion,
+          estudiantesEnRiesgo: enRiesgo,
+        },
+      });
+      return;
+    }
+    setAiContext(null);
+  }, [modoTodosLosAnos, data, view, resumen, filters.groupId, setAiContext]);
+
+  // Al salir del módulo, limpia el contexto del asistente
+  useEffect(() => {
+    return () => setAiContext(null);
+  }, [setAiContext]);
 
   // Perforar desde el resumen "Todos los años" al consolidado del grupo
   function verConsolidado(yearId: string, groupId: string) {
@@ -104,6 +194,23 @@ export default function ConsolidadoView() {
                   {y.year}
                   {y.active ? " (activo)" : ""}
                   {y.groupsCount === 0 ? " (sin grupos)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.branchId || "all"}
+            onValueChange={(v) => setFilter("branchId", v === "all" ? "" : v)}
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Sede (todas)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las sedes</SelectItem>
+              {branches.map((b) => (
+                <SelectItem key={b.id} value={b.id}>
+                  {b.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -265,10 +372,11 @@ export default function ConsolidadoView() {
         ) : resumen && resumen.length > 0 ? (
           <div className="space-y-4">
             {resumen.map((ano) => {
-              const grupos =
-                filters.gradeLevelId && filters.gradeLevelId !== "all"
-                  ? ano.grupos.filter((g) => g.gradeLevelId === filters.gradeLevelId)
-                  : ano.grupos;
+              const grupos = ano.grupos.filter(
+                (g) =>
+                  (!filters.branchId || filters.branchId === "all" || g.branchId === filters.branchId) &&
+                  (!filters.gradeLevelId || filters.gradeLevelId === "all" || g.gradeLevelId === filters.gradeLevelId)
+              );
               const totalEst = grupos.reduce((a, g) => a + g.students, 0);
               return (
                 <Card key={ano.yearId}>
@@ -290,6 +398,7 @@ export default function ConsolidadoView() {
                         <thead className="bg-muted dark:bg-card">
                           <tr>
                             <th className="border px-2 py-1 text-left">GRUPO</th>
+                            <th className="border px-2 py-1 text-left">SEDE</th>
                             <th className="border px-2 py-1 text-left">GRADO</th>
                             <th className="border px-2 py-1">ESTUDIANTES</th>
                             <th className="border px-2 py-1">CON DATOS</th>
@@ -305,6 +414,7 @@ export default function ConsolidadoView() {
                           {grupos.map((g) => (
                             <tr key={g.groupId} className="hover:bg-muted/40">
                               <td className="border px-2 py-1 font-medium">{g.groupName}</td>
+                              <td className="border px-2 py-1 whitespace-nowrap">{g.branchName ?? "—"}</td>
                               <td className="border px-2 py-1 whitespace-nowrap">{g.gradeLevelName ?? "—"}</td>
                               <td className="border px-2 py-1 text-center tabular-nums">{g.students}</td>
                               <td className="border px-2 py-1 text-center tabular-nums">{g.conDatos}</td>
@@ -340,8 +450,8 @@ export default function ConsolidadoView() {
                           ))}
                           {grupos.length === 0 && (
                             <tr>
-                              <td colSpan={10} className="border px-2 py-3 text-center text-muted-foreground">
-                                Sin grupos para el filtro de grado actual.
+                              <td colSpan={11} className="border px-2 py-3 text-center text-muted-foreground">
+                                Sin grupos para los filtros actuales.
                               </td>
                             </tr>
                           )}

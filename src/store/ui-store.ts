@@ -68,6 +68,19 @@ interface UIState {
   setSidebar: (open: boolean) => void;
   demoSheetOpen: boolean;
   setDemoSheet: (open: boolean) => void;
+  /** Contexto del módulo activo para el asistente de IA (agregados + estudiantes en riesgo) */
+  aiContext: AiModuleContext | null;
+  setAiContext: (ctx: AiModuleContext | null) => void;
+}
+
+/** Contexto que cada módulo publica para el asistente de IA */
+export interface AiModuleContext {
+  /** clave del módulo (p.ej. "consolidado") */
+  moduleId: string;
+  /** nombre visible (p.ej. "Consolidado anual") */
+  moduleTitle: string;
+  /** datos relevantes del módulo; null = módulo sin datos cargados */
+  data: Record<string, unknown> | null;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -77,6 +90,8 @@ export const useUIStore = create<UIState>((set) => ({
   setSidebar: (sidebarOpen) => set({ sidebarOpen }),
   demoSheetOpen: false,
   setDemoSheet: (demoSheetOpen) => set({ demoSheetOpen }),
+  aiContext: null,
+  setAiContext: (aiContext) => set({ aiContext }),
 }));
 
 // Helper para detectar módulos personalizados y extraer su ID

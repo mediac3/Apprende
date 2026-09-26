@@ -565,6 +565,8 @@ export async function getConsolidadoAnual(params: {
 export interface ConsolidadoGrupoResumen {
   groupId: string;
   groupName: string;
+  branchId: string | null;
+  branchName: string | null;
   gradeLevelId: string | null;
   gradeLevelName: string | null;
   /** estudiantes activos en el grupo */
@@ -605,6 +607,7 @@ export async function getConsolidadoResumenInstitucion(params: {
       id: true,
       name: true,
       academicYearId: true,
+      branch: { select: { id: true, name: true } },
       gradeLevel: { select: { id: true, name: true } },
     },
     orderBy: { name: "asc" },
@@ -619,6 +622,8 @@ export async function getConsolidadoResumenInstitucion(params: {
     const summary: ConsolidadoGrupoResumen = {
       groupId: g.id,
       groupName: g.name,
+      branchId: g.branch?.id ?? null,
+      branchName: g.branch?.name ?? null,
       gradeLevelId: g.gradeLevel?.id ?? null,
       gradeLevelName: g.gradeLevel?.name ?? null,
       students: res.students.length,

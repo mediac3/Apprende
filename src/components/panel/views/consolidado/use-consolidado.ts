@@ -14,6 +14,7 @@ import type { ConsolidadoAnoResumen, ConsolidadoResult } from "@/lib/queries/con
 
 export interface ConsolidadoFilters {
   yearId: string;
+  branchId: string; // "" = todas las sedes
   gradeLevelId: string; // "" = todos los grados
   groupId: string;
   hasta: string; // "" = año completo | "1".."6" = acumulado hasta ese periodo
@@ -36,20 +37,24 @@ const DEFAULT_DISPLAY: ConsolidadoDisplayFilters = {
 };
 
 interface YearRow { id: string; year: number; active: boolean; groupsCount?: number }
+interface BranchRow { id: string; name: string }
 interface GradeLevelRow { id: string; name: string; code: string }
 interface GroupRow {
   id: string;
   name: string;
   gradeLevelId: string | null;
+  branchId: string | null;
   gradeLevel?: { name: string; code: string } | null;
 }
 
 export function useConsolidado(institutionId: string | undefined) {
   const [years, setYears] = useState<YearRow[]>([]);
+  const [branches, setBranches] = useState<BranchRow[]>([]);
   const [gradeLevels, setGradeLevels] = useState<GradeLevelRow[]>([]);
   const [groups, setGroups] = useState<GroupRow[]>([]);
   const [filters, setFilters] = useState<ConsolidadoFilters>({
     yearId: "",
+    branchId: "",
     gradeLevelId: "",
     groupId: "",
     hasta: "",
@@ -72,12 +77,14 @@ export function useConsolidado(institutionId: string | undefined) {
     let alive = true;
     (async () => {
       try {
-        const [yrRes, glRes] = await Promise.all([
+        const [yrRes, glRes, brRes] = await Promise.all([
           fetch(`/api/academic-years?institutionId=${institutionId}`),
           fetch(`/api/grade-levels?institutionId=${institutionId}`),
+          fetch(`/api/branches?institutionId=${institutionId}`),
         ]);
         const yr = await yrRes.json();
         const gl = await glRes.json();
+        const br = await brRes.json();
         if (!alive) return;
         const ys: YearRow[] = yr.ok
           ? (yr.years ?? []).map((y: { id: string; year: number; active: boolean; _count?: { groups?: number } }) => ({
@@ -89,6 +96,7 @@ export function useConsolidado(institutionId: string | undefined) {
           : [];
         setYears(ys);
         setGradeLevels(gl.ok ? gl.gradeLevels : []);
+        setBranches(br.ok ? (br.branches ?? []) : []);
         const active = ys.find((y) => y.active) ?? ys[0];
         if (active) setFilters((f) => ({ ...f, yearId: f.yearId || active.id }));
       } catch {
@@ -124,9 +132,15 @@ export function useConsolidado(institutionId: string | undefined) {
   }, [institutionId, filters.yearId]);
 
   const visibleGroups =
-    filters.gradeLevelId && filters.gradeLevelId !== "all"
-      ? groups.filter((g) => g.gradeLevelId === filters.gradeLevelId)
-      : groups;
+    (filters.branchId && filters.branchId !== "all"
+      ? groups.filter((g) => g.branchId === filters.branchId)
+      : groups
+    ).filter(
+      (g) =>
+        !filters.gradeLevelId ||
+        filters.gradeLevelId === "all" ||
+        g.gradeLevelId === filters.gradeLevelId
+    );
 
   // Consolidado
   const load = useCallback(async () => {
@@ -190,6 +204,7 @@ export function useConsolidado(institutionId: string | undefined) {
         next.gradeLevelId = "";
         next.groupId = "";
       }
+      if (key === "branchId") next.groupId = "";
       if (key === "gradeLevelId") next.groupId = "";
       return next;
     });
@@ -355,6 +370,7 @@ export function useConsolidado(institutionId: string | undefined) {
 
   return {
     years,
+    branches,
     gradeLevels,
     groups: visibleGroups,
     filters,

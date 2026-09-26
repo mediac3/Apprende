@@ -41,6 +41,7 @@ import {
   ListChecks,
   Palette,
   Table2,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +79,7 @@ import { CustomModuleBuilderView } from "./views/custom-module-builder-view";
 import { CustomModuleRuntimeView } from "./views/custom-module-runtime-view";
 import { ModuleApprovalsView } from "./views/module-approvals-view";
 import { ParamsView } from "./views/params-view";
+import { AiChatWidget } from "./ai-chat-widget";
 import { UsersView } from "./views/users-view";
 import { GroupsView } from "./views/groups-view";
 import { ConceptsListView } from "./views/evaluative-concepts/concepts-list-view";
@@ -172,6 +174,7 @@ const NAV: NavItem[] = [
   { key: "param-report-variables", label: "Variables de reporte", icon: Variable, group: "Parámetros", roles: ["rector", "administrativo"] },
   // [F3] Criterios de promoción escolar
   { key: "param-promocion", label: "Promoción escolar", icon: GraduationCap, group: "Parámetros", roles: ["rector", "administrativo"] },
+  { key: "param-ai", label: "Inteligencia artificial", icon: Sparkles, group: "Parámetros", roles: ["rector", "administrativo"] },
 ];
 
 export function InstitutionalPanel() {
@@ -326,6 +329,8 @@ export function InstitutionalPanel() {
       // [F3] Criterios de promoción escolar
       case "param-promocion":
         return <ParamsView module="promocion" />;
+      case "param-ai":
+        return <ParamsView module="ai" />;
       case "param-subjects":
         return <ParamsView module="subjects" />;
       case "param-curriculum-plans":
@@ -446,6 +451,9 @@ export function InstitutionalPanel() {
           </div>
         </main>
       </div>
+
+      {/* Asistente de IA contextual */}
+      <AiChatWidget />
     </div>
   );
 }

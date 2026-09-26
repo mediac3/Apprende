@@ -17,8 +17,9 @@ import {
 import { toast } from "sonner";
 import { CurriculumView } from "./curriculum-view";
 import PromocionConfigView from "./promocion/promocion-config-view";
+import AiConfigView from "./ai/ai-config-view";
 import {
-  Plus, Edit, Trash2, Calendar, FileText, Scale, BookOpen, Building2, MapPin, Clock, Variable, Save, X, ArrowLeft, ListTree, GraduationCap,
+  Plus, Edit, Trash2, Calendar, FileText, Scale, BookOpen, Building2, MapPin, Clock, Variable, Save, X, ArrowLeft, ListTree, GraduationCap, Sparkles,
 } from "lucide-react";
 
 type ModuleType =
@@ -32,7 +33,8 @@ type ModuleType =
   | "journeys"
   | "report-templates"
   | "report-variables"
-  | "promocion";
+  | "promocion"
+  | "ai";
 
 interface Props {
   module: ModuleType;
@@ -50,6 +52,7 @@ const MODULE_CONFIG: Record<ModuleType, { title: string; description: string; ic
   "report-templates": { title: "Plantillas de reportes", description: "Constancias, certificados e informes con encabezado, cuerpo y pie.", icon: FileText, apiBase: "/api/report-templates" },
   "report-variables": { title: "Variables de reporte", description: "Variables dinámicas para informes valorativos.", icon: Variable, apiBase: "/api/report-variables" },
   "promocion": { title: "Promoción escolar", description: "Criterios de promoción: umbral de áreas, inasistencia injustificada máxima, nivelación por áreas en bajo y preescolar automático.", icon: GraduationCap, apiBase: "/api/promocion-config" },
+  "ai": { title: "Inteligencia artificial", description: "Clave del proveedor de IA para el asistente contextual del panel.", icon: Sparkles, apiBase: "/api/ai/config" },
 };
 
 const EDUCATIONAL_MODELS = [
@@ -85,6 +88,11 @@ export function ParamsView({ module }: Props) {
   // Promoción escolar: formulario de parámetros [F3]
   if (module === "promocion") {
     return <PromocionConfigView />;
+  }
+
+  // Inteligencia artificial: clave del asistente contextual
+  if (module === "ai") {
+    return <AiConfigView />;
   }
 
   return (

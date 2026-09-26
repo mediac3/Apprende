@@ -40,6 +40,7 @@ model Institution {
   posts         Post[]
   students      Student[]
   promotionConfig PromotionConfig?
+  aiConfig        AiConfig?
   groups        Group[]
   subjects      Subject[]
   periods       Period[]
@@ -670,6 +671,18 @@ model AcademicYear {
   studentEnrollments StudentEnrollment[]
 
   @@unique([institutionId, year])
+}
+
+// Configuración del agente de IA (chat contextual) — 1 fila por institución
+model AiConfig {
+  id            String      @id @default(cuid())
+  institutionId String      @unique
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  provider      String      @default("gemini") // proveedor de IA
+  apiKey        String      @default("") // clave del proveedor (configurada en Parámetros)
+  model         String      @default("gemini-2.5-flash")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 // --- Escala valorativa (PDF pág 6-8) ---
