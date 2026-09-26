@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       ok: true,
       config: {
         provider: cfg?.provider ?? "gemini",
-        model: cfg?.model ?? "gemini-2.5-flash",
+        model: cfg?.model ?? "gemini-flash-latest",
         apiKeyMasked: cfg ? maskKey(cfg.apiKey) : "",
         configured: !!cfg?.apiKey,
       },
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     const data = {
       provider: provider === "gemini" ? "gemini" : "gemini",
       apiKey: typeof apiKey === "string" ? apiKey.trim() : "",
-      model: typeof model === "string" && model.trim() ? model.trim() : "gemini-2.5-flash",
+      model: typeof model === "string" && model.trim() ? model.trim() : "gemini-flash-latest",
     };
 
     const cfg = await db.aiConfig.upsert({

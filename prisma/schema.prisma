@@ -41,6 +41,7 @@ model Institution {
   students      Student[]
   promotionConfig PromotionConfig?
   aiConfig        AiConfig?
+  knowledgeItems  KnowledgeItem[]
   groups        Group[]
   subjects      Subject[]
   periods       Period[]
@@ -685,6 +686,28 @@ model AiConfig {
   updatedAt     DateTime    @updatedAt
 }
 
+// Base de conocimientos: materiales/documentos embebidos por URL, agrupados
+// por categoría curricular. Evaluación y Materiales requieren grado.
+model KnowledgeItem {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  title         String
+  url           String // URL embebida (documento, video, imagen…)
+  type          String @default("documento") // documento | video | imagen | enlace
+  category      String // materiales | dba | ebc | evaluacion | mallas
+  gradeLevelId  String? // requerido para Evaluación y Materiales
+  gradeLevel    GradeLevel? @relation(fields: [gradeLevelId], references: [id], onDelete: SetNull)
+  description   String?
+  /** contenido redactado por IA (documento generado) → servido en /kb/[id] */
+  generatedContent String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([institutionId, category])
+  @@index([gradeLevelId])
+}
+
 // --- Escala valorativa (PDF pág 6-8) ---
 // Bajo, Básico, Alto, Superior - con rango numérico
 model EvaluationScale {
@@ -879,6 +902,7 @@ model GradeLevel {
 
   groups        Group[]
   planItems     CurriculumPlanItem[]
+  knowledgeItems KnowledgeItem[]
 
   @@unique([institutionId, code])
 }

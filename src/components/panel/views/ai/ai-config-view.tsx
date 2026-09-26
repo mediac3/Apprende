@@ -24,7 +24,7 @@ export default function AiConfigView() {
   const institutionId = user?.institution?.id;
 
   const [provider, setProvider] = useState("gemini");
-  const [model, setModel] = useState("gemini-2.5-flash");
+  const [model, setModel] = useState("gemini-flash-latest");
   const [apiKey, setApiKey] = useState("");
   const [apiKeyMasked, setApiKeyMasked] = useState("");
   const [configured, setConfigured] = useState(false);
@@ -41,7 +41,7 @@ export default function AiConfigView() {
         const j = await res.json();
         if (alive && j.ok) {
           setProvider(j.config.provider ?? "gemini");
-          setModel(j.config.model ?? "gemini-2.5-flash");
+          setModel(j.config.model ?? "gemini-flash-latest");
           setApiKeyMasked(j.config.apiKeyMasked ?? "");
           setConfigured(!!j.config.configured);
         }
@@ -156,7 +156,7 @@ export default function AiConfigView() {
             </div>
             <div className="space-y-1.5">
               <Label>Modelo</Label>
-              <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="gemini-2.5-flash" />
+              <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="gemini-flash-latest" />
             </div>
           </div>
 

@@ -73,6 +73,12 @@ interface UIState {
   setAiContext: (ctx: AiModuleContext | null) => void;
 }
 
+/** Acción rápida sugerida por el módulo (botón del asistente IA) */
+export interface AiQuickAction {
+  label: string;
+  prompt: string;
+}
+
 /** Contexto que cada módulo publica para el asistente de IA */
 export interface AiModuleContext {
   /** clave del módulo (p.ej. "consolidado") */
@@ -81,6 +87,8 @@ export interface AiModuleContext {
   moduleTitle: string;
   /** datos relevantes del módulo; null = módulo sin datos cargados */
   data: Record<string, unknown> | null;
+  /** botones de análisis rápido que el widget muestra al usuario */
+  quickActions?: AiQuickAction[];
 }
 
 export const useUIStore = create<UIState>((set) => ({

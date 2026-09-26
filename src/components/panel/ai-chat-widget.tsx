@@ -79,6 +79,11 @@ export function AiChatWidget() {
     const texto = input.trim();
     if (!texto || sending) return;
     setInput("");
+    await send(texto);
+  }
+
+  async function send(texto: string) {
+    if (sending) return;
     const base = messagesRef.current;
     setMessages((m) => [...m, { role: "user", content: texto }]);
     setSending(true);
@@ -145,6 +150,23 @@ export function AiChatWidget() {
               </div>
             )}
           </div>
+
+          {/* Acciones rápidas sugeridas por el módulo activo */}
+          {aiContext?.quickActions && aiContext.quickActions.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 border-t px-3 pt-2">
+              {aiContext.quickActions.map((qa) => (
+                <button
+                  key={qa.label}
+                  onClick={() => send(qa.prompt)}
+                  disabled={sending}
+                  className="rounded-full border border-primary/40 bg-primary/5 px-2.5 py-1 text-[11px] text-primary transition-colors hover:bg-primary/15 disabled:opacity-50"
+                  title={qa.prompt}
+                >
+                  {qa.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="flex items-center gap-2 border-t px-3 py-2">
             <Input

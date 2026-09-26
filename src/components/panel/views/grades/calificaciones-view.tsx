@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/auth-store";
+import { useUIStore } from "@/store/ui-store";
 import { cn } from "@/lib/utils";
 import { GradesSidebar, type SidebarSubject } from "./grades-sidebar";
 import { GradesToolbar } from "./grades-toolbar";
@@ -89,6 +90,7 @@ function periodSubtitle(periods: PeriodLite[], periodId: string | null): string 
 export function CalificacionesView() {
   const user = useAuthStore((s) => s.user);
   const institutionId = user?.institution?.id ?? null;
+  const setAiContext = useUIStore((s) => s.setAiContext);
 
   // Catálogos
   const [plans, setPlans] = useState<PlanLite[]>([]);
@@ -288,6 +290,77 @@ export function CalificacionesView() {
     [modelConcepts, activities]
   );
   const calculations = useGradesCalculations(students, conceptColumns, values);
+
+  // Publica el contexto del módulo para el asistente de IA (agregados por
+  // estudiante: PROM/DEF + ausencias) con acciones rápidas de análisis.
+  useEffect(() => {
+    const grupo = activeSubject?.groupId;
+    if (!activeSubject || !grupo || students.length === 0) {
+      setAiContext(null);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      const inas: Record<string, { ausentes: number; total: number }> = {};
+      try {
+        const res = await fetch(
+          `/api/attendance?institutionId=${institutionId}&groupId=${grupo}&mode=summary`
+        );
+        const j = await res.json();
+        if (j.ok) {
+          for (const s of j.summary ?? []) {
+            inas[s.studentId] = { ausentes: s.ausentes, total: s.total };
+          }
+        }
+      } catch {
+        // sin asistencia disponible: el contexto sigue sin inasistencias
+      }
+      if (!alive) return;
+      const periodo = modelPeriods.find((p) => p.id === selectedPeriodId)?.name ?? "";
+      const estudiantes = students.map((s) => {
+        const c = calculations.find((x) => x.studentId === s.studentId);
+        return {
+          estudiante: s.fullName,
+          PROM: c?.prom ?? null,
+          DEF: c?.def ?? null,
+          ausencias: inas[s.studentId]?.ausentes ?? 0,
+          registrosAsistencia: inas[s.studentId]?.total ?? 0,
+        };
+      });
+      setAiContext({
+        moduleId: "notas",
+        moduleTitle: `Notas parciales — ${activeSubject.subjectName} · ${activeSubject.groupName} · ${periodo}`,
+        data: {
+          asignatura: activeSubject.subjectName,
+          grupo: activeSubject.groupName,
+          periodo,
+          escala: "0.0 – 5.0 (aprobación 3.0)",
+          totalEstudiantes: estudiantes.length,
+          estudiantes,
+        },
+        quickActions: [
+          {
+            label: "Estudiantes que han dejado de asistir y tienen PROM bajo",
+            prompt:
+              "Lista los estudiantes que hayan dejado de asistir (más ausencias registradas) y tengan PROM por debajo de 3.0, ordenados por riesgo de deserción, con una acción recomendada para cada uno.",
+          },
+          {
+            label: "Análisis de la asignatura",
+            prompt:
+              "Analiza el rendimiento del grupo en esta asignatura y periodo (PROM y DEF) y dame 3 recomendaciones concretas para mejorar los resultados.",
+          },
+        ],
+      });
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [activeSubject, selectedPeriodId, students, calculations, institutionId, modelPeriods, setAiContext]);
+
+  // Al salir del módulo, limpia el contexto del asistente
+  useEffect(() => {
+    return () => setAiContext(null);
+  }, [setAiContext]);
 
   const selectedPeriod = modelPeriods.find((p) => p.id === selectedPeriodId) ?? null;
   const periodClosed = selectedPeriod?.closed ?? false;

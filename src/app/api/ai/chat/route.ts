@@ -17,8 +17,17 @@ Módulos principales: Consolidado anual (notas por periodo, DEF, promedio y esta
 Reglas oficiales del consolidado: DEF por asignatura y periodo; valoración de área = Σ(DEF asignatura × % asignatura); umbral de aprobación configurable (PromotionConfig, por defecto 3.0); 1-2 áreas en bajo → SUJETO A NIVELACIÓN; 3+ → NO PROMOVIDO; inasistencia injustificada ≥ umbral (25% por defecto) → NO PROMOVIDO; asignatura en bajo dentro de área aprobada → promovido con nivelación (Parágrafo 3).`;
 
 function construirSystemPrompt(context: Record<string, unknown> | null | undefined): string {
-  const datos = context
-    ? `DATOS ACTUALES DEL MÓDULO "${String(context.moduleTitle ?? "")}" (JSON confiable, úsalos como única fuente de verdad):\n${JSON.stringify(context.data ?? {})}`
+  // El widget envía el contexto aplanado ({moduleTitle, ...datos}); también se
+  // acepta la forma anidada ({moduleTitle, data}).
+  let payload: Record<string, unknown> | null = null;
+  if (context && typeof context === "object") {
+    payload =
+      context.data !== undefined
+        ? (context.data as Record<string, unknown>)
+        : Object.fromEntries(Object.entries(context).filter(([k]) => k !== "moduleTitle"));
+  }
+  const datos = payload && Object.keys(payload).length > 0
+    ? `DATOS ACTUALES DEL MÓDULO "${String(context?.moduleTitle ?? "")}" (JSON confiable, úsalos como única fuente de verdad):\n${JSON.stringify(payload)}`
     : "El usuario aún no tiene datos de un módulo cargado.";
   return `Eres el asistente de IA de Apprende, plataforma educativa colombiana. Respondes en español, de forma concisa (máximo ~200 palabras), práctica y orientada a decisiones.
 
@@ -72,6 +81,7 @@ export async function POST(req: NextRequest) {
     }
 
     const cfg = await db.aiConfig.findUnique({ where: { institutionId } });
+    const model = cfg?.model?.trim() || "gemini-flash-latest";
     if (!cfg?.apiKey) {
       return NextResponse.json(
         { ok: false, error: "La IA no está configurada. Ve a Parámetros → Inteligencia artificial y registra tu clave de Google AI Studio.", needsConfig: true },
@@ -84,7 +94,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Mensaje vacío" }, { status: 400 });
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cfg.model)}:generateContent`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
     const resp = await fetch(url, {
       method: "POST",
       headers: {
@@ -105,9 +115,11 @@ export async function POST(req: NextRequest) {
       const msg =
         resp.status === 400 || resp.status === 403
           ? "La clave de IA no es válida o el modelo no está disponible. Revisa la configuración en Parámetros → Inteligencia artificial."
-          : resp.status === 429
-            ? "Se alcanzó el límite gratuito del proveedor de IA. Intenta de nuevo en un minuto."
-            : "Error del proveedor de IA. Intenta de nuevo.";
+          : resp.status === 404
+            ? "El modelo configurado no existe en el proveedor. Corrige el nombre del modelo en Parámetros → Inteligencia artificial."
+            : resp.status === 429
+              ? "Se alcanzó el límite gratuito del proveedor de IA. Intenta de nuevo en un minuto."
+              : "Error del proveedor de IA. Intenta de nuevo.";
       return NextResponse.json({ ok: false, error: msg, needsConfig: resp.status === 400 || resp.status === 403 }, { status: 502 });
     }
 

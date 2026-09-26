@@ -80,6 +80,7 @@ import { CustomModuleRuntimeView } from "./views/custom-module-runtime-view";
 import { ModuleApprovalsView } from "./views/module-approvals-view";
 import { ParamsView } from "./views/params-view";
 import { AiChatWidget } from "./ai-chat-widget";
+import KnowledgeBaseView from "./views/knowledge/knowledge-base-view";
 import { UsersView } from "./views/users-view";
 import { GroupsView } from "./views/groups-view";
 import { ConceptsListView } from "./views/evaluative-concepts/concepts-list-view";
@@ -111,6 +112,8 @@ const NAV: NavItem[] = [
   { key: "notas", label: "Notas parciales", icon: FileText, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
   // [F2] Consolidado anual — junto a Notas parciales
   { key: "consolidado", label: "Consolidado anual", icon: Table2, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
+  // Base de conocimientos: materiales y documentos por categoría (embed URL + IA)
+  { key: "base-conocimientos", label: "Base de conocimientos", icon: BookOpen, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "administrativo", "rector"] },
   // [F3] Gestión de Actividades — junto a Notas parciales (decisión del usuario)
   { key: "gestion-actividades", label: "Gestión de Actividades", icon: ListChecks, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
   { key: "pre-informe", label: "Pre-Informe", icon: Bell, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
@@ -257,6 +260,9 @@ export function InstitutionalPanel() {
       // [F2] Consolidado anual
       case "consolidado":
         return <ConsolidadoView />;
+      // Base de conocimientos (embed URL por categoría + generación IA)
+      case "base-conocimientos":
+        return <KnowledgeBaseView />;
       // [F3] Promoción de grado
       case "promocion":
         return <PromocionWizardView />;

@@ -6,6 +6,7 @@ export async function GET(req: NextRequest) {
   const institutionId = searchParams.get("institutionId");
   const groupId = searchParams.get("groupId");
   const date = searchParams.get("date");
+  const mode = searchParams.get("mode"); // "summary" = agregado por estudiante
 
   if (!institutionId) {
     return NextResponse.json(
@@ -15,6 +16,28 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // Resumen agregado por estudiante (contexto del asistente IA en Notas
+    // parciales): ausencias/tardes/total sin traer el detalle completo.
+    if (mode === "summary") {
+      if (!groupId) {
+        return NextResponse.json({ ok: false, error: "groupId requerido en modo summary" }, { status: 400 });
+      }
+      const rows = await db.attendance.groupBy({
+        by: ["studentId", "status"],
+        where: { group: { institutionId }, groupId },
+        _count: { _all: true },
+      });
+      const byStudent = new Map<string, { studentId: string; ausentes: number; tardes: number; total: number }>();
+      for (const r of rows) {
+        const cur = byStudent.get(r.studentId) ?? { studentId: r.studentId, ausentes: 0, tardes: 0, total: 0 };
+        cur.total += r._count._all;
+        if (r.status === "ausente") cur.ausentes += r._count._all;
+        if (r.status === "tarde") cur.tardes += r._count._all;
+        byStudent.set(r.studentId, cur);
+      }
+      return NextResponse.json({ ok: true, summary: [...byStudent.values()] });
+    }
+
     const where: any = { group: { institutionId } };
     if (groupId) where.groupId = groupId;
     if (date) {
