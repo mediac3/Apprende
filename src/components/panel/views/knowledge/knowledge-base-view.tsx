@@ -207,6 +207,7 @@ export default function KnowledgeBaseView() {
     const quickActions: AiQuickAction[] = [
       { label: "¿Qué materiales hay y para qué grados?", prompt: "Resume qué materiales hay en la Base de conocimientos, organizados por categoría y grado, e indica qué categorías están vacías." },
       { label: "¿Qué falta documentar?", prompt: "Con base en las categorías con pocos o ningún documento, recomiéndame qué materiales priorizar para completar la Base de conocimientos." },
+      { label: "¿Qué documentos puedo generar con IA?", prompt: "Según las categorías de la Base de conocimientos que estén vacías o incompletas, sugiéreme qué documentos conviene generar con IA, con el tema y el grado recomendado." },
     ];
     setAiContext({
       moduleId: "base-conocimientos",

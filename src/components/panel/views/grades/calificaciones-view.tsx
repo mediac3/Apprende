@@ -345,6 +345,11 @@ export function CalificacionesView() {
               "Lista los estudiantes que hayan dejado de asistir (más ausencias registradas) y tengan PROM por debajo de 3.0, ordenados por riesgo de deserción, con una acción recomendada para cada uno.",
           },
           {
+            label: "Estudiantes en riesgo de reprobar el periodo",
+            prompt:
+              "Lista los estudiantes con DEF por debajo de 3.0 o con conceptos evaluativos sin notas, indicando qué concepto (Ser, Saber, Hacer) están perdiendo y cómo recuperarlo.",
+          },
+          {
             label: "Análisis de la asignatura",
             prompt:
               "Analiza el rendimiento del grupo en esta asignatura y periodo (PROM y DEF) y dame 3 recomendaciones concretas para mejorar los resultados.",

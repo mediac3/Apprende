@@ -98,6 +98,11 @@ export default function ConsolidadoView() {
             })),
           })),
         },
+        quickActions: [
+          { label: "¿Qué grupo tiene mayor riesgo académico?", prompt: "Comparando todos los años y grupos del resumen, indica cuáles grupos tienen mayor riesgo académico (promedio más bajo, más estudiantes en nivelación o no promovidos) y qué acciones recomiendas por grupo." },
+          { label: "Comparar sedes y grados", prompt: "Compara el desempeño entre sedes y entre grados usando los promedios de grupo y los estados de promoción, y señala dónde intervenir primero." },
+          { label: "Grupos sin datos", prompt: "Lista los grupos que no tienen datos calculables (conDatos = 0) y explica qué implica para la promoción y el reporte institucional." },
+        ],
       });
       return;
     }
@@ -148,6 +153,12 @@ export default function ConsolidadoView() {
           distribucionEstados: distribucion,
           estudiantesEnRiesgo: enRiesgo,
         },
+        quickActions: [
+          { label: "Estudiantes en riesgo de no promoción", prompt: "Lista los estudiantes con estado SUJETO A NIVELACIÓN, NO PROMOVIDO o NO PROMOVIDO POR INASISTENCIA, con sus áreas en bajo y porcentaje de inasistencia, y una acción recomendada para cada uno." },
+          { label: "Asignaturas y áreas críticas", prompt: "Usando el promedio del grupo y el nivel mínimo por asignatura, identifica las asignaturas y áreas más críticas y propón intervenciones concretas." },
+          { label: "Comparar mejores y menores promedios", prompt: "Muestra los 3 estudiantes con mejor promedio final y los 3 con menor promedio final, y comenta la brecha entre ellos." },
+          { label: "Análisis de inasistencia", prompt: "Indica qué estudiantes tienen mayor inasistencia injustificada, si alguno cruza el umbral de no promoción y cómo relacionarla con su desempeño académico." },
+        ],
       });
       return;
     }

@@ -20,6 +20,63 @@ interface ChatMessage {
 const SALUDO_SIN_DATOS =
   "Hola, soy tu asistente de IA. Abre un módulo con datos (por ejemplo, Consolidado anual) y podré analizarlos contigo: riesgos de deserción, análisis por grupo, asignatura y sede.";
 
+/** Escapa HTML para inyectar solo etiquetas propias (sin XSS) */
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** Markdown ligero → HTML para las respuestas del asistente (negrita,
+ *  itálica, código, encabezados, listas y párrafos). */
+function mdLite(src: string): string {
+  const inline = (t: string) =>
+    t
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>")
+      .replace(/`([^`]+)`/g, "<code>$1</code>");
+  const out: string[] = [];
+  let list: "ul" | "ol" | null = null;
+  const closeList = () => {
+    if (list) {
+      out.push(`</${list}>`);
+      list = null;
+    }
+  };
+  for (const raw of escapeHtml(src).split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) {
+      closeList();
+      continue;
+    }
+    const h = /^(#{1,4})\s+(.*)$/.exec(line);
+    const ul = /^[-*]\s+(.*)$/.exec(line);
+    const ol = /^\d+[.)]\s+(.*)$/.exec(line);
+    if (h) {
+      closeList();
+      const level = Math.min(h[1].length + 2, 5);
+      out.push(`<h${level}>${inline(h[2])}</h${level}>`);
+    } else if (ul) {
+      if (list !== "ul") {
+        closeList();
+        out.push("<ul>");
+        list = "ul";
+      }
+      out.push(`<li>${inline(ul[1])}</li>`);
+    } else if (ol) {
+      if (list !== "ol") {
+        closeList();
+        out.push("<ol>");
+        list = "ol";
+      }
+      out.push(`<li>${inline(ol[1])}</li>`);
+    } else {
+      closeList();
+      out.push(`<p>${inline(line)}</p>`);
+    }
+  }
+  closeList();
+  return out.join("");
+}
+
 export function AiChatWidget() {
   const user = useAuthStore((s) => s.user);
   const institutionId = user?.institution?.id;
@@ -132,18 +189,22 @@ export function AiChatWidget() {
                 análisis por grupo, asignatura o sede) o sobre los módulos de la plataforma.
               </div>
             )}
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-xs ${
-                  m.role === "user"
-                    ? "ml-auto bg-primary text-primary-foreground"
-                    : "bg-muted/70 text-foreground"
-                }`}
-              >
-                {m.content}
-              </div>
-            ))}
+            {messages.map((m, i) =>
+              m.role === "user" ? (
+                <div
+                  key={i}
+                  className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-lg bg-primary px-3 py-2 text-xs text-primary-foreground"
+                >
+                  {m.content}
+                </div>
+              ) : (
+                <div
+                  key={i}
+                  className="max-w-[92%] space-y-1.5 rounded-lg bg-muted/70 px-3 py-2 text-xs text-foreground [&_code]:rounded [&_code]:bg-background [&_code]:px-1 [&_h3]:font-semibold [&_h4]:font-semibold [&_h5]:font-semibold [&_li]:ml-4 [&_li]:list-disc [&_ol]:list-decimal [&_ol]:pl-1 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-1"
+                  dangerouslySetInnerHTML={{ __html: mdLite(m.content) }}
+                />
+              )
+            )}
             {sending && (
               <div className="max-w-[85%] rounded-lg bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
                 Analizando…

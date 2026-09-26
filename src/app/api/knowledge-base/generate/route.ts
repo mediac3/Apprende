@@ -95,7 +95,13 @@ Tipo de documento: ${cat.label}.
 ${gradoNombre ? `Grado destinado: ${gradoNombre}.` : ""}
 ${topic ? `Tema o enfoque solicitado por el usuario: ${topic}.` : "Cubre los temas centrales del documento para el área de manera general."}
 Contenido requerido: ${cat.instruccion}
-Estructura mínima: título (h2), introducción, secciones con h3, listas y al menos una tabla cuando aplique. Español formal, redactado para docentes. Extensión: completo pero sin relleno.`;
+
+Formato obligatorio del documento:
+1. Empieza con un <h2> de título y un párrafo introductorio (propósito y alcance).
+2. Secciones numeradas con <h3> (1. …, 2. …, 3. …).
+3. Usa <table> para toda información tabular (DBA por periodo, desempeños, mallas, ponderaciones): columnas con <th> claras.
+4. Cierra con una sección final de "Recomendaciones de uso docente" en <ul>.
+Español formal, redactado para docentes. Contenido completo y específico, sin relleno ni repeticiones.`;
 
     const model = cfg.model?.trim() || "gemini-flash-latest";
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
@@ -108,7 +114,7 @@ Estructura mínima: título (h2), introducción, secciones con h3, listas y al m
       headers: { "Content-Type": "application/json", "x-goog-api-key": cfg.apiKey },
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.5, maxOutputTokens: 4096 },
+        generationConfig: { temperature: 0.5, maxOutputTokens: 8192 },
       }),
       signal: AbortSignal.timeout(60000),
     });

@@ -78,7 +78,7 @@ export default async function KbPublicPage({ params }: { params: Promise<{ id: s
       {/* Contenido generado por IA (HTML confiable producido por el propio
           proveedor configurado por la institución) */}
       <article
-        className="kb-document space-y-3 text-sm leading-relaxed [&_h2]:mt-6 [&_h2]:border-b [&_h2]:pb-1 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:mt-4 [&_h3]:font-semibold [&_li]:ml-5 [&_li]:list-disc [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:bg-muted [&_th]:px-2 [&_th]:py-1"
+        className="kb-document space-y-3 text-sm leading-relaxed [&_h2]:mt-6 [&_h2]:border-b-2 [&_h2]:border-primary/60 [&_h2]:pb-1 [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:mt-5 [&_h3]:text-base [&_h3]:font-semibold [&_li]:ml-5 [&_li]:list-disc [&_ol]:ml-5 [&_ol]:list-decimal [&_ol>li]:list-decimal [&_p]:text-justify [&_strong]:text-foreground [&_table]:w-full [&_table]:border-collapse [&_table]:text-xs [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_td]:align-top [&_th]:border [&_th]:bg-muted [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_tr:nth-child(even)]:bg-muted/40 print:text-[11px]"
         dangerouslySetInnerHTML={{ __html: item.generatedContent }}
       />
 
