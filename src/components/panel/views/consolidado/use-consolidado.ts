@@ -36,6 +36,18 @@ const DEFAULT_DISPLAY: ConsolidadoDisplayFilters = {
   topN: 10,
 };
 
+/** Etiqueta legible del estado de promoción (compartida por exports) */
+export function estadoPromocionLabel(estado: string): string {
+  switch (estado) {
+    case "promovido": return "PROMOVIDO";
+    case "promovido_nivelacion": return "PROMOVIDO CON NIVELACIÓN";
+    case "nivelacion": return "SUJETO A NIVELACIÓN (1-2 ÁREAS)";
+    case "no_promovido": return "NO PROMOVIDO (3+ ÁREAS)";
+    case "no_promovido_inasistencia": return "NO PROMOVIDO POR INASISTENCIA";
+    default: return "SIN DATOS";
+  }
+}
+
 interface YearRow { id: string; year: number; active: boolean; groupsCount?: number }
 interface BranchRow { id: string; name: string }
 interface GradeLevelRow { id: string; name: string; code: string }
@@ -304,16 +316,6 @@ export function useConsolidado(institutionId: string | undefined) {
     head1.push("%", "DBJ", "PT", "Inas", "% Ina.", "ÁREAS EN BAJO", "NIVELACIÓN (PÁR. 3)", "ESTADO");
     head2.push("%", "DBJ", "PT", "Inas", "% Ina.", "ÁREAS EN BAJO", "NIVELACIÓN (PÁR. 3)", "ESTADO");
     aoa.push(head1, head2);
-    const estadoLabel = (estado: string): string => {
-      switch (estado) {
-        case "promovido": return "PROMOVIDO";
-        case "promovido_nivelacion": return "PROMOVIDO CON NIVELACIÓN";
-        case "nivelacion": return "SUJETO A NIVELACIÓN (1-2 ÁREAS)";
-        case "no_promovido": return "NO PROMOVIDO (3+ ÁREAS)";
-        case "no_promovido_inasistencia": return "NO PROMOVIDO POR INASISTENCIA";
-        default: return "SIN DATOS";
-      }
-    };
     for (const st of view.students) {
       const row: (string | number | null)[] = [
         st.pt ?? "",
@@ -331,7 +333,7 @@ export function useConsolidado(institutionId: string | undefined) {
         st.pctInasistencia !== null ? `${st.pctInasistencia}%` : "",
         st.areasBajo.join("; "),
         st.pendientesNivelacion.join("; "),
-        estadoLabel(st.estado)
+        estadoPromocionLabel(st.estado)
       );
       aoa.push(row);
     }
@@ -368,6 +370,124 @@ export function useConsolidado(institutionId: string | undefined) {
     XLSX.writeFile(wb, `consolidado-${g.name}-${g.year ?? ""}.xlsx`);
   }, [view]);
 
+  // Exportar PDF (estilo institucional, respeta los filtros activos).
+  // Una columna por asignatura con DEF final: los periodos completos hacen
+  // el PDF ilegible; el detalle por periodo queda en el Excel.
+  const exportPdf = useCallback(async () => {
+    if (!view) return;
+    const [{ jsPDF }, autoTableMod] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+    const autoTable = autoTableMod.default;
+    const g = view.group;
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Cabecera institucional (estilo de los reportes del colegio)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text(g.institutionName.toUpperCase(), pageWidth / 2, 13, { align: "center" });
+    doc.setFontSize(11);
+    doc.text("CONSOLIDADO ANUAL", pageWidth / 2, 19, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const periodoTxt =
+      filters.hasta && filters.hasta !== "all" ? ` · Acumulado hasta P${filters.hasta}` : " · Año completo";
+    doc.text(
+      `SEDE: ${g.branchName ?? "—"}    Grupo: ${g.name}    Año: ${g.year ?? "—"}    Umbral de aprobación: ${view.umbral}${periodoTxt}`,
+      pageWidth / 2,
+      24.5,
+      { align: "center" }
+    );
+
+    let startY = 30;
+    const filtrosTxt: string[] = [];
+    if (display.teacherId) {
+      const t = teachers.find((t) => t.id === display.teacherId);
+      if (t) filtrosTxt.push(`Docente: ${t.name}`);
+    }
+    if (display.areasMode !== "all") {
+      filtrosTxt.push(display.areasMode === "reprobadas" ? "Con áreas en bajo" : "Todas las áreas aprobadas");
+    }
+    if (display.blankOnly) filtrosTxt.push("Solo con notas en blanco");
+    if (display.topBest) filtrosTxt.push(`Mejores ${display.topN} promedios (con empates)`);
+    if (filtrosTxt.length > 0) {
+      doc.setFontSize(8);
+      doc.text(`Filtros: ${filtrosTxt.join(" · ")}`, pageWidth / 2, startY, { align: "center" });
+      startY += 4;
+    }
+
+    const head = ["#", "ESTUDIANTE", ...view.subjects.map((s) => s.abbreviation ?? s.name), "%", "DBJ", "PT", "Inas", "% Ina.", "ÁREAS EN BAJO", "ESTADO"];
+    const body = view.students.map((st, i) => [
+      i + 1,
+      st.fullName,
+      ...view.subjects.map((s) => st.defFinal[s.id] ?? ""),
+      st.promFinal !== null ? `${Math.round((st.promFinal / 5) * 100)}%` : "",
+      st.dbj,
+      st.pt ?? "",
+      st.inas,
+      st.pctInasistencia !== null ? `${st.pctInasistencia}%` : "",
+      st.areasBajo.join("; "),
+      estadoPromocionLabel(st.estado),
+    ]);
+
+    const colStyles: Record<number, { cellWidth?: number; halign?: "left" | "center" | "right" }> = {
+      0: { cellWidth: 6, halign: "center" },
+      1: { cellWidth: 40, halign: "left" },
+    };
+    const primeraAsig = 2;
+    // Ancho de asignaturas calculado para que la tabla quepa en el A4
+    // horizontal (297mm) menos márgenes: sin esto, ÁREAS/ESTADO se recortan.
+    const margenLateral = 8;
+    const fijos = 6 + 40 + 12 + 10 + 9 + 10 + 11 + 36 + 32; // columnas no-asignatura
+    const anchoAsig = Math.max(
+      6,
+      Math.floor(((pageWidth - margenLateral * 2 - fijos) / Math.max(1, view.subjects.length)) * 10) / 10
+    );
+    view.subjects.forEach((_, i) => {
+      colStyles[primeraAsig + i] = { cellWidth: anchoAsig, halign: "center" };
+    });
+    const fixed: Array<[number, number, "left" | "center"]> = [
+      [primeraAsig + view.subjects.length, 12, "center"],
+      [primeraAsig + view.subjects.length + 1, 10, "center"],
+      [primeraAsig + view.subjects.length + 2, 9, "center"],
+      [primeraAsig + view.subjects.length + 3, 10, "center"],
+      [primeraAsig + view.subjects.length + 4, 11, "center"],
+      [primeraAsig + view.subjects.length + 5, 36, "left"],
+      [primeraAsig + view.subjects.length + 6, 32, "left"],
+    ];
+    for (const [idx, w, h] of fixed) colStyles[idx] = { cellWidth: w, halign: h };
+
+    autoTable(doc, {
+      startY,
+      head: [head],
+      body,
+      margin: { left: margenLateral, right: margenLateral, top: 10, bottom: 12 },
+      rowPageBreak: "avoid",
+      styles: { fontSize: 6.5, cellPadding: 1.1, lineColor: [120, 120, 120], lineWidth: 0.1 },
+      headStyles: { fillColor: [235, 235, 235], textColor: 20, halign: "center", fontSize: 6.5 },
+      columnStyles: colStyles,
+      didParseCell: (data) => {
+        if (data.section !== "body") return;
+        const col = data.column.index;
+        if (col >= primeraAsig && col < primeraAsig + view.subjects.length) {
+          const v = parseFloat(String(data.cell.raw));
+          if (!Number.isNaN(v)) data.cell.styles.textColor = v < view.umbral ? [185, 28, 28] : [21, 94, 63];
+        }
+      },
+    });
+
+    const pages = doc.getNumberOfPages();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    for (let i = 1; i <= pages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(7);
+      doc.setTextColor(110);
+      doc.text(`Generado: ${new Date().toLocaleString("es-CO")} · Apprende`, 8, pageHeight - 4);
+      doc.text(`Página ${i} de ${pages}`, pageWidth - 8, pageHeight - 4, { align: "right" });
+    }
+
+    doc.save(`consolidado-${g.name}-${g.year ?? ""}.pdf`);
+  }, [view, filters.hasta, display, teachers]);
+
   return {
     years,
     branches,
@@ -387,5 +507,6 @@ export function useConsolidado(institutionId: string | undefined) {
     error,
     reload: load,
     exportExcel,
+    exportPdf,
   };
 }

@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Eraser, RefreshCw, SlidersHorizontal, Table2 } from "lucide-react";
+import { Download, Eraser, FileText, RefreshCw, SlidersHorizontal, Table2 } from "lucide-react";
 import { ConsolidadoTable } from "./consolidado-table";
 import { StudentDrilldownModal } from "./student-drilldown-modal";
 import { useConsolidado, type ConsolidadoDisplayFilters } from "./use-consolidado";
@@ -44,8 +44,10 @@ export default function ConsolidadoView() {
     error,
     reload,
     exportExcel,
+    exportPdf,
   } = useConsolidado(institutionId);
   const [exporting, setExporting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -55,6 +57,15 @@ export default function ConsolidadoView() {
       await exportExcel();
     } finally {
       setExporting(false);
+    }
+  }
+
+  async function handleExportPdf() {
+    setExportingPdf(true);
+    try {
+      await exportPdf();
+    } finally {
+      setExportingPdf(false);
     }
   }
 
@@ -179,6 +190,10 @@ export default function ConsolidadoView() {
           <Button size="sm" onClick={handleExport} disabled={!view || exporting}>
             <Download className="mr-1 h-4 w-4" />
             {exporting ? "Exportando…" : "Exportar Excel"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={!view || exportingPdf}>
+            <FileText className="mr-1 h-4 w-4" />
+            {exportingPdf ? "Generando…" : "Exportar PDF"}
           </Button>
         </div>
       </div>
