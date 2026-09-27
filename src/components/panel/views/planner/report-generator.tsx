@@ -21,7 +21,7 @@ import { toast } from "sonner";
 
 interface YearOption { id: string; year: number; active: boolean }
 interface PeriodOption { id: string; name: string; startDate: string; endDate: string }
-interface UserOption { id: string; fullName: string; userRoles?: Array<{ role: { name: string } }> }
+interface UserOption { id: string; fullName: string; role?: string; userRoles?: Array<{ role: { name: string } }> }
 
 interface PlannerReport {
   year: number;
@@ -32,6 +32,7 @@ interface PlannerReport {
   blocks: Array<{
     groupId: string; groupName: string; subjectId: string; subjectName: string;
     weeklyHours: number; groupWeeklyHours: number; plannedHours: number;
+    desempenos: string[];
   }>;
   resumen: { secciones: number; horasPlaneadas: number; horasTotales: number };
 }
@@ -76,7 +77,9 @@ export function ReportGenerator() {
       setPeriodId(current?.id ?? "");
 
       const userList: UserOption[] = u.ok ? u.users : [];
-      const docentes = userList.filter((uu) => uu.userRoles?.some((ur) => ur.role?.name === "docente"));
+      const docentes = userList.filter(
+        (uu) => uu.role === "docente" || uu.userRoles?.some((ur) => ur.role?.name?.toLowerCase() === "docente")
+      );
       setTeachers(docentes);
     });
   }, [institutionId]);
@@ -167,7 +170,12 @@ export function ReportGenerator() {
         doc.setFont("helvetica", "bold"); doc.setFontSize(10);
         doc.text("DESEMPEÑOS", 15, y2 + 8);
         doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-        doc.text("Sin desempeños registrados para este periodo.", 15, y2 + 14);
+        const lista = b.desempenos ?? [];
+        if (lista.length === 0) {
+          doc.text("Sin desempeños registrados para este periodo.", 15, y2 + 14);
+        } else {
+          lista.forEach((d, i) => doc.text(`${i + 1}. ${d}`, 15, y2 + 14 + i * 5));
+        }
       });
 
       // Resumen global al pie
@@ -292,7 +300,15 @@ export function ReportGenerator() {
                 </table>
 
                 <p className="mt-4 text-xs font-bold">DESEMPEÑOS</p>
-                <p className="mt-1 text-xs italic text-gray-500">Sin desempeños registrados para este periodo.</p>
+                {(b.desempenos ?? []).length === 0 ? (
+                  <p className="mt-1 text-xs italic text-gray-500">Sin desempeños registrados para este periodo.</p>
+                ) : (
+                  <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-xs">
+                    {(b.desempenos ?? []).map((d, i) => (
+                      <li key={i}>{d}</li>
+                    ))}
+                  </ol>
+                )}
               </div>
             ))}
 

@@ -73,8 +73,26 @@ export async function GET(req: NextRequest) {
         weeklyHours: a.weeklyHours,
         groupWeeklyHours,
         plannedHours: a.weeklyHours * weeks,
+        desempenos: [] as string[],
       };
     });
+
+    // Desempeños del periodo por asignatura [F3 → F2]
+    const subjectIds = Array.from(new Set(blocks.map((b) => b.subjectId)));
+    const indicatorsList = subjectIds.length
+      ? await db.performanceIndicator.findMany({
+          where: { institutionId, periodId, subjectId: { in: subjectIds } },
+          orderBy: { createdAt: "asc" },
+          select: { subjectId: true, description: true },
+        })
+      : [];
+    const desempenosBySubject: Record<string, string[]> = {};
+    for (const ind of indicatorsList) {
+      (desempenosBySubject[ind.subjectId] ??= []).push(ind.description);
+    }
+    for (const b of blocks) {
+      b.desempenos = desempenosBySubject[b.subjectId] ?? [];
+    }
 
     return NextResponse.json({
       ok: true,
