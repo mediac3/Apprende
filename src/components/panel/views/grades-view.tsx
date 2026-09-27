@@ -279,7 +279,7 @@ function LegacyNotasView({ mode = "indicadores" }: { mode?: "default" | "indicad
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-heading font-semibold tracking-tight">
-            {mode === "indicadores" ? "Indicadores de desempeño" : "Notas parciales"}
+            {mode === "indicadores" ? "Informes académicos" : "Notas parciales"}
           </h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
             Planilla de calificaciones por grupo, asignatura y periodo. Cada celda es editable: al

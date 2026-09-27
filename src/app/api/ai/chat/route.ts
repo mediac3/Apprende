@@ -13,7 +13,7 @@ interface ChatMessage {
 }
 
 const DESCRIPCION_PLATAFORMA = `Apprende es una plataforma educativa modular para instituciones escolares colombianas.
-Módulos principales: Consolidado anual (notas por periodo, DEF, promedio y estado de promoción por estudiante), Notas parciales, Planeador de clases, Indicadores de desempeño, Pre-Informe (detección temprana de riesgo), Supervisión académica, Control de asistencia, Dirección de grupo, Ficha del observador, Convivencia escolar, Orientación, Comunicación SMS, Gobierno escolar, Inscripción en línea, Pre-Matrícula, Matrícula, Asignación académica, Promoción de grado, Libros reglamentarios, Actas, Talento Humano y Auditoría.
+Módulos principales: Consolidado anual (notas por periodo, DEF, promedio y estado de promoción por estudiante), Notas parciales, Planeador de clases, Informes académicos, Pre-Informe (detección temprana de riesgo), Supervisión académica, Control de asistencia, Dirección de grupo, Ficha del observador, Convivencia escolar, Orientación, Comunicación SMS, Gobierno escolar, Inscripción en línea, Pre-Matrícula, Matrícula, Asignación académica, Promoción de grado, Libros reglamentarios, Actas, Talento Humano y Auditoría.
 Reglas oficiales del consolidado: DEF por asignatura y periodo; valoración de área = Σ(DEF asignatura × % asignatura); umbral de aprobación configurable (PromotionConfig, por defecto 3.0); 1-2 áreas en bajo → SUJETO A NIVELACIÓN; 3+ → NO PROMOVIDO; inasistencia injustificada ≥ umbral (25% por defecto) → NO PROMOVIDO; asignatura en bajo dentro de área aprobada → promovido con nivelación (Parágrafo 3).`;
 
 function construirSystemPrompt(context: Record<string, unknown> | null | undefined): string {

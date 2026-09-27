@@ -32,7 +32,7 @@ import { Calendar, MessageSquare } from "lucide-react";
 const MODULES = [
   // Académico
   { area: "Académico", name: "Planeador de clases", desc: "Clases por fases, evidencias, sugerencias pedagógicas automáticas.", icon: BookOpen },
-  { area: "Académico", name: "Indicadores de desempeño", desc: "Integración automática en boletines según nivel del estudiante.", icon: ClipboardCheck },
+  { area: "Académico", name: "Informes académicos", desc: "Integración automática en boletines según nivel del estudiante.", icon: ClipboardCheck },
   { area: "Académico", name: "Notas parciales", desc: "Planilla tipo hoja de cálculo, conectada con E-Learning y autoevaluación.", icon: FileText },
   { area: "Académico", name: "Pre-Informe", desc: "Detección temprana de estudiantes en riesgo antes del cierre de periodo.", icon: Bell },
   { area: "Académico", name: "Banco de talleres", desc: "Reutilización y asignación de talleres, útil en ausencias docentes.", icon: BookOpen },

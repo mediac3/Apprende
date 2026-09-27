@@ -121,7 +121,7 @@ const NAV: NavItem[] = [
   { key: "e-learning", label: "E-Learning", icon: GraduationCap, group: "Académico", roles: ["docente", "estudiante", "acudiente"] },
   { key: "autoevaluacion", label: "Autoevaluación", icon: Star, group: "Académico", roles: ["docente", "estudiante"] },
   { key: "supervision", label: "Supervisión académica", icon: ClipboardCheck, group: "Académico", roles: ["coordinador", "rector"] },
-  { key: "indicadores", label: "Indicadores de desempeño", icon: ClipboardCheck, group: "Académico", roles: ["docente", "coordinador", "rector"] },
+  { key: "indicadores", label: "Informes académicos", icon: ClipboardCheck, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
 
   // Convivencia
   { key: "asistencia", label: "Control de asistencia", icon: Bell, group: "Convivencia", roles: ["docente", "director_grupo", "coordinador", "acudiente"] },
