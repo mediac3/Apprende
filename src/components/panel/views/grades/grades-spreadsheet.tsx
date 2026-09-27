@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { toast } from "sonner";
 import jspreadsheet from "jspreadsheet-ce";
 import "jspreadsheet-ce/dist/jspreadsheet.css";
@@ -278,8 +278,16 @@ export function GradesSpreadsheet(props: Props) {
   propsRef.current = props;
   // Claves emitidas por el propio grid (evita eco en el sync de values)
   const echoRef = useRef<Set<string>>(new Set());
-  // [F1] lightbox de ficha del estudiante — click en la columna "Estudiantes"
+  // [F1] lightbox de ficha del estudiante — DOBLE click en la columna "Estudiantes"
   const [infoId, setInfoId] = useState<string | null>(null);
+
+  const handleGridDblClick = (e: ReactMouseEvent<HTMLDivElement>) => {
+    const td = (e.target as HTMLElement | null)?.closest?.("td");
+    if (!td || td.getAttribute("data-x") !== "0") return;
+    const y = parseInt(td.getAttribute("data-y") ?? "", 10);
+    const st = Number.isInteger(y) ? propsRef.current.students[y] : undefined;
+    if (st) setInfoId(st.studentId);
+  };
 
   const conceptById = useMemo(() => new Map(concepts.map((c) => [c.id, c])), [concepts]);
 
@@ -476,13 +484,6 @@ export function GradesSpreadsheet(props: Props) {
     const worksheets = jspreadsheet(el, {
       // Sin menú contextual (insertar/borrar filas rompería el mapeo)
       contextMenu: () => null,
-      // [F1] click en la columna "Estudiantes" (col 0, selección de una celda) → lightbox
-      onselection: (_instance, x1: number, y1: number, x2: number) => {
-        if (x1 === 0 && x2 === 0) {
-          const st = propsRef.current.students[y1];
-          if (st) setInfoId(st.studentId);
-        }
-      },
       // Bloquear cambios estructurales que romperían el mapeo filas/columnas
       onbeforeinsertrow: () => false,
       onbeforedeleterow: () => false,
@@ -936,7 +937,11 @@ export function GradesSpreadsheet(props: Props) {
   return (
     <div className="flex flex-col flex-1 min-w-0">
       <StudentInfoLightbox studentId={infoId} open={!!infoId} onOpenChange={(o) => { if (!o) setInfoId(null); }} />
-      <div ref={containerRef} className="jss-planilla flex-1 rounded-xl border bg-card" />
+      <div
+        ref={containerRef}
+        onDoubleClick={handleGridDblClick}
+        className="jss-planilla flex-1 rounded-xl border bg-card"
+      />
     </div>
   );
 }
