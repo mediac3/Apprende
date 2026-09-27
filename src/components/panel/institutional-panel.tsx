@@ -281,6 +281,7 @@ export function InstitutionalPanel() {
       case "dashboard":
         return <DashboardView />;
       case "notas":
+        return <GradesView mode="default" />;
       case "indicadores":
         return <InformesAcademicosModule />;
       // [F2] Consolidado anual

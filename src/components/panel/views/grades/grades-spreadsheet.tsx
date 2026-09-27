@@ -11,6 +11,7 @@ import {
   isValidNote,
   APPROVAL_THRESHOLD,
 } from "./use-grades-calculations";
+import { StudentInfoLightbox } from "@/components/panel/shared/student-info-lightbox";
 
 // === [F4] Módulo Calificaciones: planilla sobre Jspreadsheet CE (MIT) ===
 // Integración vanilla (sin wrapper) para React 19 / Next 16:
@@ -277,6 +278,8 @@ export function GradesSpreadsheet(props: Props) {
   propsRef.current = props;
   // Claves emitidas por el propio grid (evita eco en el sync de values)
   const echoRef = useRef<Set<string>>(new Set());
+  // [F1] lightbox de ficha del estudiante — click en la columna "Estudiantes"
+  const [infoId, setInfoId] = useState<string | null>(null);
 
   const conceptById = useMemo(() => new Map(concepts.map((c) => [c.id, c])), [concepts]);
 
@@ -473,6 +476,13 @@ export function GradesSpreadsheet(props: Props) {
     const worksheets = jspreadsheet(el, {
       // Sin menú contextual (insertar/borrar filas rompería el mapeo)
       contextMenu: () => null,
+      // [F1] click en la columna "Estudiantes" (col 0, selección de una celda) → lightbox
+      onselection: (_instance, x1: number, y1: number, x2: number) => {
+        if (x1 === 0 && x2 === 0) {
+          const st = propsRef.current.students[y1];
+          if (st) setInfoId(st.studentId);
+        }
+      },
       // Bloquear cambios estructurales que romperían el mapeo filas/columnas
       onbeforeinsertrow: () => false,
       onbeforedeleterow: () => false,
@@ -925,6 +935,7 @@ export function GradesSpreadsheet(props: Props) {
   // el valor llega por localStorage + evento "apprende:grades:freeze-changed".
   return (
     <div className="flex flex-col flex-1 min-w-0">
+      <StudentInfoLightbox studentId={infoId} open={!!infoId} onOpenChange={(o) => { if (!o) setInfoId(null); }} />
       <div ref={containerRef} className="jss-planilla flex-1 rounded-xl border bg-card" />
     </div>
   );
