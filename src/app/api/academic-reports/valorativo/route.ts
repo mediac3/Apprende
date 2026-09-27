@@ -71,6 +71,20 @@ export async function GET(req: NextRequest) {
       select: { name: true, logoUrl: true, nit: true, dane: true, city: true },
     });
 
+    // Desempeños/logros del periodo por asignatura [F3]
+    const subjectIds = consolidado.subjects.map((s) => s.id);
+    const indicatorsList = subjectIds.length
+      ? await db.performanceIndicator.findMany({
+          where: { institutionId: group.institutionId, periodId, subjectId: { in: subjectIds } },
+          select: {
+            subjectId: true, description: true,
+            bajo: true, basico: true, alto: true, superior: true,
+          },
+        })
+      : [];
+    const indicators: Record<string, { description: string; bajo: string | null; basico: string | null; alto: string | null; superior: string | null }> = {};
+    for (const ind of indicatorsList) indicators[ind.subjectId] = ind;
+
     // Inasistencias por periodo y estudiante (X ausente / E excusa / T total)
     const students = consolidado.students;
     const inasByStudent: Record<string, Record<string, { x: number; e: number; t: number }>> = {};
@@ -104,6 +118,7 @@ export async function GET(req: NextRequest) {
         subjects: consolidado.subjects,
         areas: consolidado.areas,
         resumen: consolidado.resumen,
+        indicators,
         students: students.map((s) => ({
           id: s.id,
           fullName: s.fullName,

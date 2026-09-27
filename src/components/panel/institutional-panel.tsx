@@ -96,6 +96,7 @@ import { isCustomModule, getCustomModuleId, customModuleKey } from "@/store/ui-s
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AcademicReportView } from "./views/academic-reports/academic-report-view";
+import { DescriptoresView } from "./views/academic-reports/descriptores-view";
 
 interface NavItem {
   key: ModuleKey;
@@ -190,12 +191,16 @@ function InformesAcademicosModule() {
       <TabsList className="mb-4">
         <TabsTrigger value="valorativo">Informe valorativo</TabsTrigger>
         <TabsTrigger value="planilla">Planilla de notas</TabsTrigger>
+        <TabsTrigger value="descriptores">Descriptores</TabsTrigger>
       </TabsList>
       <TabsContent value="valorativo">
         <AcademicReportView />
       </TabsContent>
       <TabsContent value="planilla">
         <GradesView mode="indicadores" />
+      </TabsContent>
+      <TabsContent value="descriptores">
+        <DescriptoresView />
       </TabsContent>
     </Tabs>
   );

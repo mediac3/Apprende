@@ -47,6 +47,7 @@ interface Informe {
   subjects: Array<{ id: string; name: string; percentage: number; areaName: string | null; averages: boolean }>;
   areas: Array<{ name: string; subjectIds: string[] }>;
   resumen: Record<string, { prom: number | null; nm: number | null }>;
+  indicators: Record<string, { description: string; bajo: string | null; basico: string | null; alto: string | null; superior: string | null }>;
   students: InformeStudent[];
 }
 
@@ -176,6 +177,28 @@ export function AcademicReportView() {
     return { name: "", cls: FALLBACK_COLOR(v) };
   }
 
+  // Índice del nivel alcanzado (0=Bajo … 3=Superior) según escala de la BD
+  function nivelIndexOf(v: number | null | undefined): number {
+    if (v === null || v === undefined) return -1;
+    const scales = informe?.scales ?? [];
+    const idx = scales.findIndex((s) => v >= s.minValue && v <= s.maxValue);
+    return idx >= 0 ? idx : -1;
+  }
+
+  // Texto de logros con ✓ (nivel alcanzado) / ✗ (resto) para una asignatura
+  function logrosDe(subjectId: string, student: InformeStudent): string[] | null {
+    const ind = informe?.indicators?.[subjectId];
+    if (!ind) return null;
+    const niveles = [ind.bajo, ind.basico, ind.alto, ind.superior];
+    const alcanzado = nivelIndexOf(student.defFinal[subjectId]);
+    const out: string[] = [];
+    niveles.forEach((txt, i) => {
+      if (!txt) return;
+      out.push(`${i === alcanzado ? "✓" : "✗"} ${txt}`);
+    });
+    return out.length ? out : null;
+  }
+
   // Valoración de área por periodo = Σ(def asignatura × %) / Σ% (regla oficial)
   function areaDef(subjectIds: string[], periodIdCol: string, student: InformeStudent): number | null {
     let sum = 0, pct = 0;
@@ -247,6 +270,12 @@ export function AcademicReportView() {
               const df = st.defFinal[sid];
               const rank = rankBySubject.get(sid)?.get(st.id);
               body.push([`   ${subj.name} (${subj.percentage}%)`, ...cells, df === null || df === undefined ? "—" : String(df), rank ? String(rank) : "—"]);
+              const logros = !compacto ? logrosDe(sid, st) : null;
+              if (logros) {
+                const desc = informe.indicators[sid]?.description ? `${informe.indicators[sid].description}. ` : "";
+                const marked = logros.map((l) => (l.startsWith("✓") ? "(+)" : "(-)") + l.slice(1).trim()).join("  ");
+                body.push([{ content: `     ${desc}${marked}`, colSpan: head[0].length, styles: { fontSize: 6.5, fontStyle: "italic", halign: "left" } }]);
+              }
             }
           }
         }
@@ -440,22 +469,35 @@ export function AcademicReportView() {
                             const rank = rankBySubject.get(subj.id)?.get(st.id);
                             const df = st.defFinal[subj.id];
                             const dfN = df !== null && df !== undefined ? nivelDe(df) : null;
+                            const logros = !compacto ? logrosDe(subj.id, st) : null;
                             return (
-                              <tr key={`${st.id}-${subj.id}`}>
-                                <td className="border border-gray-400 px-2 py-1 pl-5">{subj.name} <span className="text-gray-500">({subj.percentage}%)</span></td>
-                                {informe.periods.map((p) => {
-                                  const v = st.def[subj.id]?.[p.id];
-                                  return (
-                                    <td key={p.id} className={cn("border border-gray-400 px-1 py-1 text-center tabular-nums", v !== null && v !== undefined && nivelDe(v).cls)}>
-                                      {v === null || v === undefined ? "—" : v}
+                              <Fragment key={`${st.id}-${subj.id}-row`}>
+                                <tr>
+                                  <td className="border border-gray-400 px-2 py-1 pl-5">{subj.name} <span className="text-gray-500">({subj.percentage}%)</span></td>
+                                  {informe.periods.map((p) => {
+                                    const v = st.def[subj.id]?.[p.id];
+                                    return (
+                                      <td key={p.id} className={cn("border border-gray-400 px-1 py-1 text-center tabular-nums", v !== null && v !== undefined && nivelDe(v).cls)}>
+                                        {v === null || v === undefined ? "—" : v}
+                                      </td>
+                                    );
+                                  })}
+                                  <td className={cn("border border-gray-400 px-1 py-1 text-center font-semibold tabular-nums", dfN?.cls)}>
+                                    {df === null || df === undefined ? "—" : df}{dfN?.name ? " · " + dfN.name : ""}
+                                  </td>
+                                  <td className="border border-gray-400 px-1 py-1 text-center tabular-nums">{rank ?? "—"}</td>
+                                </tr>
+                                {logros && (
+                                  <tr>
+                                    <td colSpan={informe.periods.length + 3} className="border border-gray-400 px-6 py-1 text-[10px] italic text-gray-700">
+                                      <span className="font-semibold not-italic">{informe.indicators[subj.id]?.description}</span>
+                                      {logros.map((l, i) => (
+                                        <div key={i} className={l.startsWith("✓") ? "font-semibold text-green-700" : "text-gray-500"}>{l}</div>
+                                      ))}
                                     </td>
-                                  );
-                                })}
-                                <td className={cn("border border-gray-400 px-1 py-1 text-center font-semibold tabular-nums", dfN?.cls)}>
-                                  {df === null || df === undefined ? "—" : df}{dfN?.name ? ` · ${dfN.name}` : ""}
-                                </td>
-                                <td className="border border-gray-400 px-1 py-1 text-center tabular-nums">{rank ?? "—"}</td>
-                              </tr>
+                                  </tr>
+                                )}
+                              </Fragment>
                             );
                           })}
                         </Fragment>

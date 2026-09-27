@@ -35,6 +35,7 @@ model Institution {
   updatedAt     DateTime @updatedAt
 
   users         User[]
+  performanceIndicators PerformanceIndicator[] // [F3]
   roles         Role[]
   spaces        Space[]
   posts         Post[]
@@ -227,6 +228,7 @@ model Subject {
   workshops     Workshop[]
   planItems     CurriculumPlanItem[]
   activities    Activity[] // Módulo Calificaciones
+  performanceIndicators PerformanceIndicator[] // [F3]
 }
 
 model SubjectAssignment {
@@ -265,6 +267,29 @@ model Period {
 
   grades        Grade[]
   activities    Activity[] // Módulo Calificaciones
+  performanceIndicators PerformanceIndicator[] // [F3] Desempeños/logros del periodo
+}
+
+// --- Desempeños/logros por asignatura y periodo (informe valorativo) [F3] ---
+model PerformanceIndicator {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  subjectId     String
+  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  periodId      String
+  period        Period   @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  year          Int
+  description   String   // descripción del desempeño (columna DESCRIPCIÓN)
+  bajo          String?  // descriptor nivel Bajo
+  basico        String?  // descriptor nivel Básico
+  alto          String?  // descriptor nivel Alto
+  superior      String?  // descriptor nivel Superior
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([subjectId, periodId])
+  @@index([institutionId, year])
 }
 
 model Grade {
