@@ -35,6 +35,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { StudentInfoLightbox } from "@/components/panel/shared/student-info-lightbox";
 
 interface Group { id: string; name: string; }
 interface Attendance {
@@ -70,6 +71,7 @@ export function AttendanceView() {
   const [date, setDate] = useState<string>(todayISO());
   const [rows, setRows] = useState<Record<string, string>>({});
   const [students, setStudents] = useState<Array<{ id: string; code: string; firstName: string; lastName: string; }>>([]);
+  const [infoId, setInfoId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const isAcudiente = user?.role === "acudiente";
@@ -163,6 +165,7 @@ export function AttendanceView() {
       transition={{ duration: 0.22, ease: "easeOut" }}
       className="space-y-6"
     >
+      <StudentInfoLightbox studentId={infoId} open={!!infoId} onOpenChange={(o) => { if (!o) setInfoId(null); }} />
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-heading font-semibold tracking-tight">
@@ -244,7 +247,13 @@ export function AttendanceView() {
                     <TableRow key={s.id}>
                       <TableCell className="font-mono text-xs">{s.code}</TableCell>
                       <TableCell className="font-medium">
-                        {s.firstName} {s.lastName}
+                        <button
+                          type="button"
+                          className="text-left hover:underline underline-offset-2 cursor-pointer"
+                          onClick={() => setInfoId(s.id)}
+                        >
+                          {s.firstName} {s.lastName}
+                        </button>
                       </TableCell>
                       <TableCell>
                         <RadioGroup
@@ -344,6 +353,7 @@ function AcudienteView() {
       transition={{ duration: 0.22, ease: "easeOut" }}
       className="space-y-6"
     >
+      <StudentInfoLightbox studentId={infoId} open={!!infoId} onOpenChange={(o) => { if (!o) setInfoId(null); }} />
       <header>
         <h1 className="text-2xl font-heading font-semibold tracking-tight">
           Asistencia de mi acudido
@@ -395,7 +405,15 @@ function AcudienteView() {
                           month: "long",
                         })}
                       </div>
-                      <div className="text-xs text-muted-foreground">{a.student.firstName} {a.student.lastName}</div>
+                      <div className="text-xs text-muted-foreground">
+                        <button
+                          type="button"
+                          className="hover:underline underline-offset-2 cursor-pointer"
+                          onClick={() => setInfoId(a.student.id)}
+                        >
+                          {a.student.firstName} {a.student.lastName}
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <span className={cn("text-xs font-medium px-2 py-1 rounded-md capitalize", st.chip)}>

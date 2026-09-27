@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { StudentInfoLightbox } from "@/components/panel/shared/student-info-lightbox";
 
 interface AtRiskStudent {
   id: string;
@@ -55,6 +56,7 @@ function suggestedAction(avg: number) {
 export function PreInformeView() {
   const user = useAuthStore((s) => s.user);
   const [students, setStudents] = useState<AtRiskStudent[]>([]);
+  const [infoId, setInfoId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
@@ -112,6 +114,7 @@ export function PreInformeView() {
       transition={{ duration: 0.22, ease: "easeOut" }}
       className="space-y-6"
     >
+      <StudentInfoLightbox studentId={infoId} open={!!infoId} onOpenChange={(o) => { if (!o) setInfoId(null); }} />
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-heading font-semibold tracking-tight flex items-center gap-2">
@@ -179,7 +182,13 @@ export function PreInformeView() {
                     <TableRow key={s.id}>
                       <TableCell className="font-mono text-xs">{s.code}</TableCell>
                       <TableCell className="font-medium">
-                        {s.firstName} {s.lastName}
+                        <button
+                          type="button"
+                          className="text-left hover:underline underline-offset-2 cursor-pointer"
+                          onClick={() => setInfoId(s.id)}
+                        >
+                          {s.firstName} {s.lastName}
+                        </button>
                       </TableCell>
                       <TableCell className="text-xs">{s.group?.name ?? "—"}</TableCell>
                       <TableCell>

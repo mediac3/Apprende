@@ -187,6 +187,14 @@ model Student {
   discapacidad          String?  // Ninguna, Visual, Auditiva, Intelectual, Psicosocial, Múltiple, Otra
   paisOrigen            String?  // país de origen (default Colombia)
   motivo                String?  // motivo de la matrícula
+  // Ficha lightbox [F1] — campos aditivos (Captura ficha estudiante)
+  documentIssueDate     DateTime? // fecha de expedición del documento
+  phone                 String?  // celular del estudiante
+  occupation            String?  // ocupación (ej. Estudiante Ed. Básica/Media)
+  residenceCity         String?  // lugar de residencia (ciudad - departamento)
+  ethnicGroup           String?  // grupo étnico (ej. Mestizo)
+  populationGroup       String?  // grupo poblacional (ej. Desplazado)
+  observaciones         String?  // observaciones generales
   createdAt      DateTime @default(now())
 
   grades        Grade[]
