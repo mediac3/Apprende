@@ -1,10 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import type { ConsolidadoResult } from "@/lib/queries/consolidado";
 import { Badge } from "@/components/ui/badge";
-import { Info } from "lucide-react";
-import { StudentInfoLightbox } from "@/components/panel/shared/student-info-lightbox";
 
 // === [F2] Consolidado anual: tabla principal ===
 // Columnas: # | ESTUDIANTE | por asignatura: P1..Pn + DEF | % | DBJ | PT |
@@ -46,7 +43,6 @@ export function ConsolidadoTable({
   onStudentClick?: (studentId: string) => void;
 }) {
   const { subjects, periods, students, umbral, resumen } = data;
-  const [infoId, setInfoId] = useState<string | null>(null);
   const stickyLeft = "sticky left-0 bg-background dark:bg-card z-10";
   const corner = "sticky left-0 z-30 bg-muted dark:bg-card";
 
@@ -97,18 +93,6 @@ export function ConsolidadoTable({
               <td className={`border px-2 py-1 tabular-nums text-muted-foreground ${stickyLeft}`}>{i + 1}</td>
               <td className={`border px-2 py-1 whitespace-nowrap ${stickyLeft}`}>
                 {st.fullName}
-                <button
-                  type="button"
-                  aria-label="Ver información del estudiante"
-                  title="Información del estudiante"
-                  className="ml-1 inline-flex align-middle text-muted-foreground/60 hover:text-foreground cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setInfoId(st.id);
-                  }}
-                >
-                  <Info className="h-3.5 w-3.5" />
-                </button>
                 {st.blankCount > 0 && (
                   <span
                     className="ml-1 inline-flex min-w-4 justify-center rounded bg-amber-100 px-1 align-middle text-[10px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
@@ -173,7 +157,6 @@ export function ConsolidadoTable({
           </tr>
         </tfoot>
       </table>
-      <StudentInfoLightbox studentId={infoId} open={!!infoId} onOpenChange={(o) => { if (!o) setInfoId(null); }} />
     </div>
   );
 }

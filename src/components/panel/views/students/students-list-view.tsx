@@ -47,7 +47,6 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { StudentDetailView, type StudentRow } from "./student-detail-view";
-import { StudentInfoLightbox } from "@/components/panel/shared/student-info-lightbox";
 
 interface AcademicYear {
   id: string;
@@ -109,7 +108,6 @@ export function StudentsListView() {
   const [filter, setFilter] = useState<"todos" | "activos" | "retirados" | "sin_formalizar">("todos");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<StudentRow | null>(null);
-  const [infoStudent, setInfoStudent] = useState<StudentRow | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   // [C1] Selección masiva (Set de IDs) + confirmación + estado de borrado
@@ -302,13 +300,6 @@ export function StudentsListView() {
       transition={{ duration: 0.22, ease: "easeOut" }}
       className="space-y-6"
     >
-      <StudentInfoLightbox
-        student={infoStudent}
-        open={!!infoStudent}
-        onOpenChange={(o) => {
-          if (!o) setInfoStudent(null);
-        }}
-      />
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-heading font-semibold tracking-tight">
@@ -446,13 +437,7 @@ export function StudentsListView() {
                           </div>
                         )}
                         <div>
-                          <button
-                            type="button"
-                            className="font-medium text-left hover:underline underline-offset-2 cursor-pointer"
-                            onClick={() => setInfoStudent(s)}
-                          >
-                            {fullName(s)}
-                          </button>
+                          <div className="font-medium">{fullName(s)}</div>
                           <div className="text-[10px] text-muted-foreground font-mono">
                             {s.documentNumber ? `T.I. ${s.documentNumber}` : s.code}
                           </div>
