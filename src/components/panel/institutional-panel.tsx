@@ -94,6 +94,8 @@ import {
 } from "@/components/ui/collapsible";
 import { isCustomModule, getCustomModuleId, customModuleKey } from "@/store/ui-store";
 import { useEffect, useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AcademicReportView } from "./views/academic-reports/academic-report-view";
 
 interface NavItem {
   key: ModuleKey;
@@ -180,6 +182,25 @@ const NAV: NavItem[] = [
   { key: "param-ai", label: "Inteligencia artificial", icon: Sparkles, group: "Parámetros", roles: ["rector", "administrativo"] },
 ];
 
+// [F3] Informes académicos: informe valorativo (nuevo) + planilla legada de notas
+function InformesAcademicosModule() {
+  const [tab, setTab] = useState("valorativo");
+  return (
+    <Tabs value={tab} onValueChange={setTab}>
+      <TabsList className="mb-4">
+        <TabsTrigger value="valorativo">Informe valorativo</TabsTrigger>
+        <TabsTrigger value="planilla">Planilla de notas</TabsTrigger>
+      </TabsList>
+      <TabsContent value="valorativo">
+        <AcademicReportView />
+      </TabsContent>
+      <TabsContent value="planilla">
+        <GradesView mode="indicadores" />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
 export function InstitutionalPanel() {
   const user = useAuthStore((s) => s.user);
   // [theme-options] logo configurado (si no, fallback "Ap")
@@ -256,7 +277,7 @@ export function InstitutionalPanel() {
         return <DashboardView />;
       case "notas":
       case "indicadores":
-        return <GradesView mode={activeModule === "indicadores" ? "indicadores" : "default"} />;
+        return <InformesAcademicosModule />;
       // [F2] Consolidado anual
       case "consolidado":
         return <ConsolidadoView />;
