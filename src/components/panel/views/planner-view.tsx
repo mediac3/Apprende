@@ -39,6 +39,8 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ReportGenerator } from "./planner/report-generator";
 
 interface Member {
   id: string;
@@ -110,10 +112,29 @@ const CRITERIA = [
 ];
 
 export function PlannerView({ module }: { module: "planeador" | "e-learning" | "autoevaluacion" | "supervision" }) {
-  if (module === "planeador") return <PlaneadorView />;
+  if (module === "planeador") return <PlaneadorModule />;
   if (module === "e-learning") return <ELearningView />;
   if (module === "autoevaluacion") return <AutoevaluacionView />;
   return <SupervisionViewImpl />;
+}
+
+// [F2] Planeador con pestañas: herramienta interactiva + generador de informe (PDF)
+function PlaneadorModule() {
+  const [tab, setTab] = useState("herramienta");
+  return (
+    <Tabs value={tab} onValueChange={setTab}>
+      <TabsList className="mb-4">
+        <TabsTrigger value="herramienta">Herramienta</TabsTrigger>
+        <TabsTrigger value="informe">Generar informe</TabsTrigger>
+      </TabsList>
+      <TabsContent value="herramienta">
+        <PlaneadorView />
+      </TabsContent>
+      <TabsContent value="informe">
+        <ReportGenerator />
+      </TabsContent>
+    </Tabs>
+  );
 }
 
 function PlaneadorView() {
