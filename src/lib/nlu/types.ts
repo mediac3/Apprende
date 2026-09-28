@@ -40,6 +40,34 @@ export type ParsedCommand = {
   scope: CommandScope;
   raw: string;
   error: string | null;
+  // Solo para aggregate_query: comparador y umbral ("menor a 3.0" → lt 3.0).
+  comparator?: "lt" | "gt" | "lte" | "gte" | null;
+};
+
+// Datos que alimenta el grid activo al parser (estructuras del módulo Calificaciones).
+export type ChatStudent = {
+  id: string;
+  firstName: string;
+  firstName2?: string | null;
+  lastName: string;
+  lastName2?: string | null;
+};
+
+export type ChatActivity = {
+  id: string;
+  name: string;
+  label?: string | null;
+  conceptId: string;
+  isGeneral: boolean;
+  order: number;
+};
+
+export type ChatConcept = { id: string; name: string };
+
+export type ParseContext = {
+  students: ChatStudent[];
+  activities: ChatActivity[];
+  concepts: ChatConcept[];
 };
 
 // Un cambio de nota celda a celda, con snapshot previo para undo.
