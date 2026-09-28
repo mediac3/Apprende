@@ -6,9 +6,14 @@ export function normalizeText(input: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // quita tildes
-    .replace(/[¿?¡!.,;:"']/g, " ")
+    .replace(/[¿?¡!;:"']/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+// Marca decimales con "#" para que sobrevivan a la tokenización ("4.7" → "4#7").
+export function protectDecimals(text: string): string {
+  return text.replace(/(\d)[.,](\d)/g, "$1#$2");
 }
 
 export function levenshtein(a: string, b: string): number {
@@ -65,10 +70,10 @@ export const ALL_STUDENTS_MARKERS = [
   "todos los alumnos", "grupo completo", "todos en",
 ];
 
-// Números en palabras → dígitos ("cuatro punto siete" → "4.7").
+// Números en palabras → dígitos ("cuatro punto siete" → "4#7").
 export const NUMBER_WORDS: Record<string, string> = {
-  cero: "0", uno: "1", una: "1", dos: "2", tres: "3",
-  cuatro: "4", cinco: "5",
+  cero: "0", uno: "1", una: "1", dos: "2", tres: "3", cuatro: "4", cinco: "5",
+  seis: "6", siete: "7", ocho: "8", nueve: "9", diez: "10",
 };
 
 // Ordinales para actividades ("la tercera actividad" → order 3).
@@ -82,8 +87,11 @@ export const ORDINAL_WORDS: Record<string, number> = {
 export function wordsToDigits(text: string): string {
   return text
     .replace(
-      /\b(cero|uno|una|dos|tres|cuatro|cinco)\s+(punto|coma)\s+(cero|uno|una|dos|tres|cuatro|cinco)\b/g,
-      (_m, a: string, _sep: string, c: string) => `${NUMBER_WORDS[a]}.${NUMBER_WORDS[c]}`
+      /\b(cero|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+(punto|coma)\s+(cero|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/g,
+      (_m, a: string, _sep: string, c: string) => `${NUMBER_WORDS[a]}#${NUMBER_WORDS[c]}`
     )
-    .replace(/\b(cero|uno|una|dos|tres|cuatro|cinco)\b/g, (m) => NUMBER_WORDS[m] ?? m);
+    .replace(
+      /\b(cero|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\b/g,
+      (m) => NUMBER_WORDS[m] ?? m
+    );
 }
