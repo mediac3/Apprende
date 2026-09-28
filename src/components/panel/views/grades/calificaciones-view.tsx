@@ -3,6 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/auth-store";
+import type {
+  ChatActivity,
+  ChatConcept,
+  ChatStudent,
+  ParseContext,
+} from "@/lib/nlu/types";
+import { ChatFab } from "./chat/chat-fab";
+import { ChatPanel } from "./chat/chat-panel";
+import { useChatIntegration } from "./chat/use-chat-integration";
 import { useUIStore } from "@/store/ui-store";
 import { cn } from "@/lib/utils";
 import { GradesSidebar, type SidebarSubject } from "./grades-sidebar";
@@ -267,6 +276,50 @@ export function CalificacionesView() {
     },
     [user]
   );
+
+  // [chat-notas] contexto del asistente (estudiantes/actividades/conceptos del grid activo)
+  const chatCtx: ParseContext | null = useMemo(() => {
+    if (!selected || students.length === 0 || activities.length === 0 || concepts.length === 0) {
+      return null;
+    }
+    const chatStudents: ChatStudent[] = students.map((s) => {
+      const parts = s.fullName.split(" ");
+      return { id: s.studentId, firstName: parts[0] ?? "", lastName: parts.slice(1).join(" ") };
+    });
+    const chatActivities: ChatActivity[] = activities.map((a) => ({
+      id: a.id,
+      name: a.name,
+      label: a.label ?? null,
+      conceptId: a.conceptId,
+      isGeneral: a.isGeneral,
+      order: a.order,
+    }));
+    const chatConcepts: ChatConcept[] = concepts.map((c) => ({ id: c.id, name: c.name }));
+    return { students: chatStudents, activities: chatActivities, concepts: chatConcepts };
+  }, [selected, students, activities, concepts]);
+
+  const chat = useChatIntegration({
+    ctx: chatCtx,
+    currentValues: values,
+    onApplied: useCallback((updates) => {
+      setValues((prev) => {
+        const next = { ...prev };
+        for (const u of updates) next[`${u.studentId}::${u.activityId}`] = String(u.value);
+        return next;
+      });
+    }, []),
+    onReverted: useCallback((reverts) => {
+      setValues((prev) => {
+        const next = { ...prev };
+        for (const r of reverts) {
+          const k = `${r.studentId}::${r.activityId}`;
+          if (r.before === null) delete next[k];
+          else next[k] = String(r.before);
+        }
+        return next;
+      });
+    }, []),
+  });
 
   useEffect(() => {
     if (activeSubject && selectedPeriodId) loadSheet(activeSubject, selectedPeriodId);
@@ -761,6 +814,17 @@ export function CalificacionesView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* [chat-notas] asistente de voz/texto para registrar notas (solo este módulo) */}
+      <ChatFab />
+      <ChatPanel
+        ctx={chatCtx}
+        groupLabel={activeSubject?.groupName}
+        currentValues={values}
+        onApply={chat.handleApply}
+        onUndo={chat.handleUndo}
+        queryHandlers={{ onQueryGrades: chat.onQueryGrades, onAggregateQuery: chat.onAggregateQuery }}
+      />
     </div>
   );
 }
