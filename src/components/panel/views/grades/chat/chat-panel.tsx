@@ -97,6 +97,13 @@ export function ChatPanel({ ctx, groupLabel, currentValues, onApply, onUndo, que
           <ChatHistory onUndo={onUndo} undoAvailable={undoAvailable} undoSecondsLeft={undoSecondsLeft} />
         </div>
 
+        {pendingCommand && !ctx && (
+          <div className="border-t bg-muted/30 p-3 text-sm text-muted-foreground">
+            No puedo resolver el comando todavía: la planilla activa no tiene estudiantes,
+            actividades o conceptos cargados. Selecciona una asignatura y periodo con datos.
+          </div>
+        )}
+
         {pendingCommand && ctx && (
           <div className="border-t bg-muted/30 p-3">
             <ChatConfirmationCard

@@ -277,9 +277,10 @@ export function CalificacionesView() {
     [user]
   );
 
-  // [chat-notas] contexto del asistente (estudiantes/actividades/conceptos del grid activo)
+  // [chat-notas] contexto del asistente (estudiantes/actividades/conceptos del grid activo).
+  // Usa activeSubject (con auto-selección de la primera asignatura), no solo el click del sidebar.
   const chatCtx: ParseContext | null = useMemo(() => {
-    if (!selected || students.length === 0 || activities.length === 0 || concepts.length === 0) {
+    if (!activeSubject || students.length === 0 || activities.length === 0 || concepts.length === 0) {
       return null;
     }
     const chatStudents: ChatStudent[] = students.map((s) => {
@@ -296,7 +297,7 @@ export function CalificacionesView() {
     }));
     const chatConcepts: ChatConcept[] = concepts.map((c) => ({ id: c.id, name: c.name }));
     return { students: chatStudents, activities: chatActivities, concepts: chatConcepts };
-  }, [selected, students, activities, concepts]);
+  }, [activeSubject, students, activities, concepts]);
 
   const chat = useChatIntegration({
     ctx: chatCtx,
