@@ -8,10 +8,11 @@ type Props = {
   message: ChatMessage;
   onUndo?: () => void;
   undoAvailable?: boolean;
+  undoSecondsLeft?: number;
 };
 
 // Burbuja individual del chat. Usuario: derecha/gris. Asistente: izquierda/primary.
-export function ChatMessageBubble({ message, onUndo, undoAvailable }: Props) {
+export function ChatMessageBubble({ message, onUndo, undoAvailable, undoSecondsLeft }: Props) {
   const isUser = message.role === "user";
   return (
     <div className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}>
@@ -58,7 +59,7 @@ export function ChatMessageBubble({ message, onUndo, undoAvailable }: Props) {
             className="mt-2 h-7 gap-1 text-xs"
           >
             <Undo2 className="size-3" />
-            Deshacer
+            Deshacer{typeof undoSecondsLeft === "number" ? ` (${undoSecondsLeft}s)` : ""}
           </Button>
         )}
       </div>

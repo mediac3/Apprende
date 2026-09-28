@@ -8,10 +8,11 @@ import { ChatMessageBubble } from "./chat-message";
 type Props = {
   onUndo?: () => void;
   undoAvailable?: boolean;
+  undoSecondsLeft?: number;
 };
 
 // Historial de mensajes con auto-scroll al final.
-export function ChatHistory({ onUndo, undoAvailable }: Props) {
+export function ChatHistory({ onUndo, undoAvailable, undoSecondsLeft }: Props) {
   const messages = useChatState((s) => s.messages);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -33,7 +34,13 @@ export function ChatHistory({ onUndo, undoAvailable }: Props) {
   return (
     <div className="flex flex-col gap-3 p-4">
       {messages.map((m) => (
-        <ChatMessageBubble key={m.id} message={m} onUndo={onUndo} undoAvailable={undoAvailable} />
+        <ChatMessageBubble
+          key={m.id}
+          message={m}
+          onUndo={onUndo}
+          undoAvailable={undoAvailable}
+          undoSecondsLeft={undoSecondsLeft}
+        />
       ))}
       <div ref={bottomRef} />
     </div>
