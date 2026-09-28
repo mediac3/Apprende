@@ -15,7 +15,7 @@ import { useChatState } from "./use-chat-state";
 import { ChatHistory } from "./chat-history";
 import { ChatInput } from "./chat-input";
 import { ChatConfirmationCard, type ConfirmPayload } from "./chat-confirmation-card";
-import { useCommandParser } from "./use-command-parser";
+import { useCommandParser, type QueryHandlers } from "./use-command-parser";
 
 const UNDO_WINDOW_MS = 30_000;
 
@@ -25,10 +25,11 @@ type Props = {
   currentValues?: Record<string, string>;
   onApply: (payload: ConfirmPayload) => Promise<ApplyChangesResult>;
   onUndo: () => Promise<void> | void;
+  queryHandlers?: QueryHandlers;
 };
 
 // Panel del asistente: drawer 400px en desktop, bottom sheet 90vh en móvil.
-export function ChatPanel({ ctx, groupLabel, currentValues, onApply, onUndo }: Props) {
+export function ChatPanel({ ctx, groupLabel, currentValues, onApply, onUndo, queryHandlers }: Props) {
   const isOpen = useChatState((s) => s.isOpen);
   const setOpen = useChatState((s) => s.setOpen);
   const pendingCommand = useChatState((s) => s.pendingCommand);
@@ -39,7 +40,7 @@ export function ChatPanel({ ctx, groupLabel, currentValues, onApply, onUndo }: P
 
   const [applying, setApplying] = useState(false);
   const [undoSecondsLeft, setUndoSecondsLeft] = useState(0);
-  const { parse } = useCommandParser(ctx);
+  const { parse } = useCommandParser(ctx, queryHandlers);
 
   // Latido de 1s para la ventana de undo de 30s (el render inicial ya calcula
   // la disponibilidad con Date.now(); el intervalo la va actualizando).

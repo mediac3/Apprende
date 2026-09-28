@@ -2,12 +2,18 @@
 
 import { useCallback } from "react";
 import { parseCommand } from "@/lib/nlu/parse-command";
-import type { ParseContext } from "@/lib/nlu/types";
+import type { ParseContext, ParsedCommand } from "@/lib/nlu/types";
 import { useChatState } from "./use-chat-state";
 
+// Handlers de consultas de solo lectura (FASE 9), provistos por la integración.
+export type QueryHandlers = {
+  onQueryGrades?: (cmd: ParsedCommand) => void;
+  onAggregateQuery?: (cmd: ParsedCommand) => void;
+};
+
 // Conecta el input del chat con el parser NLU y el store del chat.
-// El contexto (estudiantes/actividades/conceptos) proviene del grid activo.
-export function useCommandParser(ctx: ParseContext | null) {
+// Escritura → pendingCommand (tarjeta de confirmación). Consultas → handlers.
+export function useCommandParser(ctx: ParseContext | null, handlers?: QueryHandlers) {
   const addMessage = useChatState((s) => s.addMessage);
   const setPendingCommand = useChatState((s) => s.setPendingCommand);
 
@@ -29,9 +35,19 @@ export function useCommandParser(ctx: ParseContext | null) {
         addMessage({ role: "assistant", kind: "text", text: command.error });
         return;
       }
+      if (command.action === "query_grades") {
+        if (handlers?.onQueryGrades) handlers.onQueryGrades(command);
+        else addMessage({ role: "assistant", kind: "text", text: "Las consultas no están disponibles ahora." });
+        return;
+      }
+      if (command.action === "aggregate_query") {
+        if (handlers?.onAggregateQuery) handlers.onAggregateQuery(command);
+        else addMessage({ role: "assistant", kind: "text", text: "Las consultas no están disponibles ahora." });
+        return;
+      }
       setPendingCommand(command);
     },
-    [ctx, addMessage, setPendingCommand]
+    [ctx, addMessage, setPendingCommand, handlers]
   );
 
   return { parse };
