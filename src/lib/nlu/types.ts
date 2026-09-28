@@ -31,6 +31,8 @@ export type CommandScope = {
   subject: string | null;
   period: string | null;
   scopeLevel: ScopeLevel;
+  // Candidatos cuando "Actividad N" matchea >1 actividad (p.ej. N3 de Ser y de Saber).
+  ambiguousActivities?: ChatActivity[];
 };
 
 export type ParsedCommand = {
