@@ -80,7 +80,14 @@ export function ImportWizardModal({ open, onOpenChange, groups, subjects, period
   };
 
   const handleOpenChange = (v: boolean) => {
-    if (!v) reset();
+    if (!v) {
+      reset();
+      // Evita que listeners globales de jspreadsheet operen sobre la tabla vieja
+      // con una selección huérfana mientras el grid se recrea.
+      if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    }
     onOpenChange(v);
   };
 
@@ -144,6 +151,8 @@ export function ImportWizardModal({ open, onOpenChange, groups, subjects, period
       toast.success(
         `Importación aplicada: ${res.summary.gradesUpserted} nota(s), ${res.summary.attendanceCreated + res.summary.attendanceUpdated} asistencia(s)`
       );
+      // Suelta el foco antes de que el grid se recree (crash selectedCell de jspreadsheet).
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       onImported();
     } finally {
       setBusy(false);
@@ -254,11 +263,17 @@ export function ImportWizardModal({ open, onOpenChange, groups, subjects, period
             <div className="rounded-md bg-muted/40 p-2 text-xs">
               Estudiantes: {plan.students.filter((s) => s.studentId).length}/{plan.students.length} reconocidos
               {plan.students.some((s) => !s.studentId) && (
-                <span className="text-amber-600">
-                  {" "}· Omitidos: {plan.students.filter((s) => !s.studentId).map((s) => s.name).join(", ")}
+                <span className="text-destructive">
+                  {" "}· Sin reconocer: {plan.students.filter((s) => !s.studentId).map((s) => s.name).join(", ")}
                 </span>
               )}
             </div>
+            {plan.students.some((s) => !s.studentId) && (
+              <p className="text-xs text-destructive">
+                Aplicar está bloqueado: todas las filas deben reconocerse para importar (evita
+                escribir notas al estudiante equivocado). Corrige el Excel o verifica el grupo.
+              </p>
+            )}
             {plan.warnings.length > 0 && (
               <ul className="list-inside list-disc text-xs text-amber-600">
                 {plan.warnings.map((w, i) => (
@@ -271,7 +286,11 @@ export function ImportWizardModal({ open, onOpenChange, groups, subjects, period
                 type="button"
                 size="sm"
                 onClick={handleApply}
-                disabled={busy || plan.activities.some((a) => a.error)}
+                disabled={
+                  busy ||
+                  plan.activities.some((a) => a.error) ||
+                  plan.students.some((s) => !s.studentId)
+                }
                 className="bg-emerald-600 hover:bg-emerald-600/90"
               >
                 {busy ? <Loader2 className="size-4 animate-spin" /> : "Aplicar importación"}

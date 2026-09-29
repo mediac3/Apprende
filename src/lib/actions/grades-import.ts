@@ -8,12 +8,36 @@
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { normalizeText } from "@/lib/nlu/synonyms";
-import { resolveStudent } from "@/lib/nlu/resolve-student";
 import type { ChatStudent } from "@/lib/nlu/types";
 import type { ImportCell } from "@/components/panel/views/grades/import-wizard/xlsx-parse";
 
 const ALLOWED_ROLES = ["docente", "director_grupo", "coordinador", "rector"];
 const ELEVATED_ROLES = ["director_grupo", "coordinador", "rector"];
+
+// Match ESTRICTO por tokens normalizados (sin fuzzy): una importación masiva con
+// similitud difusa cruzó apellidos repetidos y asignó notas a estudiantes equivocados
+// (incidente 10°A). Cualquier token distinto → sin match → fila omitida.
+// Se ignoran anotaciones entre paréntesis del Excel, p. ej. "(BAP)".
+function strictMatchStudent(
+  name: string,
+  students: ChatStudent[]
+): { student: ChatStudent | null; reason: "none" | "ambiguous" } {
+  const qTokens = normalizeText(name.replace(/\([^)]*\)/g, " "))
+    .split(" ")
+    .filter(Boolean)
+    .sort();
+  const hits = students.filter((s) => {
+    const sTokens = normalizeText(
+      [s.firstName, s.firstName2, s.lastName, s.lastName2].filter(Boolean).join(" ")
+    )
+      .split(" ")
+      .filter(Boolean)
+      .sort();
+    return sTokens.length === qTokens.length && sTokens.every((t, i) => t === qTokens[i]);
+  });
+  if (hits.length === 1) return { student: hits[0], reason: "none" };
+  return { student: null, reason: hits.length > 1 ? "ambiguous" : "none" };
+}
 
 export type ImportInput = {
   userId: string;
@@ -199,18 +223,26 @@ async function resolvePlan(input: ImportInput): Promise<ImportPlan> {
     lastName2: s.lastName2,
   }));
   for (const row of input.sheet.rows) {
-    const match = resolveStudent(row.name, chatStudents);
-    if (match.matches.length === 1) {
-      const hit = chatStudents.find((s) => s.id === match.matches[0].id)!;
-      plan.students.push({ name: row.name, studentId: hit.id, matchedName: [hit.firstName, hit.firstName2, hit.lastName, hit.lastName2].filter(Boolean).join(" ") });
-    } else if (match.matches.length > 1) {
+    const match = strictMatchStudent(row.name, chatStudents);
+    if (match.student) {
+      const hit = match.student;
+      plan.students.push({
+        name: row.name,
+        studentId: hit.id,
+        matchedName: [hit.firstName, hit.firstName2, hit.lastName, hit.lastName2]
+          .filter(Boolean)
+          .join(" "),
+      });
+    } else if (match.reason === "ambiguous") {
       plan.students.push({ name: row.name, studentId: null, matchedName: null });
       plan.warnings.push(
-        `"${row.name}" coincide con ${match.matches.length} estudiantes; se omite su fila.`
+        `"${row.name}" coincide con más de un estudiante del grupo; se omite su fila.`
       );
     } else {
       plan.students.push({ name: row.name, studentId: null, matchedName: null });
-      plan.warnings.push(`"${row.name}" no coincide con ningún estudiante del grupo; se omite su fila.`);
+      plan.warnings.push(
+        `"${row.name}" no coincide exactamente con ningún estudiante del grupo; se omite su fila.`
+      );
     }
   }
 
@@ -227,8 +259,14 @@ async function resolvePlanOrFail(input: ImportInput): Promise<ImportPlan> {
     );
   }
   const unmatched = plan.students.filter((s) => !s.studentId);
-  if (unmatched.length === input.sheet.rows.length && input.sheet.rows.length > 0) {
-    throw new Error("Ningún estudiante del archivo coincide con el grupo seleccionado.");
+  if (unmatched.length > 0) {
+    // Bloqueo duro (decisión post-incidente): no aplicar si hay filas sin reconocer.
+    throw new Error(
+      `No se aplica: ${unmatched.length} fila(s) sin reconocer (${unmatched
+        .slice(0, 5)
+        .map((s) => s.name)
+        .join(", ")}${unmatched.length > 5 ? "…" : ""}). Corrige el Excel o verifica el grupo seleccionado.`
+    );
   }
   return plan;
 }
