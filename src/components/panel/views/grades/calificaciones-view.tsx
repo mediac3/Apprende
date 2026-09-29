@@ -12,6 +12,7 @@ import type {
 import { ChatFab } from "./chat/chat-fab";
 import { ChatPanel } from "./chat/chat-panel";
 import { useChatIntegration } from "./chat/use-chat-integration";
+import { ImportWizardModal } from "./import-wizard/import-wizard-modal";
 import { useUIStore } from "@/store/ui-store";
 import { cn } from "@/lib/utils";
 import { GradesSidebar, type SidebarSubject } from "./grades-sidebar";
@@ -134,6 +135,7 @@ export function CalificacionesView() {
   // [R1] lo resuelve el servidor al cargar la planilla (docente asignado o rol elevado)
   const [canEdit, setCanEdit] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false); // [wizard-import] Excel → notas/asistencias
   // [F1] concepto precargado al abrir el modal desde el botón "+" del concepto
   const [modalPresetConceptId, setModalPresetConceptId] = useState<string | null>(null);
   // [F2] actividad en edición / en confirmación de borrado
@@ -687,6 +689,18 @@ export function CalificacionesView() {
               commentMode={commentMode}
               onToggleCommentMode={() => setCommentMode((v) => !v)}
             />
+            {editable && (
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setImportOpen(true)}
+                  className="gap-1 text-xs"
+                >
+                  Importar Excel…
+                </Button>
+              </div>
+            )}
             {!editable && (
               <p className={cn(
                 "rounded-lg border px-3 py-1.5 text-xs",
@@ -825,6 +839,18 @@ export function CalificacionesView() {
         onApply={chat.handleApply}
         onUndo={chat.handleUndo}
         queryHandlers={{ onQueryGrades: chat.onQueryGrades, onAggregateQuery: chat.onAggregateQuery }}
+      />
+
+      {/* [wizard-import] Excel → actividades + notas + asistencias */}
+      <ImportWizardModal
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        groups={groups.map((g) => ({ id: g.id, name: g.name }))}
+        subjects={sidebarSubjects}
+        periods={modelPeriods.map((p) => ({ id: p.id, name: periodLabel(p) }))}
+        onImported={() => {
+          if (activeSubject) loadSheet(activeSubject, selectedPeriodId);
+        }}
       />
     </div>
   );
