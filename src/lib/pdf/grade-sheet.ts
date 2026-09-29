@@ -1,7 +1,7 @@
 import type { jsPDF } from "jspdf";
 
 // [F1] Generador de planillas imprimibles con celdas guía de puntos grises.
-// Layout: Estudiante × Concepto (Def + N1..N10) + PROM, landscape A4/Carta.
+// Layout: Estudiante × Concepto (Def + actividades del concepto) + PROM, landscape A4/Carta.
 // Celda guía: 5 puntos #B0B0B0 (4 esquinas + centro) según boceto, espacio para 1-3 dígitos.
 // Patrón jsPDF dinámico tomado de src/components/panel/views/consolidado/use-consolidado.ts:378.
 
@@ -19,17 +19,20 @@ export interface GradeSheetHeaderInfo {
   period: string;
   group: string;
   generatedAtLabel: string; // ej. "2026-09-29 15:50"
-  qrDataUrl?: string | null; // opcional en FASE 3; se llena con `qrcode` en FASE 4
+  qrDataUrl?: string | null; // {v,inst,group,subj,period,year} — lo lee el scanner [F2]
+}
+
+export interface GradeSheetConceptActivity {
+  /** id de la actividad en BD (GradeRecord.activityId); null → celda solo papel (modo hasta N10) */
+  id: string | null;
+  label: string; // "N1".."N10"
 }
 
 export interface GradeSheetConcept {
   id: string;
   name: string;
-}
-
-export interface GradeSheetActivity {
-  id: string;
-  label: string; // "N1".."N10"
+  /** Actividades del concepto en orden; en modo "hasta N10" viene relleno a 10 con id null. */
+  activities: GradeSheetConceptActivity[];
 }
 
 export interface GradeSheetStudent {
@@ -40,10 +43,16 @@ export interface GradeSheetStudent {
 export interface GradeSheetPayload {
   header: GradeSheetHeaderInfo;
   concepts: GradeSheetConcept[];
-  activities: GradeSheetActivity[]; // 1..10 según filtro "solo creadas"
   students: GradeSheetStudent[];
   size: "a4" | "letter";
   includeProm: boolean;
+}
+
+/** Convierte el bloque de un concepto a columnas fijas N1..N10 (id null en las vacías). */
+export function padConceptToN10(concept: GradeSheetConcept): GradeSheetConcept {
+  const activities = [...concept.activities];
+  while (activities.length < 10) activities.push({ id: null, label: `N${activities.length + 1}` });
+  return { ...concept, activities: activities.slice(0, Math.max(10, concept.activities.length)) };
 }
 
 interface BuildContext {
@@ -125,34 +134,31 @@ export async function buildGradeSheet(payload: GradeSheetPayload): Promise<jsPDF
   const ctx: BuildContext = { payload, guideColumnIndexes: new Set<number>() };
   const headerStartY = drawPageHeader(doc, ctx);
 
-  // Columnas: [# , Estudiante] + por concepto [Def, N1..N10] + [PROM]
-  // Índice 0=#, 1=Estudiante; por concepto c*nAct+2..; PROM=última.
-  const nAct = Math.max(payload.activities.length, 1);
-  payload.concepts.forEach((_, ci) => {
-    const start = 2 + ci * nAct;
-    for (let k = 0; k < nAct; k++) ctx.guideColumnIndexes.add(start + k);
-  });
-  const promIndex = 2 + payload.concepts.length * nAct;
-  if (payload.includeProm) ctx.guideColumnIndexes.add(promIndex);
-
+  // Columnas: [#(0), Estudiante(1)] + por concepto [Def, act1..actN] + [PROM]
   const head: Array<Array<Record<string, unknown>>> = [
     [
       { content: "#", rowSpan: 2 },
       { content: "Estudiante", rowSpan: 2 },
-      ...payload.concepts.map((c) => ({ content: c.name, colSpan: nAct, styles: { halign: "center" } })),
+      ...payload.concepts.map((c) => ({
+        content: c.name,
+        colSpan: 1 + c.activities.length,
+        styles: { halign: "center" },
+      })),
       ...(payload.includeProm ? [{ content: "PROM", rowSpan: 2 }] : []),
     ],
     [
-      ...payload.concepts.flatMap(() => [
+      ...payload.concepts.flatMap((c) => [
         { content: "Def", styles: { halign: "center" } },
-        ...payload.activities.map((a) => ({ content: a.label, styles: { halign: "center" } })),
+        ...c.activities.map((a) => ({ content: a.label, styles: { halign: "center" } })),
       ]),
     ],
   ];
 
   const body: Array<Array<string | number>> = payload.students.map((s, i) => {
     const row: Array<string | number> = [i + 1, s.name];
-    for (let c = 0; c < payload.concepts.length * nAct; c++) row.push("");
+    for (const c of payload.concepts) {
+      for (let k = 0; k < c.activities.length + 1; k++) row.push("");
+    }
     if (payload.includeProm) row.push("");
     return row;
   });
@@ -161,11 +167,22 @@ export async function buildGradeSheet(payload: GradeSheetPayload): Promise<jsPDF
     0: { cellWidth: 7, halign: "center" },
     1: { cellWidth: 36, halign: "left", fontStyle: "bold" },
   };
-  payload.concepts.forEach((_, ci) => {
-    const start = 2 + ci * nAct;
-    for (let k = 0; k < nAct; k++) columnStyles[start + k] = { cellWidth: 9, halign: "center" };
-  });
-  if (payload.includeProm) columnStyles[promIndex] = { cellWidth: 10, halign: "center" };
+  let cursor = 2;
+  for (const c of payload.concepts) {
+    columnStyles[cursor] = { cellWidth: 8, halign: "center" }; // Def (también celda guía)
+    ctx.guideColumnIndexes.add(cursor);
+    cursor += 1;
+    for (let k = 0; k < c.activities.length; k++) {
+      ctx.guideColumnIndexes.add(cursor);
+      columnStyles[cursor] = { cellWidth: 9, halign: "center" }; // nota
+      cursor += 1;
+    }
+  }
+  const promIndex = cursor;
+  if (payload.includeProm) {
+    ctx.guideColumnIndexes.add(promIndex);
+    columnStyles[promIndex] = { cellWidth: 10, halign: "center" };
+  }
 
   autoTable(doc, {
     head,

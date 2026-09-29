@@ -13,6 +13,8 @@ import { ChatFab } from "./chat/chat-fab";
 import { ChatPanel } from "./chat/chat-panel";
 import { useChatIntegration } from "./chat/use-chat-integration";
 import { ImportWizardModal } from "./import-wizard/import-wizard-modal";
+import { GradeSheetModal } from "./grade-sheets/grade-sheet-modal";
+import type { GradeSheetGeneratorInput } from "./grade-sheets/use-grade-sheet-generator";
 import { useUIStore } from "@/store/ui-store";
 import { cn } from "@/lib/utils";
 import { GradesSidebar, type SidebarSubject } from "./grades-sidebar";
@@ -136,6 +138,7 @@ export function CalificacionesView() {
   const [canEdit, setCanEdit] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false); // [wizard-import] Excel → notas/asistencias
+  const [sheetOpen, setSheetOpen] = useState(false); // [F1] generador de planilla imprimible
   // [F1] concepto precargado al abrir el modal desde el botón "+" del concepto
   const [modalPresetConceptId, setModalPresetConceptId] = useState<string | null>(null);
   // [F2] actividad en edición / en confirmación de borrado
@@ -227,6 +230,36 @@ export function CalificacionesView() {
   // Selección efectiva [C4]: la elegida por el usuario o, por defecto, la primera
   // disponible (derivado, sin efecto: al recargar vuelve al primer item).
   const activeSubject = selected ?? sidebarSubjects[0] ?? null;
+
+  // [F1] entrada del generador de planillas: contexto actual de Notas parciales
+  const gradeSheetInput: GradeSheetGeneratorInput | null = useMemo(() => {
+    if (!activeSubject || !institutionId || !user) return null;
+    const byConcept: Record<string, Array<{ id: string; label: string }>> = {};
+    for (const a of activities) {
+      const list = byConcept[a.conceptId] ?? (byConcept[a.conceptId] = []);
+      list.push({ id: a.id, label: `N${a.order}` });
+    }
+    for (const k of Object.keys(byConcept)) {
+      byConcept[k].sort((x, y) => x.label.localeCompare(y.label, undefined, { numeric: true }));
+    }
+    const period = modelPeriods.find((p) => p.id === selectedPeriodId);
+    return {
+      institutionId,
+      institutionName: user.institution.name,
+      institutionLogoUrl: user.institution.logoUrl,
+      yearLabel: user.institution.academicYear || yearLabel,
+      groupId: activeSubject.groupId,
+      groupName: activeSubject.groupName,
+      subjectId: activeSubject.subjectId,
+      subjectName: activeSubject.subjectName,
+      periodId: selectedPeriodId,
+      periodName: period ? periodLabel(period) : "—",
+      defaultTeacher: user.fullName || "Todos",
+      concepts: modelConcepts.map((c) => ({ id: c.id, name: c.name })),
+      activitiesByConcept: byConcept,
+      students: students.map((s) => ({ id: s.studentId, name: s.fullName })),
+    };
+  }, [activeSubject, institutionId, user, activities, modelPeriods, selectedPeriodId, modelConcepts, students, yearLabel]);
 
   // Cargar planilla al cambiar selección o periodo
   const loadSheet = useCallback(
@@ -701,6 +734,18 @@ export function CalificacionesView() {
                 </Button>
               </div>
             )}
+            {gradeSheetInput && (
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSheetOpen(true)}
+                  className="gap-1 text-xs"
+                >
+                  Generar planilla…
+                </Button>
+              </div>
+            )}
             {!editable && (
               <p className={cn(
                 "rounded-lg border px-3 py-1.5 text-xs",
@@ -852,6 +897,9 @@ export function CalificacionesView() {
           if (activeSubject) loadSheet(activeSubject, selectedPeriodId);
         }}
       />
+      {sheetOpen && gradeSheetInput && (
+        <GradeSheetModal open onOpenChange={setSheetOpen} input={gradeSheetInput} />
+      )}
     </div>
   );
 }
