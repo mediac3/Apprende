@@ -244,6 +244,7 @@ export function CalificacionesView() {
     }
     const period = modelPeriods.find((p) => p.id === selectedPeriodId);
     return {
+      userId: user.id,
       institutionId,
       institutionName: user.institution.name,
       institutionLogoUrl: user.institution.logoUrl,

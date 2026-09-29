@@ -13,6 +13,7 @@ import {
 // QR identificador (lo lee el scanner [F2]) y produce el PDF (preview o descarga).
 
 export interface GradeSheetGeneratorInput {
+  userId: string;
   institutionId: string;
   institutionName: string;
   institutionLogoUrl: string | null;
@@ -117,6 +118,34 @@ export async function buildGradeSheetPayload(
   };
 }
 
+/** Archiva el PDF para auditoría (FASE 5). Fire-and-forget: nunca bloquea la descarga. */
+async function archiveForAudit(
+  input: GradeSheetGeneratorInput,
+  opts: GradeSheetOptions,
+  payload: GradeSheetPayload,
+  fileName: string,
+  dataUrl: string
+): Promise<void> {
+  try {
+    await fetch("/api/grade-sheet-archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: input.userId,
+        institutionId: input.institutionId,
+        groupId: input.groupId,
+        subjectId: input.subjectId,
+        periodId: input.periodId,
+        yearLabel: input.yearLabel,
+        fileName,
+        dataUrl,
+      }),
+    });
+  } catch {
+    // auditoría best-effort: fallo de red no afecta al usuario
+  }
+}
+
 /** Genera el PDF. mode "preview" lo abre en pestaña nueva; "download" lo descarga. */
 export async function generateGradeSheet(
   input: GradeSheetGeneratorInput,
@@ -126,10 +155,12 @@ export async function generateGradeSheet(
   const payload = await buildGradeSheetPayload(input, opts);
   if (payload.concepts.length === 0) throw new Error("Selecciona al menos un concepto");
   const doc = await buildGradeSheet(payload);
+  const fileName = gradeSheetFileName(input.groupName, input.periodName);
   if (mode === "preview") {
     const url = doc.output("bloburl");
     window.open(url as unknown as string, "_blank");
   } else {
-    doc.save(gradeSheetFileName(input.groupName, input.periodName));
+    doc.save(fileName);
   }
+  void archiveForAudit(input, opts, payload, fileName, doc.output("dataurlstring"));
 }
