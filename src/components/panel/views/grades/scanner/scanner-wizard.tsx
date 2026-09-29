@@ -16,19 +16,22 @@ import {
   type ScannerContextInput,
   type ScannerStep,
 } from "./use-scanner-wizard";
+import { ScanPreview } from "./scan-preview";
+import { ScanResult } from "./scan-result";
 
 // [F2] Scanner Wizard — contenedor de 5 pasos. Se monta solo cuando `open`.
-// Pasos 1-2 (carga + alineación) implementados; 3-5 se completan en FASE 8.
 
 export interface ScannerWizardProps {
   open: true;
   onOpenChange: (open: false) => void;
   ctx: ScannerContextInput;
+  /** Recarga la planilla de Notas parciales tras aplicar. */
+  onApplied?: () => void;
 }
 
 const STEP_LABELS = ["Archivo", "Alineación", "Escaneo", "Revisión", "Resultado"] as const;
 
-export function ScannerWizard({ open, onOpenChange, ctx }: ScannerWizardProps) {
+export function ScannerWizard({ open, onOpenChange, ctx, onApplied }: ScannerWizardProps) {
   const wiz = useScannerWizard(ctx, () => onOpenChange(false));
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -182,16 +185,8 @@ export function ScannerWizard({ open, onOpenChange, ctx }: ScannerWizardProps) {
           </div>
         )}
 
-        {wiz.step === 4 && (
-          <p className="rounded-lg border px-3 py-2 text-xs text-muted-foreground">
-            Revisión de celdas: se implementa en FASE 8.
-          </p>
-        )}
-        {wiz.step === 5 && (
-          <p className="rounded-lg border px-3 py-2 text-xs text-muted-foreground">
-            Resultado: se implementa en FASE 8.
-          </p>
-        )}
+        {wiz.step === 4 && <ScanPreview wiz={wiz} />}
+        {wiz.step === 5 && <ScanResult wiz={wiz} onApplied={onApplied} />}
       </DialogContent>
     </Dialog>
   );

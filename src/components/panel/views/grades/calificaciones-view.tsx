@@ -15,6 +15,8 @@ import { useChatIntegration } from "./chat/use-chat-integration";
 import { ImportWizardModal } from "./import-wizard/import-wizard-modal";
 import { GradeSheetModal } from "./grade-sheets/grade-sheet-modal";
 import type { GradeSheetGeneratorInput } from "./grade-sheets/use-grade-sheet-generator";
+import { ScannerWizard } from "./scanner/scanner-wizard";
+import type { ScannerContextInput } from "./scanner/use-scanner-wizard";
 import { useUIStore } from "@/store/ui-store";
 import { cn } from "@/lib/utils";
 import { GradesSidebar, type SidebarSubject } from "./grades-sidebar";
@@ -139,6 +141,7 @@ export function CalificacionesView() {
   const [modalOpen, setModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false); // [wizard-import] Excel → notas/asistencias
   const [sheetOpen, setSheetOpen] = useState(false); // [F1] generador de planilla imprimible
+  const [scannerOpen, setScannerOpen] = useState(false); // [F2] scanner wizard
   // [F1] concepto precargado al abrir el modal desde el botón "+" del concepto
   const [modalPresetConceptId, setModalPresetConceptId] = useState<string | null>(null);
   // [F2] actividad en edición / en confirmación de borrado
@@ -261,6 +264,9 @@ export function CalificacionesView() {
       students: students.map((s) => ({ id: s.studentId, name: s.fullName })),
     };
   }, [activeSubject, institutionId, user, activities, modelPeriods, selectedPeriodId, modelConcepts, students, yearLabel]);
+
+  // [F2] contexto del scanner: reutiliza el catálogo del contexto activo
+  // (declarado tras `editable` en la línea 486; ver useMemo más abajo).
 
   // Cargar planilla al cambiar selección o periodo
   const loadSheet = useCallback(
@@ -461,6 +467,26 @@ export function CalificacionesView() {
   const periodClosed = selectedPeriod?.closed ?? false;
   // [R1] edición efectiva: periodo abierto Y usuario autorizado por el servidor
   const editable = !periodClosed && canEdit;
+
+  // [F2] contexto del scanner: reutiliza el catálogo del contexto activo
+  const scannerCtx: ScannerContextInput | null = useMemo(() => {
+    if (!gradeSheetInput) return null;
+    return {
+      userId: gradeSheetInput.userId,
+      institutionId: gradeSheetInput.institutionId,
+      groupId: gradeSheetInput.groupId,
+      groupName: gradeSheetInput.groupName,
+      subjectId: gradeSheetInput.subjectId,
+      subjectName: gradeSheetInput.subjectName,
+      periodId: gradeSheetInput.periodId,
+      periodName: gradeSheetInput.periodName,
+      yearLabel: gradeSheetInput.yearLabel,
+      students: gradeSheetInput.students,
+      concepts: gradeSheetInput.concepts,
+      activitiesByConcept: gradeSheetInput.activitiesByConcept,
+      canRegister: editable,
+    };
+  }, [gradeSheetInput, editable]);
   const periodLabel = (p: PeriodLite) =>
     [yearLabel, p.name].filter(Boolean).join(" - ");
 
@@ -736,7 +762,15 @@ export function CalificacionesView() {
               </div>
             )}
             {gradeSheetInput && (
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setScannerOpen(true)}
+                  className="gap-1 text-xs"
+                >
+                  Escanear planilla…
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -900,6 +934,16 @@ export function CalificacionesView() {
       />
       {sheetOpen && gradeSheetInput && (
         <GradeSheetModal open onOpenChange={setSheetOpen} input={gradeSheetInput} />
+      )}
+      {scannerOpen && scannerCtx && (
+        <ScannerWizard
+          open
+          onOpenChange={setScannerOpen}
+          ctx={scannerCtx}
+          onApplied={() => {
+            if (activeSubject) loadSheet(activeSubject, selectedPeriodId);
+          }}
+        />
       )}
     </div>
   );

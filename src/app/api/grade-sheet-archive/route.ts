@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
         periodId,
         yearLabel,
         fileName: originalName,
-        pdfBytes: pdf,
+        pdfBytes: Uint8Array.from(pdf),
         generatedBy: userId,
       },
       select: { id: true },

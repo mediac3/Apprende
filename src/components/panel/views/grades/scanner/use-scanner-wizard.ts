@@ -17,6 +17,7 @@ import {
   type QrContext,
   type SheetLayoutPlan,
 } from "@/lib/ocr/detect-grid";
+import { padConceptToN10 } from "@/lib/pdf/grade-sheet";
 import {
   DEFAULT_CONFIDENCE_THRESHOLD,
   recognizeCell,
@@ -47,7 +48,9 @@ export interface ScannerContextInput {
   yearLabel: string;
   /** Estudiantes del grupo (orden de filas de la planilla) */
   students: Array<{ id: string; name: string }>;
-  plan: SheetLayoutPlan;
+  /** Catálogo del contexto: el layout exacto viene del QR de la planilla */
+  concepts: Array<{ id: string; name: string }>;
+  activitiesByConcept: Record<string, Array<{ id: string; label: string }>>;
   canRegister: boolean;
 }
 
@@ -70,6 +73,8 @@ export interface DetectionResult {
   qrMatch: boolean;
   gridOk: boolean;
   detail: string;
+  /** Layout reconstruido desde el QR (fallback: contexto completo) */
+  plan: SheetLayoutPlan;
 }
 
 function statusFor(norm: { ok: boolean; value: number | null }, confidence: number, threshold: number): CellStatus {
@@ -202,10 +207,28 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
     setDetection(null);
   }, [rotation]);
 
+  /** Layout esperado: reconstruido desde el QR de la planilla; fallback = todo el contexto. */
+  const planFromQr = useCallback(
+    (qr: QrContext | null): SheetLayoutPlan => {
+      const map = new Map(input.concepts.map((c) => [c.id, c]));
+      const ids = qr?.cc?.length ? qr.cc.filter((id) => map.has(id)) : input.concepts.map((c) => c.id);
+      const concepts = ids.map((id) => {
+        const c = map.get(id)!;
+        const activities = (input.activitiesByConcept[id] ?? []).map((a) => ({ id: a.id, label: a.label }));
+        return qr?.n10 === 1
+          ? padConceptToN10({ id: c.id, name: c.name, activities })
+          : { id: c.id, name: c.name, activities };
+      });
+      return { concepts, includeProm: qr ? qr.prom !== 0 : true, studentCount: input.students.length };
+    },
+    [input]
+  );
+
   /** Paso 2: QR + detección de cuadrícula contra el layout esperado. */
   const detect = useCallback((): DetectionResult => {
     const canvas = canvasRef.current;
-    if (!canvas) return { qr: null, qrMatch: false, gridOk: false, detail: "Sin imagen." };
+    const fallbackPlan = planFromQr(null);
+    if (!canvas) return { qr: null, qrMatch: false, gridOk: false, detail: "Sin imagen.", plan: fallbackPlan };
     const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
 
     // QR sobre imagen a escala reducida (jsQR es O(n)); la página completa a resolución media basta.
@@ -218,18 +241,12 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
       qc.height = Math.round(canvas.height * s);
       qc.getContext("2d")!.drawImage(canvas, 0, 0, qc.width, qc.height);
       const id = qc.getContext("2d")!.getImageData(0, 0, qc.width, qc.height);
-      const found = decodeQrContext({ width: id.width, height: id.height, data: id.data });
-      if (found) {
-        qr = {
-          ...found,
-          // coordenadas escalan con el QR reducido; el contexto es lo que importa
-          group: found.group,
-        };
-      }
+      qr = decodeQrContext({ width: id.width, height: id.height, data: id.data });
     } catch {
       qr = null;
     }
 
+    const plan = planFromQr(qr);
     const qrMatch =
       qr !== null &&
       qr.group === input.groupId &&
@@ -240,7 +257,7 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
     const bin = denoise(binarize(gray));
     const hLines = findHorizontalLines(bin);
     const vLines = hLines.length >= 2 ? findVerticalLines(bin, hLines[0], hLines[hLines.length - 1]) : [];
-    const built = buildCellRects(hLines, vLines, input.plan);
+    const built = buildCellRects(hLines, vLines, plan);
 
     let detail: string;
     if (qr && !qrMatch) {
@@ -248,14 +265,14 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
     } else if (!qr) {
       detail = "No se detectó QR. Verifica que la planilla sea una generada por el sistema.";
     } else if (!built) {
-      detail = `Cuadrícula no coincide (líneas H: ${hLines.length}, esperadas ${input.plan.studentCount + 3}). Rota o reescanea con mejor luz/enfoque.`;
+      detail = `Cuadrícula no coincide (líneas H: ${hLines.length}, esperadas ${plan.studentCount + 3}). Rota o reescanea con mejor luz/enfoque.`;
     } else {
       detail = "Alineación confirmada.";
     }
-    const res: DetectionResult = { qr, qrMatch, gridOk: qrMatch && built !== null, detail };
+    const res: DetectionResult = { qr, qrMatch, gridOk: qrMatch && built !== null, detail, plan };
     setDetection(res);
     return res;
-  }, [input]);
+  }, [input, planFromQr]);
 
   /** Paso 3: OCR de las celdas de nota (solo targets registrables). */
   const scan = useCallback(async () => {
@@ -274,7 +291,7 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
       const bin = denoise(binarize(gray));
       const hLines = findHorizontalLines(bin);
       const vLines = findVerticalLines(bin, hLines[0], hLines[hLines.length - 1]);
-      const built = buildCellRects(hLines, vLines, input.plan);
+      const built = buildCellRects(hLines, vLines, det.plan);
       if (!built) {
         setError("La cuadrícula dejó de coincidir; reajusta la alineación.");
         return;
@@ -282,12 +299,13 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
       const gradeRects = built.gradeRects.filter((r) => r.target.kind === "grade");
       const newCells: ScannedCell[] = [];
       const crop = document.createElement("canvas");
+      const plan = det.plan;
       for (let i = 0; i < gradeRects.length; i++) {
         const rect = gradeRects[i];
         setBusy(`Reconociendo notas… ${i + 1}/${gradeRects.length}`);
         if (rect.target.kind !== "grade") continue;
         // Los rects van por fila en orden → índice de estudiante = fila del rect
-        const rowIdx = Math.floor(i / gradeColsPerRow(built.gradeRects, input.plan));
+        const rowIdx = Math.floor(i / gradeColsPerRow(plan));
         const st = input.students[rowIdx];
         if (!st) continue;
         crop.width = Math.max(8, Math.round(rect.w));
@@ -435,11 +453,13 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
     previewUrl, pageNumber, pageCount, goToPage, loadFile,
     rotation, rotate, detect, detection,
     cells, scan, updateCell, toggleExclude, threshold, setThreshold,
-    included, apply, undo, undoLeft, csv, result, close, reset,
+    included, apply, undo, undoLeft, csv, result, canRegister: input.canRegister, close, reset,
   };
 }
 
 // helpers internos
-function gradeColsPerRow(_gradeRects: unknown[], plan: SheetLayoutPlan): number {
+function gradeColsPerRow(plan: SheetLayoutPlan): number {
   return plan.concepts.reduce((acc, c) => acc + c.activities.filter((a) => a.id).length, 0);
 }
+
+export type ScannerWizardApi = ReturnType<typeof useScannerWizard>;

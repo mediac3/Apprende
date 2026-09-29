@@ -76,14 +76,17 @@ export async function buildGradeSheetPayload(
     return opts.fillToN10 ? padConceptToN10({ id: c.id, name: c.name, activities: acts }) : { id: c.id, name: c.name, activities: acts };
   });
 
-  // QR identificador: el scanner [F2] lo decodifica para fijar/validar el contexto.
+  // QR identificador (v2): el scanner [F2] reconstruye el layout exacto impreso.
   const qrPayload = JSON.stringify({
-    v: 1,
+    v: 2,
     inst: input.institutionId,
     group: input.groupId,
     subj: input.subjectId,
     period: input.periodId,
     year: input.yearLabel,
+    prom: opts.includeProm ? 1 : 0,
+    n10: opts.fillToN10 ? 1 : 0,
+    cc: opts.conceptIds,
   });
   let qrDataUrl: string | null = null;
   try {
