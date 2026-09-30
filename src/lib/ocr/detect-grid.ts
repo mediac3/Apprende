@@ -4,8 +4,8 @@
 // contexto {institutionId, groupId, subjectId, periodId, year}. Los puntos
 // guía grises quedan como ancla visual del docente, no se usan para detectar.
 // Cores puros sobre GrayImage (testeables sin DOM).
+// jsQR se importa dinámicamente (carga estática rompe el chunk en prod).
 
-import jsQR from "jsqr";
 import type { GrayImage } from "./preprocess";
 
 export interface QrContext {
@@ -22,11 +22,12 @@ export interface QrContext {
 }
 
 /** Decodifica el QR del header (requiere ImageData RGBA completo de la página). */
-export function decodeQrContext(rgba: {
+export async function decodeQrContext(rgba: {
   width: number;
   height: number;
   data: Uint8ClampedArray;
-}): QrContext | null {
+}): Promise<QrContext | null> {
+  const jsQR = (await import("jsqr")).default;
   const code = jsQR(new Uint8ClampedArray(rgba.data), rgba.width, rgba.height);
   if (!code?.data) return null;
   try {

@@ -2,28 +2,9 @@
 
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-  binarize,
-  denoise,
-  renderPdfPageToCanvas,
-  toGrayscale,
-} from "@/lib/ocr/preprocess";
-import {
-  buildCellRects,
-  decodeQrContext,
-  findHorizontalLines,
-  findVerticalLines,
-  type CellTarget,
-  type QrContext,
-  type SheetLayoutPlan,
-} from "@/lib/ocr/detect-grid";
+import type { CellTarget, QrContext, SheetLayoutPlan } from "@/lib/ocr/detect-grid";
+import { normalizeOcrText } from "@/lib/ocr/normalize-value"; // módulo puro: seguro estático
 import { padConceptToN10 } from "@/lib/pdf/grade-sheet";
-import {
-  DEFAULT_CONFIDENCE_THRESHOLD,
-  recognizeCell,
-  terminateOcrWorker,
-} from "@/lib/ocr/extract-digits";
-import { normalizeOcrText } from "@/lib/ocr/normalize-value";
 import {
   registerScannedGrades,
   undoScannedGrades,
@@ -33,6 +14,9 @@ import {
 // [F2] Estado y orquestación del Scanner Wizard (5 pasos).
 // El contexto lo aporta la vista de Notas parciales; el QR del header de la
 // planilla debe coincidir (regla dura) para habilitar el escaneo.
+// IMPORTANTE: preprocess/detect-grid/extract-digits (tesseract.js, jsqr) se
+// importan dinámicamente en los callbacks: su carga estática rompía el chunk
+// de Notas parciales en producción (TDZ al evaluar el módulo).
 
 export type ScannerStep = 1 | 2 | 3 | 4 | 5;
 
@@ -83,6 +67,8 @@ function statusFor(norm: { ok: boolean; value: number | null }, confidence: numb
   return confidence < threshold ? "low" : "ok";
 }
 
+const DEFAULT_THRESHOLD = 0.7; // igual a DEFAULT_CONFIDENCE_THRESHOLD de extract-digits
+
 export function useScannerWizard(input: ScannerContextInput, onClose: () => void) {
   const [step, setStep] = useState<ScannerStep>(1);
   const [busy, setBusy] = useState<string | null>(null);
@@ -93,7 +79,7 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
   const [rotation, setRotation] = useState(0);
   const [detection, setDetection] = useState<DetectionResult | null>(null);
   const [cells, setCells] = useState<ScannedCell[]>([]);
-  const [threshold, setThreshold] = useState(DEFAULT_CONFIDENCE_THRESHOLD);
+  const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);
   const [result, setResult] = useState<{ registered: number; snapshot: ScanSnapshotEntry[] } | null>(null);
   const [undoLeft, setUndoLeft] = useState(0);
 
@@ -102,7 +88,14 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
   const undoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const reset = useCallback(() => {
-    void terminateOcrWorker();
+    void (async () => {
+      try {
+        const { terminateOcrWorker } = await import("@/lib/ocr/extract-digits");
+        await terminateOcrWorker();
+      } catch {
+        // best-effort al liberar el worker
+      }
+    })();
     canvasRef.current = null;
     pdfFileRef.current = null;
     setStep(1);
@@ -132,6 +125,7 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
     setError(null);
     setBusy("Cargando archivo…");
     try {
+      const { renderPdfPageToCanvas } = await import("@/lib/ocr/preprocess");
       const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
       let canvas: HTMLCanvasElement;
       if (isPdf) {
@@ -225,11 +219,13 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
   );
 
   /** Paso 2: QR + detección de cuadrícula contra el layout esperado. */
-  const detect = useCallback((): DetectionResult => {
+  const detect = useCallback(async (): Promise<DetectionResult> => {
     const canvas = canvasRef.current;
     const fallbackPlan = planFromQr(null);
     if (!canvas) return { qr: null, qrMatch: false, gridOk: false, detail: "Sin imagen.", plan: fallbackPlan };
     const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+    const dg = await import("@/lib/ocr/detect-grid");
+    const pp = await import("@/lib/ocr/preprocess");
 
     // QR sobre imagen a escala reducida (jsQR es O(n)); la página completa a resolución media basta.
     let qr: QrContext | null = null;
@@ -241,7 +237,7 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
       qc.height = Math.round(canvas.height * s);
       qc.getContext("2d")!.drawImage(canvas, 0, 0, qc.width, qc.height);
       const id = qc.getContext("2d")!.getImageData(0, 0, qc.width, qc.height);
-      qr = decodeQrContext({ width: id.width, height: id.height, data: id.data });
+      qr = await dg.decodeQrContext({ width: id.width, height: id.height, data: id.data });
     } catch {
       qr = null;
     }
@@ -253,11 +249,11 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
       qr.subj === input.subjectId &&
       qr.period === input.periodId;
 
-    const gray = toGrayscale({ width: canvas.width, height: canvas.height, data: ctx.getImageData(0, 0, canvas.width, canvas.height).data });
-    const bin = denoise(binarize(gray));
-    const hLines = findHorizontalLines(bin);
-    const vLines = hLines.length >= 2 ? findVerticalLines(bin, hLines[0], hLines[hLines.length - 1]) : [];
-    const built = buildCellRects(hLines, vLines, plan);
+    const gray = pp.toGrayscale({ width: canvas.width, height: canvas.height, data: ctx.getImageData(0, 0, canvas.width, canvas.height).data });
+    const bin = pp.denoise(pp.binarize(gray));
+    const hLines = dg.findHorizontalLines(bin);
+    const vLines = hLines.length >= 2 ? dg.findVerticalLines(bin, hLines[0], hLines[hLines.length - 1]) : [];
+    const built = dg.buildCellRects(hLines, vLines, plan);
 
     let detail: string;
     if (qr && !qrMatch) {
@@ -280,18 +276,21 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
     if (!canvas) return;
     setError(null);
     setBusy("Detectando cuadrícula…");
-    const det = detection ?? detect();
+    const det = detection ?? (await detect());
     if (!det.gridOk) {
       setBusy(null);
       return;
     }
     try {
+      const dg = await import("@/lib/ocr/detect-grid");
+      const pp = await import("@/lib/ocr/preprocess");
+      const { recognizeCell } = await import("@/lib/ocr/extract-digits");
       const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
-      const gray = toGrayscale({ width: canvas.width, height: canvas.height, data: ctx.getImageData(0, 0, canvas.width, canvas.height).data });
-      const bin = denoise(binarize(gray));
-      const hLines = findHorizontalLines(bin);
-      const vLines = findVerticalLines(bin, hLines[0], hLines[hLines.length - 1]);
-      const built = buildCellRects(hLines, vLines, det.plan);
+      const gray = pp.toGrayscale({ width: canvas.width, height: canvas.height, data: ctx.getImageData(0, 0, canvas.width, canvas.height).data });
+      const bin = pp.denoise(pp.binarize(gray));
+      const hLines = dg.findHorizontalLines(bin);
+      const vLines = dg.findVerticalLines(bin, hLines[0], hLines[hLines.length - 1]);
+      const built = dg.buildCellRects(hLines, vLines, det.plan);
       if (!built) {
         setError("La cuadrícula dejó de coincidir; reajusta la alineación.");
         return;
@@ -340,7 +339,7 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
     } finally {
       setBusy(null);
     }
-  }, [detection, detect, input, threshold]);
+  }, [detection, detect, input, threshold, updateCell]);
 
   /** Edición manual en paso 4. */
   const updateCell = useCallback((key: string, raw: string) => {

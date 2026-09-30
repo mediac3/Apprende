@@ -1,15 +1,17 @@
 // [F2] Reconocimiento de dígitos manuscritos por celda (Tesseract.js local).
 // Worker único reutilizado con whitelist "0123456789.," y PSM línea única.
 // La confianza por celda alimenta el umbral de revisión del wizard (default 0.7).
+// IMPORT: tesseract.js se importa dinámicamente (su carga estática rompe el
+// chunk de Notas parciales en producción: TDZ al evaluar el módulo).
 
-import { createWorker, PSM, type Worker } from "tesseract.js";
 import { normalizeOcrText, type NormalizedGrade } from "./normalize-value";
 
-let workerPromise: Promise<Worker> | null = null;
+let workerPromise: Promise<import("tesseract.js").Worker> | null = null;
 
-async function getWorker(): Promise<Worker> {
+async function getWorker(): Promise<import("tesseract.js").Worker> {
   if (!workerPromise) {
     workerPromise = (async () => {
+      const { createWorker, PSM } = await import("tesseract.js");
       const worker = await createWorker("eng");
       await worker.setParameters({
         tessedit_char_whitelist: "0123456789.,",
