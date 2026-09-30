@@ -54,6 +54,50 @@ export function binarize(g: GrayImage, thr?: number): GrayImage {
   return { width: g.width, height: g.height, data: out };
 }
 
+// === [ICR] Preprocesado inspirado en Intelligent Character Recognition ===
+// 1) Eliminación de la rejilla guía: los puntos #B0B0B0 (~176 en gris) quedan
+//    por encima del umbral de tinta → se vuelven papel; solo sobrevive el
+//    trazo del docente. Esto evita que la rejilla se confunda con el dígito.
+// 2) Aislamiento/escalado del carácter (upscale ×3) para Tesseract.
+// 3) Charset restringido + validación contextual (normalize-value) + confianza.
+
+/** Conserva solo tinta oscura (≤inkLimit); puntos guía y papel → blanco. */
+export function removeGuideDots(g: GrayImage, inkLimit: number): GrayImage {
+  const out = new Uint8ClampedArray(g.data.length);
+  for (let i = 0; i < g.data.length; i++) out[i] = g.data[i] <= inkLimit ? 0 : 255;
+  return { width: g.width, height: g.height, data: out };
+}
+
+/** Escala una imagen gris por factor entero (vecino más cercano). */
+export function upscaleGray(g: GrayImage, factor: number): GrayImage {
+  if (factor <= 1) return g;
+  const w = g.width * factor;
+  const h = g.height * factor;
+  const out = new Uint8ClampedArray(w * h);
+  for (let y = 0; y < h; y++) {
+    const sy = Math.floor(y / factor);
+    for (let x = 0; x < w; x++) {
+      out[y * w + x] = g.data[sy * g.width + Math.floor(x / factor)];
+    }
+  }
+  return { width: w, height: h, data: out };
+}
+
+/** Vuelca una GrayImage a un canvas (para Tesseract). */
+export function grayToCanvas(g: GrayImage): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = g.width;
+  canvas.height = g.height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+  const rgba = ctx.createImageData(g.width, g.height);
+  for (let p = 0, i = 0; p < g.data.length; p++, i += 4) {
+    rgba.data[i] = rgba.data[i + 1] = rgba.data[i + 2] = g.data[p];
+    rgba.data[i + 3] = 255;
+  }
+  ctx.putImageData(rgba, 0, 0);
+  return canvas;
+}
+
 /** Denoise: apaga píxeles de tinta aislados (sin vecinos de tinta en 3x3). */
 export function denoise(b: GrayImage): GrayImage {
   const { width: w, height: h, data } = b;

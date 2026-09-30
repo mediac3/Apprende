@@ -5,10 +5,13 @@ import type { jsPDF } from "jspdf";
 // Celda guía: 5 puntos #B0B0B0 (4 esquinas + centro) según boceto, espacio para 1-3 dígitos.
 // Patrón jsPDF dinámico tomado de src/components/panel/views/consolidado/use-consolidado.ts:378.
 
-// Gris guía (regla dura: #B0B0B0, no interfiere con la escritura).
+// Gris guía (regla dura: #B0B0B0, claramente más tenue que la tinta del docente;
+// en el pipeline ICR se eliminan por umbral antes del reconocimiento).
 const GUIDE_DOT_RGB: [number, number, number] = [176, 176, 176];
-const GUIDE_DOT_RADIUS_MM = 0.42;
-const GUIDE_DOT_INSET_MM = 1.35;
+const GUIDE_DOT_RADIUS_MM = 0.25;
+const GUIDE_DOT_INSET_MM = 1.3;
+const GUIDE_DOT_COLS = 5; // 5 puntos horizontales
+const GUIDE_DOT_ROWS = 3; // 3 puntos verticales (5×3 según ejemplo del usuario)
 const BODY_ROW_MIN_HEIGHT_MM = 7.2; // espacio para escribir 1-3 dígitos a mano
 
 export interface GradeSheetHeaderInfo {
@@ -105,21 +108,21 @@ function drawPageHeader(doc: jsPDF, ctx: BuildContext): number {
   return y + 4; // startY de la tabla
 }
 
-// 5 puntos guía estilo "dado 5": 4 esquinas + centro (boceto adjunto).
+// Rejilla guía 5×3 (15 puntos, estilo del boceto del usuario): puntos pequeños
+// y claros que delimitan la zona de escritura sin confundirse con la tinta.
 function drawGuideDots(doc: jsPDF, x: number, y: number, w: number, h: number): void {
   const r = GUIDE_DOT_RADIUS_MM;
   const inset = GUIDE_DOT_INSET_MM;
-  const cx = x + w / 2;
-  const cy = y + h / 2;
-  const points: Array<[number, number]> = [
-    [x + inset, y + inset],
-    [x + w - inset, y + inset],
-    [cx, cy],
-    [x + inset, y + h - inset],
-    [x + w - inset, y + h - inset],
-  ];
+  const spanX = w - inset * 2;
+  const spanY = h - inset * 2;
   doc.setFillColor(...GUIDE_DOT_RGB);
-  for (const [px, py] of points) doc.circle(px, py, r, "F");
+  for (let row = 0; row < GUIDE_DOT_ROWS; row++) {
+    const py = spanY === 0 ? y + inset : y + inset + (spanY * row) / (GUIDE_DOT_ROWS - 1);
+    for (let col = 0; col < GUIDE_DOT_COLS; col++) {
+      const px = spanX === 0 ? x + inset : x + inset + (spanX * col) / (GUIDE_DOT_COLS - 1);
+      doc.circle(px, py, r, "F");
+    }
+  }
 }
 
 export async function buildGradeSheet(payload: GradeSheetPayload): Promise<jsPDF> {
