@@ -209,10 +209,15 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
       const ids = qr?.cc?.length ? qr.cc.filter((id) => map.has(id)) : input.concepts.map((c) => c.id);
       const concepts = ids.map((id) => {
         const c = map.get(id)!;
-        const activities = (input.activitiesByConcept[id] ?? []).map((a) => ({ id: a.id, label: a.label }));
-        return qr?.n10 === 1
-          ? padConceptToN10({ id: c.id, name: c.name, activities })
-          : { id: c.id, name: c.name, activities };
+        const all = (input.activitiesByConcept[id] ?? []).map((a) => ({ id: a.id, label: a.label }));
+        let activities: Array<{ id: string | null; label: string }> = all;
+        if (qr?.v === 3 && qr.ac && typeof qr.ac[id] === "number") {
+          // v3: solo las actividades realmente impresas (primeras N por orden)
+          activities = all.slice(0, Math.max(0, qr.ac[id]));
+        } else if (qr?.v === 2 && qr.n10 === 1) {
+          activities = padConceptToN10({ id: c.id, name: c.name, activities: all }).activities;
+        }
+        return { id: c.id, name: c.name, activities };
       });
       return { concepts, includeProm: qr ? qr.prom !== 0 : true, studentCount: input.students.length };
     },

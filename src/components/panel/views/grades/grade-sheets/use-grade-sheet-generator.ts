@@ -3,10 +3,10 @@
 import QRCode from "qrcode";
 import {
   buildGradeSheet,
-  padConceptToN10,
   type GradeSheetConcept,
   type GradeSheetPayload,
 } from "@/lib/pdf/grade-sheet";
+import { createSheetActivities } from "@/lib/actions/grade-sheet-activities";
 
 // [F1] Hook de generación de planillas imprimibles: arma el payload desde el
 // contexto de Notas parciales (grupo/asignatura/periodo seleccionados), genera el
@@ -36,8 +36,8 @@ export interface GradeSheetOptions {
   journey: string;
   conceptIds: string[];
   includeProm: boolean;
-  /** false → solo actividades creadas; true → bloque fijo N1..N10 por concepto */
-  fillToN10: boolean;
+  /** Total de actividades a IMPRIMIR por concepto (≥ creadas; el déficit se crea en BD) */
+  totals: Record<string, number>;
   size: "a4" | "letter";
 }
 
@@ -63,30 +63,83 @@ export function gradeSheetFileName(groupName: string, periodName: string): strin
   return `planilla-${clean(groupName)}-${clean(periodName)}.pdf`;
 }
 
+/**
+ * Crea en BD las actividades que falten para alcanzar el total configurado
+ * por concepto y devuelve el catálogo actualizado (incluye las nuevas).
+ */
+export async function ensureActivitiesForTotals(
+  input: GradeSheetGeneratorInput,
+  opts: GradeSheetOptions
+): Promise<Record<string, Array<{ id: string; label: string }>>> {
+  const perConcept = opts.conceptIds
+    .map((cid) => {
+      const createdCount = (input.activitiesByConcept[cid] ?? []).length;
+      const total = Math.max(0, opts.totals[cid] ?? createdCount);
+      return { conceptId: cid, count: Math.max(0, total - createdCount) };
+    })
+    .filter((p) => p.count > 0);
+  if (perConcept.length === 0) return input.activitiesByConcept;
+
+  const res = await createSheetActivities({
+    userId: input.userId,
+    institutionId: input.institutionId,
+    groupId: input.groupId,
+    subjectId: input.subjectId,
+    periodId: input.periodId,
+    perConcept,
+  });
+  if (!res.success || !res.created) {
+    throw new Error(res.error ?? "No se pudieron crear las actividades nuevas.");
+  }
+  const merged: Record<string, Array<{ id: string; label: string }>> = {
+    ...input.activitiesByConcept,
+  };
+  for (const c of res.created) {
+    const list = merged[c.conceptId] ?? (merged[c.conceptId] = []);
+    list.push({ id: c.activityId, label: `N${c.order}` });
+    list.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+  }
+  return merged;
+}
+
+/** Cuenta cuántas actividades nuevas se crearían con estos totales. */
+export function countNewActivities(
+  input: GradeSheetGeneratorInput,
+  opts: GradeSheetOptions
+): number {
+  return opts.conceptIds.reduce((acc, cid) => {
+    const createdCount = (input.activitiesByConcept[cid] ?? []).length;
+    const total = Math.max(0, opts.totals[cid] ?? createdCount);
+    return acc + Math.max(0, total - createdCount);
+  }, 0);
+}
+
 export async function buildGradeSheetPayload(
   input: GradeSheetGeneratorInput,
   opts: GradeSheetOptions
 ): Promise<GradeSheetPayload> {
   const selected = input.concepts.filter((c) => opts.conceptIds.includes(c.id));
   const concepts: GradeSheetConcept[] = selected.map((c) => {
-    const acts = (input.activitiesByConcept[c.id] ?? []).map((a) => ({
-      id: a.id,
-      label: a.label,
-    }));
-    return opts.fillToN10 ? padConceptToN10({ id: c.id, name: c.name, activities: acts }) : { id: c.id, name: c.name, activities: acts };
+    const all = (input.activitiesByConcept[c.id] ?? []).map((a) => ({ id: a.id, label: a.label }));
+    const total = Math.max(0, opts.totals[c.id] ?? all.length);
+    // imprime las primeras `total`; si el catálogo aún no alcanza, rellena con id null (solo papel)
+    const printed = Array.from({ length: total }, (_, i) =>
+      all[i] ?? { id: null as string | null, label: `N${i + 1}` }
+    );
+    return { id: c.id, name: c.name, activities: printed };
   });
 
-  // QR identificador (v2): el scanner [F2] reconstruye el layout exacto impreso.
+  // QR identificador (v3): el scanner reconstruye el layout exacto impreso.
   const qrPayload = JSON.stringify({
-    v: 2,
+    v: 3,
     inst: input.institutionId,
     group: input.groupId,
     subj: input.subjectId,
     period: input.periodId,
     year: input.yearLabel,
     prom: opts.includeProm ? 1 : 0,
-    n10: opts.fillToN10 ? 1 : 0,
     cc: opts.conceptIds,
+    ac: Object.fromEntries(selected.map((c) => [c.id, opts.totals[c.id] ?? (input.activitiesByConcept[c.id] ?? []).length])),
   });
   let qrDataUrl: string | null = null;
   try {
@@ -155,7 +208,10 @@ export async function generateGradeSheet(
   opts: GradeSheetOptions,
   mode: "preview" | "download"
 ): Promise<void> {
-  const payload = await buildGradeSheetPayload(input, opts);
+  // 1) crea en BD las actividades que falten para los totales configurados
+  const activitiesByConcept = await ensureActivitiesForTotals(input, opts);
+  // 2) arma el payload con el catálogo actualizado
+  const payload = await buildGradeSheetPayload({ ...input, activitiesByConcept }, opts);
   if (payload.concepts.length === 0) throw new Error("Selecciona al menos un concepto");
   const doc = await buildGradeSheet(payload);
   const fileName = gradeSheetFileName(input.groupName, input.periodName);

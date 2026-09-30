@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  countNewActivities,
   generateGradeSheet,
   type GradeSheetGeneratorInput,
 } from "./use-grade-sheet-generator";
@@ -42,16 +43,27 @@ export function GradeSheetModal({ open, onOpenChange, input }: GradeSheetModalPr
   const [journey, setJourney] = useState("");
   const [conceptIds, setConceptIds] = useState<string[]>(input.concepts.map((c) => c.id));
   const [includeProm, setIncludeProm] = useState(true);
-  const [fillToN10, setFillToN10] = useState(false);
+  // [F1] total de actividades a imprimir por concepto (déficit se crea en BD)
+  const [totals, setTotals] = useState<Record<string, number>>(() =>
+    Object.fromEntries(
+      input.concepts.map((c) => [c.id, Math.max(1, (input.activitiesByConcept[c.id] ?? []).length)])
+    )
+  );
   const [size, setSize] = useState<"a4" | "letter">("a4");
   const [busy, setBusy] = useState<null | "preview" | "download">(null);
+
+  const optsForCount = useMemo(
+    () => ({ teacher: "", journey: "", conceptIds, includeProm, totals, size }),
+    [conceptIds, includeProm, totals, size]
+  );
+  const newCount = useMemo(() => countNewActivities(input, optsForCount), [input, optsForCount]);
 
   const summary = useMemo(() => {
     const cols = input.concepts
       .filter((c) => conceptIds.includes(c.id))
-      .reduce((acc, c) => acc + 1 + (fillToN10 ? 10 : (input.activitiesByConcept[c.id] ?? []).length), 0);
+      .reduce((acc, c) => acc + Math.max(1, totals[c.id] ?? 1), 0);
     return `${input.students.length} estudiantes · ${conceptIds.length} concepto(s) · ${cols} columnas`;
-  }, [input, conceptIds, fillToN10]);
+  }, [input, conceptIds, totals]);
 
   function toggleConcept(id: string) {
     setConceptIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -66,7 +78,7 @@ export function GradeSheetModal({ open, onOpenChange, input }: GradeSheetModalPr
     try {
       await generateGradeSheet(
         input,
-        { teacher: teacher.trim() || "Todos", journey: journey.trim() || "—", conceptIds, includeProm, fillToN10, size },
+        { teacher: teacher.trim() || "Todos", journey: journey.trim() || "—", conceptIds, includeProm, totals, size },
         mode
       );
       if (mode === "preview") toast.success("Vista previa abierta en una pestaña nueva");
@@ -131,18 +143,59 @@ export function GradeSheetModal({ open, onOpenChange, input }: GradeSheetModalPr
             </ScrollArea>
           </div>
 
-          <div className="grid gap-2">
-            <Label>Actividades por concepto</Label>
-            <RadioGroup value={fillToN10 ? "n10" : "creadas"} onValueChange={(v) => setFillToN10(v === "n10")} className="flex flex-col gap-1">
-              <label className="flex cursor-pointer items-center gap-2 text-sm">
-                <RadioGroupItem value="creadas" /> Solo las creadas
-              </label>
-              <label className="flex cursor-pointer items-center gap-2 text-sm">
-                <RadioGroupItem value="n10" /> Bloque fijo N1..N10 (vacías para llenar a mano)
-              </label>
-            </RadioGroup>
+          <div className="grid gap-1.5">
+            <div className="flex items-center justify-between">
+              <Label>Actividades por concepto</Label>
+              <span className="text-[11px] text-muted-foreground">Total a imprimir</span>
+            </div>
+            <ScrollArea className="h-32 rounded-md border p-2">
+              {input.concepts.map((c) => {
+                const created = (input.activitiesByConcept[c.id] ?? []).length;
+                const total = totals[c.id] ?? created;
+                const willCreate = Math.max(0, total - created);
+                return (
+                  <div key={c.id} className="flex items-center justify-between gap-2 rounded px-1 py-1">
+                    <label
+                      className={cn(
+                        "flex flex-1 cursor-pointer items-center gap-2 text-sm",
+                        !conceptIds.includes(c.id) && "opacity-50"
+                      )}
+                    >
+                      <Checkbox
+                        checked={conceptIds.includes(c.id)}
+                        onCheckedChange={() => toggleConcept(c.id)}
+                      />
+                      {c.name}
+                      <span className="text-[11px] text-muted-foreground">({created} creadas)</span>
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={total}
+                        disabled={!conceptIds.includes(c.id)}
+                        onChange={(e) => {
+                          const v = Math.max(1, Math.min(20, Number(e.target.value) || 1));
+                          setTotals((prev) => ({ ...prev, [c.id]: v }));
+                        }}
+                        className="h-7 w-16 text-xs"
+                        aria-label={`Total de actividades para ${c.name}`}
+                      />
+                      {willCreate > 0 && (
+                        <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                          +{willCreate} nuevas
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </ScrollArea>
             <p className="text-[11px] text-muted-foreground">
-              Las celdas sin actividad creada en el sistema no pueden registrarse desde el scanner.
+              {newCount > 0
+                ? `Se crearán ${newCount} actividad(es) nueva(s) en el sistema (N${"\u2026"}) antes de generar el PDF; podrán renombrarse en Gestión de Actividades.`
+                : "Se imprimen solo las actividades ya creadas."}
             </p>
           </div>
 

@@ -15,10 +15,11 @@ export interface QrContext {
   subj: string;
   period: string;
   year: string;
-  /** v2: opciones de layout con las que se generó la planilla */
+  /** v2/v3: opciones de layout con las que se generó la planilla */
   prom?: number; // 1 → columna PROM incluida
-  n10?: number; // 1 → bloques fijos N1..N10
+  n10?: number; // v2: 1 → bloques fijos N1..N10
   cc?: string[]; // conceptos seleccionados al generar (orden = columnas)
+  ac?: Record<string, number>; // v3: actividades IMPRESAS por concepto (orden de columnas)
 }
 
 /** Decodifica el QR del header (requiere ImageData RGBA completo de la página). */
@@ -32,7 +33,7 @@ export async function decodeQrContext(rgba: {
   if (!code?.data) return null;
   try {
     const ctx = JSON.parse(code.data) as QrContext;
-    return ctx && (ctx.v === 1 || ctx.v === 2) && ctx.group && ctx.subj && ctx.period ? ctx : null;
+    return ctx && (ctx.v === 1 || ctx.v === 2 || ctx.v === 3) && ctx.group && ctx.subj && ctx.period ? ctx : null;
   } catch {
     return null;
   }
