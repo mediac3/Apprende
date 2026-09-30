@@ -257,7 +257,8 @@ export function CalificacionesView() {
       subjectId: activeSubject.subjectId,
       subjectName: activeSubject.subjectName,
       periodId: selectedPeriodId,
-      periodName: period ? periodLabel(period) : "—",
+      // inline de periodLabel (declarado más abajo en el componente; evitar TDZ en el memo)
+      periodName: period ? [yearLabel, period.name].filter(Boolean).join(" - ") : "—",
       defaultTeacher: user.fullName || "Todos",
       concepts: modelConcepts.map((c) => ({ id: c.id, name: c.name })),
       activitiesByConcept: byConcept,

@@ -172,6 +172,7 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
     if (!file) return;
     setBusy("Cargando página…");
     try {
+      const { renderPdfPageToCanvas } = await import("@/lib/ocr/preprocess");
       const canvas = await renderPdfPageToCanvas(file, n);
       canvasRef.current = canvas;
       setPageNumber(n);
@@ -339,7 +340,7 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
     } finally {
       setBusy(null);
     }
-  }, [detection, detect, input, threshold, updateCell]);
+  }, [detection, detect, input, threshold]);
 
   /** Edición manual en paso 4. */
   const updateCell = useCallback((key: string, raw: string) => {
