@@ -1000,6 +1000,7 @@ model Role {
   createdAt     DateTime @default(now())
 
   users         UserRole[]
+  permissions   RolePermission[]
 
   @@unique([institutionId, code])
 }
@@ -1015,6 +1016,27 @@ model UserRole {
   role      Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
+  @@index([roleId])
+}
+
+// --- Matriz de permisos Rol × Módulo [F1] ---
+// Una fila por (rol, módulo). Si no existe fila, aplican los defaults de
+// src/lib/permissions/modules.ts (derivados del acceso histórico del NAV),
+// de modo que el seed nunca sobreescribe configuraciones explícitas.
+// El rol `administrador` siempre tiene todo (bypass en server, fila bloqueada en UI).
+model RolePermission {
+  id        String   @id @default(cuid())
+  roleId    String
+  role      Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  moduleKey String
+  canView   Boolean  @default(false)
+  canCreate Boolean  @default(false)
+  canEdit   Boolean  @default(false)
+  canDelete Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@unique([roleId, moduleKey])
   @@index([roleId])
 }
 
