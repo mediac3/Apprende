@@ -42,6 +42,7 @@ import {
   Palette,
   Table2,
   Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +75,7 @@ import { GroupDirectionView } from "./views/group-direction-view";
 import { MessagesView } from "./views/messages-view";
 import { AcademicoView } from "./views/academico-view";
 import { ThemeOptionsView } from "./views/theme-options-view";
+import { PermissionsView } from "./views/permissions/permissions-view";
 import { useThemeOptionsStore } from "@/store/theme-options-store";
 import { CustomModuleBuilderView } from "./views/custom-module-builder-view";
 import { CustomModuleRuntimeView } from "./views/custom-module-runtime-view";
@@ -161,6 +163,8 @@ const NAV: NavItem[] = [
   { key: "configuracion", label: "Configuración", icon: Settings, group: "Administración", roles: ["rector", "administrador"] },
   // [theme-options] Opciones de Tema — configuración global del sitio
   { key: "opciones-tema", label: "Opciones de tema", icon: Palette, group: "Administración", roles: ["rector", "administrador"] },
+  // [F1] Matriz de permisos por rol — solo administrador
+  { key: "permisos", label: "Permisos", icon: ShieldCheck, group: "Administración", roles: ["administrador"] },
 
   // Constructor de módulos — admin
   { key: "custom-module-builder", label: "Constructor de módulos", icon: Boxes, group: "Constructor", roles: ["administrador"] },
@@ -322,6 +326,9 @@ export function InstitutionalPanel() {
       // [theme-options] Opciones de Tema
       case "opciones-tema":
         return <ThemeOptionsView />;
+      // [F1] Matriz de permisos
+      case "permisos":
+        return <PermissionsView />;
       case "usuarios":
         return <UsersView />;
       case "gestion-grupos":
