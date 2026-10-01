@@ -79,7 +79,7 @@ const SECTIONS: { key: SectionKey; label: string; icon: typeof ImageIcon }[] = [
   { key: "importExport", label: "Importación / Exportación", icon: FileDown },
 ];
 
-const EDITOR_ROLES = ["rector", "administrativo"];
+const EDITOR_ROLES = ["rector", "administrador"];
 
 export function ThemeOptionsView() {
   const user = useAuthStore((s) => s.user);
@@ -214,7 +214,7 @@ export function ThemeOptionsView() {
       )}
       {!canEdit && (
         <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
-          Solo rector o administrativo pueden modificar el tema.
+          Solo rector o administrador pueden modificar el tema.
         </div>
       )}
 

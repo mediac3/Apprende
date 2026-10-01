@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { getActiveYear, getUserRoleCodes, hasElevatedRole } from "@/lib/teaching-rules";
 
 // === [M1] Asignación académica: docente por (grupo, asignatura, año) ===
-// Solo roles elevados (rector/coordinador/administrativo) pueden leer-escribir la matriz.
+// Solo roles elevados (rector/coordinador/administrador) pueden leer-escribir la matriz.
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     const roles = await getUserRoleCodes(userId);
     if (!hasElevatedRole(roles)) {
       return NextResponse.json(
-        { ok: false, error: "FORBIDDEN", message: "Solo rector, coordinador o administrativo pueden editar la asignación académica" },
+        { ok: false, error: "FORBIDDEN", message: "Solo rector, coordinador o administrador pueden editar la asignación académica" },
         { status: 403 }
       );
     }

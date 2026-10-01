@@ -25,7 +25,7 @@ const DEFAULT_ROLES: { code: string; name: string; sortOrder: number }[] = [
   { code: "orientador", name: "PSI - Docente Orientador", sortOrder: 5 },
   { code: "acudiente", name: "Contacto familiar", sortOrder: 6 },
   { code: "estudiante", name: "Estudiante", sortOrder: 7 },
-  { code: "administrativo", name: "Administrador", sortOrder: 8 },
+  { code: "administrador", name: "Administrador", sortOrder: 8 },
   // Roles adicionales del módulo de usuarios (PDF de referencia)
   { code: "supervisor", name: "Supervisor", sortOrder: 9 },
   { code: "auxiliar_principal", name: "Auxiliar principal", sortOrder: 10 },

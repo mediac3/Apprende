@@ -6,8 +6,8 @@ import { db } from "@/lib/db";
 
 // Roles con permiso elevado: pueden editar la matriz de asignación académica y
 // pueden modificar notas/actividades de cualquier par (grupo, asignatura) — [R1].
-// (Decisión de negocio 2026-09-22: rector + coordinador + administrativo.)
-export const ELEVATED_ROLES = ["rector", "coordinador", "administrativo"] as const;
+// (Decisión de negocio 2026-09-22: rector + coordinador + administrador.)
+export const ELEVATED_ROLES = ["rector", "coordinador", "administrador"] as const;
 
 // Único estado de matrícula que cuenta como estudiante activo para planillas y
 // listados por grupo — [R2]. "renovado" = matrícula del año activa.

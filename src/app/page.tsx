@@ -14,12 +14,12 @@ export default function Home() {
   const user = useAuthStore((s) => s.user);
   const [loginOpen, setLoginOpen] = useState(false);
   const setModule = useUIStore((s) => s.setModule);
-  // [theme-options] Modo Mantenimiento: visible para todos menos rector/administrativo
+  // [theme-options] Modo Mantenimiento: visible para todos menos rector/administrador
   const sharedTheme = useThemeOptionsStore((s) => s.theme);
   const roles = user?.roles?.length ? user.roles : user?.role ? [user.role] : [];
   const maintenanceActive =
     Boolean(sharedTheme?.maintenance.enabled) &&
-    (!user || !roles.some((r) => ["rector", "administrativo"].includes(r)));
+    (!user || !roles.some((r) => ["rector", "administrador"].includes(r)));
 
   // Detectar query param ?module=... (para deep links desde PWA shortcuts)
   useEffect(() => {

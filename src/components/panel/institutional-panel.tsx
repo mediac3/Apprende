@@ -116,7 +116,7 @@ const NAV: NavItem[] = [
   // [F2] Consolidado anual — junto a Notas parciales
   { key: "consolidado", label: "Consolidado anual", icon: Table2, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
   // Base de conocimientos: materiales y documentos por categoría (embed URL + IA)
-  { key: "base-conocimientos", label: "Base de conocimientos", icon: BookOpen, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "administrativo", "rector"] },
+  { key: "base-conocimientos", label: "Base de conocimientos", icon: BookOpen, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "administrador", "rector"] },
   // [F3] Gestión de Actividades — junto a Notas parciales (decisión del usuario)
   { key: "gestion-actividades", label: "Gestión de Actividades", icon: ListChecks, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
   { key: "pre-informe", label: "Pre-Informe", icon: Bell, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
@@ -133,54 +133,54 @@ const NAV: NavItem[] = [
   { key: "convivencia", label: "Convivencia escolar", icon: Shield, group: "Convivencia", roles: ["director_grupo", "orientador", "coordinador", "rector"] },
   { key: "orientacion", label: "Orientación escolar", icon: HeartHandshake, group: "Convivencia", roles: ["orientador", "coordinador", "rector"] },
   { key: "notas-acudientes", label: "Notas para acudientes", icon: Star, group: "Convivencia", roles: ["director_grupo", "acudiente"] },
-  { key: "sms", label: "Comunicación SMS", icon: Smartphone, group: "Convivencia", roles: ["director_grupo", "coordinador", "rector", "administrativo"] },
+  { key: "sms", label: "Comunicación SMS", icon: Smartphone, group: "Convivencia", roles: ["director_grupo", "coordinador", "rector", "administrador"] },
 
   // Comunidad
   { key: "comunidad", label: "Comunidad (Feed)", icon: MessageSquare, group: "Comunidad" },
   { key: "mensajeria", label: "Mensajería directa", icon: MessageSquare, group: "Comunidad" },
-  { key: "gobierno-escolar", label: "Gobierno escolar", icon: Vote, group: "Comunidad", roles: ["rector", "coordinador", "administrativo", "estudiante", "acudiente", "docente"] },
-  { key: "inscripcion", label: "Inscripción en línea", icon: FileText, group: "Comunidad", roles: ["administrativo", "rector", "acudiente"] },
-  { key: "pre-matricula", label: "Pre-Matrícula", icon: Users, group: "Comunidad", roles: ["administrativo", "rector", "acudiente"] },
+  { key: "gobierno-escolar", label: "Gobierno escolar", icon: Vote, group: "Comunidad", roles: ["rector", "coordinador", "administrador", "estudiante", "acudiente", "docente"] },
+  { key: "inscripcion", label: "Inscripción en línea", icon: FileText, group: "Comunidad", roles: ["administrador", "rector", "acudiente"] },
+  { key: "pre-matricula", label: "Pre-Matrícula", icon: Users, group: "Comunidad", roles: ["administrador", "rector", "acudiente"] },
 
   // Administración
-  { key: "usuarios", label: "Usuarios", icon: UserCog, group: "Administración", roles: ["rector", "administrativo"] },
-  { key: "gestion-grupos", label: "Gestión de Grupos", icon: Users, group: "Administración", roles: ["rector", "administrativo"] },
-  { key: "gestion-estudiantes", label: "Gestión de Estudiantes", icon: GraduationCap, group: "Administración", roles: ["rector", "administrativo"] },
-  { key: "importar-estudiantes", label: "Importar estudiantes", icon: FileSpreadsheet, group: "Administración", roles: ["rector", "administrativo"] },
-  { key: "modelos-educativos", label: "Modelos educativos", icon: School, group: "Administración", roles: ["rector", "coordinador", "administrativo"] },
-  { key: "conceptos-evaluativos", label: "Conceptos evaluativos", icon: ClipboardList, group: "Administración", roles: ["rector", "administrativo"], hidden: true },
-  { key: "libros", label: "Libros reglamentarios", icon: BookOpen, group: "Administración", roles: ["rector", "administrativo", "coordinador"] },
-  { key: "actas", label: "Actas institucionales", icon: FileText, group: "Administración", roles: ["rector", "coordinador", "administrativo"] },
-  { key: "matricula", label: "Matrícula", icon: ClipboardCheck, group: "Administración", roles: ["rector", "administrativo"] },
+  { key: "usuarios", label: "Usuarios", icon: UserCog, group: "Administración", roles: ["rector", "administrador"] },
+  { key: "gestion-grupos", label: "Gestión de Grupos", icon: Users, group: "Administración", roles: ["rector", "administrador"] },
+  { key: "gestion-estudiantes", label: "Gestión de Estudiantes", icon: GraduationCap, group: "Administración", roles: ["rector", "administrador"] },
+  { key: "importar-estudiantes", label: "Importar estudiantes", icon: FileSpreadsheet, group: "Administración", roles: ["rector", "administrador"] },
+  { key: "modelos-educativos", label: "Modelos educativos", icon: School, group: "Administración", roles: ["rector", "coordinador", "administrador"] },
+  { key: "conceptos-evaluativos", label: "Conceptos evaluativos", icon: ClipboardList, group: "Administración", roles: ["rector", "administrador"], hidden: true },
+  { key: "libros", label: "Libros reglamentarios", icon: BookOpen, group: "Administración", roles: ["rector", "administrador", "coordinador"] },
+  { key: "actas", label: "Actas institucionales", icon: FileText, group: "Administración", roles: ["rector", "coordinador", "administrador"] },
+  { key: "matricula", label: "Matrícula", icon: ClipboardCheck, group: "Administración", roles: ["rector", "administrador"] },
   // [F3] Promoción de grado — junto a Matrícula
-  { key: "promocion", label: "Promoción de grado", icon: GraduationCap, group: "Administración", roles: ["rector", "administrativo"] },
-  { key: "asignacion", label: "Asignación académica", icon: Building2, group: "Administración", roles: ["rector", "coordinador", "administrativo"] },
-  { key: "periodos", label: "Periodos académicos", icon: Calendar, group: "Administración", roles: ["rector", "coordinador", "administrativo"], hidden: true },
-  { key: "talento-humano", label: "Talento Humano", icon: Users, group: "Administración", roles: ["rector", "administrativo"] },
-  { key: "auditoria", label: "Auditoría", icon: ScrollText, group: "Administración", roles: ["rector", "administrativo"] },
-  { key: "configuracion", label: "Configuración", icon: Settings, group: "Administración", roles: ["rector", "administrativo"] },
+  { key: "promocion", label: "Promoción de grado", icon: GraduationCap, group: "Administración", roles: ["rector", "administrador"] },
+  { key: "asignacion", label: "Asignación académica", icon: Building2, group: "Administración", roles: ["rector", "coordinador", "administrador"] },
+  { key: "periodos", label: "Periodos académicos", icon: Calendar, group: "Administración", roles: ["rector", "coordinador", "administrador"], hidden: true },
+  { key: "talento-humano", label: "Talento Humano", icon: Users, group: "Administración", roles: ["rector", "administrador"] },
+  { key: "auditoria", label: "Auditoría", icon: ScrollText, group: "Administración", roles: ["rector", "administrador"] },
+  { key: "configuracion", label: "Configuración", icon: Settings, group: "Administración", roles: ["rector", "administrador"] },
   // [theme-options] Opciones de Tema — configuración global del sitio
-  { key: "opciones-tema", label: "Opciones de tema", icon: Palette, group: "Administración", roles: ["rector", "administrativo"] },
+  { key: "opciones-tema", label: "Opciones de tema", icon: Palette, group: "Administración", roles: ["rector", "administrador"] },
 
   // Constructor de módulos — admin
-  { key: "custom-module-builder", label: "Constructor de módulos", icon: Boxes, group: "Constructor", roles: ["administrativo"] },
+  { key: "custom-module-builder", label: "Constructor de módulos", icon: Boxes, group: "Constructor", roles: ["administrador"] },
   // Aprobación de módulos — rector
   { key: "module-approvals", label: "Aprobar módulos", icon: CheckCircle, group: "Constructor", roles: ["rector"] },
 
-  // Parámetros del sistema (PDF) — rector y administrativo
-  { key: "param-academic-years", label: "Años académicos", icon: Calendar, group: "Parámetros", roles: ["rector", "administrativo"] },
-  { key: "param-institution", label: "Institución", icon: Building2, group: "Parámetros", roles: ["rector", "administrativo"] },
-  { key: "param-subjects", label: "Asignaturas", icon: BookOpen, group: "Parámetros", roles: ["rector", "administrativo"] },
-  { key: "param-curriculum-plans", label: "Plan de estudios", icon: ListTree, group: "Parámetros", roles: ["rector", "administrativo"] },
-  { key: "param-evaluation-scales", label: "Escalas valorativas", icon: Scale, group: "Parámetros", roles: ["rector", "administrativo"] },
-  { key: "param-indicator-adjectives", label: "Adjetivos indicadores", icon: FileText, group: "Parámetros", roles: ["rector", "administrativo"] },
-  { key: "param-branches", label: "Sedes", icon: MapPin, group: "Parámetros", roles: ["rector", "administrativo"] },
-  { key: "param-journeys", label: "Jornadas", icon: Clock, group: "Parámetros", roles: ["rector", "administrativo"] },
-  { key: "param-report-templates", label: "Plantillas de reportes", icon: FileText, group: "Parámetros", roles: ["rector", "administrativo"] },
-  { key: "param-report-variables", label: "Variables de reporte", icon: Variable, group: "Parámetros", roles: ["rector", "administrativo"] },
+  // Parámetros del sistema (PDF) — rector y administrador
+  { key: "param-academic-years", label: "Años académicos", icon: Calendar, group: "Parámetros", roles: ["rector", "administrador"] },
+  { key: "param-institution", label: "Institución", icon: Building2, group: "Parámetros", roles: ["rector", "administrador"] },
+  { key: "param-subjects", label: "Asignaturas", icon: BookOpen, group: "Parámetros", roles: ["rector", "administrador"] },
+  { key: "param-curriculum-plans", label: "Plan de estudios", icon: ListTree, group: "Parámetros", roles: ["rector", "administrador"] },
+  { key: "param-evaluation-scales", label: "Escalas valorativas", icon: Scale, group: "Parámetros", roles: ["rector", "administrador"] },
+  { key: "param-indicator-adjectives", label: "Adjetivos indicadores", icon: FileText, group: "Parámetros", roles: ["rector", "administrador"] },
+  { key: "param-branches", label: "Sedes", icon: MapPin, group: "Parámetros", roles: ["rector", "administrador"] },
+  { key: "param-journeys", label: "Jornadas", icon: Clock, group: "Parámetros", roles: ["rector", "administrador"] },
+  { key: "param-report-templates", label: "Plantillas de reportes", icon: FileText, group: "Parámetros", roles: ["rector", "administrador"] },
+  { key: "param-report-variables", label: "Variables de reporte", icon: Variable, group: "Parámetros", roles: ["rector", "administrador"] },
   // [F3] Criterios de promoción escolar
-  { key: "param-promocion", label: "Promoción escolar", icon: GraduationCap, group: "Parámetros", roles: ["rector", "administrativo"] },
-  { key: "param-ai", label: "Inteligencia artificial", icon: Sparkles, group: "Parámetros", roles: ["rector", "administrativo"] },
+  { key: "param-promocion", label: "Promoción escolar", icon: GraduationCap, group: "Parámetros", roles: ["rector", "administrador"] },
+  { key: "param-ai", label: "Inteligencia artificial", icon: Sparkles, group: "Parámetros", roles: ["rector", "administrador"] },
 ];
 
 // [F3] Informes académicos: informe valorativo (nuevo) + planilla legada de notas
@@ -550,7 +550,7 @@ function roleLabel(r: string) {
     orientador: "Orientación",
     acudiente: "Acudiente",
     estudiante: "Estudiante",
-    administrativo: "Administrativo",
+    administrador: "Administrador",
   };
   return m[r] || r;
 }

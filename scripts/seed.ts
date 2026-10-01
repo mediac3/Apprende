@@ -109,7 +109,7 @@ async function main() {
     { code: "orientador", name: "PSI - Docente Orientador", sortOrder: 5 },
     { code: "acudiente", name: "Contacto familiar", sortOrder: 6 },
     { code: "estudiante", name: "Estudiante", sortOrder: 7 },
-    { code: "administrativo", name: "Administrador", sortOrder: 8 },
+    { code: "administrador", name: "Administrador", sortOrder: 8 },
     { code: "supervisor", name: "Supervisor", sortOrder: 9 },
     { code: "auxiliar_principal", name: "Auxiliar principal", sortOrder: 10 },
     { code: "asistente_matricula", name: "Asistente de matrícula", sortOrder: 11 },
@@ -195,11 +195,11 @@ async function main() {
     jobTitle: "Acudiente",
   })
 
-  const administrativo = await createUser({
-    username: "administrativo",
+  const administrador = await createUser({
+    username: "administrador",
     password: SEED_PASSWORD,
     fullName: "Sandra Patricia Villegas Loaiza",
-    role: "administrativo",
+    role: "administrador",
     email: "svillegas@ieaulnea.edu.co",
     phone: "+57 310 555 1007",
     jobTitle: "Constructor de módulos y sistemas",
@@ -715,7 +715,7 @@ async function main() {
   const mod1 = await db.customModule.create({
     data: {
       institutionId: inst.id,
-      createdById: administrativo.id,
+      createdById: administrador.id,
       name: "Permiso de salida estudiantil",
       slug: "permiso_salida",
       description: "Solicitud formal de permiso para que un estudiante salga del colegio durante la jornada escolar.",
@@ -748,10 +748,10 @@ async function main() {
       publishedAt: new Date(),
       publishedById: rector.id,
       status: "published",
-      visibleRolesJson: JSON.stringify(["director_grupo", "coordinador", "rector", "acudiente", "administrativo"]),
+      visibleRolesJson: JSON.stringify(["director_grupo", "coordinador", "rector", "acudiente", "administrador"]),
       canCreateRolesJson: JSON.stringify(["director_grupo", "coordinador", "acudiente"]),
       canEditRolesJson: JSON.stringify(["coordinador", "rector"]),
-      canDeleteRolesJson: JSON.stringify(["rector", "administrativo"]),
+      canDeleteRolesJson: JSON.stringify(["rector", "administrador"]),
     },
   });
 
@@ -759,7 +759,7 @@ async function main() {
   const mod2 = await db.customModule.create({
     data: {
       institutionId: inst.id,
-      createdById: administrativo.id,
+      createdById: administrador.id,
       name: "Solicitud de cita con orientación",
       slug: "cita_orientacion",
       description: "Solicite una cita con el departamento de orientación escolar para atención individual o grupal.",
@@ -806,10 +806,10 @@ async function main() {
       publishedAt: new Date(),
       publishedById: rector.id,
       status: "published",
-      visibleRolesJson: JSON.stringify(["docente", "director_grupo", "coordinador", "rector", "orientador", "acudiente", "administrativo"]),
+      visibleRolesJson: JSON.stringify(["docente", "director_grupo", "coordinador", "rector", "orientador", "acudiente", "administrador"]),
       canCreateRolesJson: JSON.stringify(["docente", "director_grupo", "coordinador", "acudiente"]),
       canEditRolesJson: JSON.stringify(["orientador", "coordinador", "rector"]),
-      canDeleteRolesJson: JSON.stringify(["rector", "administrativo"]),
+      canDeleteRolesJson: JSON.stringify(["rector", "administrador"]),
     },
   });
 
@@ -1097,7 +1097,7 @@ async function main() {
   console.log(`  ▸ Docente:        docente / ${SEED_PASSWORD}`)
   console.log(`  ▸ Orientador:     orientacion / ${SEED_PASSWORD}`)
   console.log(`  ▸ Acudiente:      acudiente / ${SEED_PASSWORD}`)
-  console.log(`  ▸ Administrativo: administrativo / ${SEED_PASSWORD}`)
+  console.log(`  ▸ Administrador:  administrador / ${SEED_PASSWORD}`)
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 }
 

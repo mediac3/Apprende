@@ -5,10 +5,10 @@ import { normalizeThemeData, serializeThemeData, themeDataSchema } from "@/lib/t
 
 // [theme-options] API del módulo Opciones de Tema.
 // GET  ?institutionId=... → configuración normalizada (o defaults si no existe fila).
-// PUT  { institutionId, userId, data } → upsert. Solo rector/administrativo (verificado en BD).
+// PUT  { institutionId, userId, data } → upsert. Solo rector/administrador (verificado en BD).
 // Prisma parametriza todas las consultas (sin SQL por concatenación).
 
-const EDITOR_ROLES = ["rector", "administrativo"];
+const EDITOR_ROLES = ["rector", "administrador"];
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -42,7 +42,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "institutionId y userId requeridos" }, { status: 400 });
     }
 
-    // Solo rector/administrativo pueden guardar el tema (validación en BD, no confiar en el cliente).
+    // Solo rector/administrador pueden guardar el tema (validación en BD, no confiar en el cliente).
     const user = await db.user.findFirst({
       where: { id: userId, institutionId, role: { in: EDITOR_ROLES }, active: true },
       select: { id: true },

@@ -70,7 +70,7 @@ model Institution {
 }
 
 // UserRole (códigos del catálogo Role): rector, coordinador, director_grupo,
-// docente, orientador, acudiente, estudiante, administrativo + roles adicionales
+// docente, orientador, acudiente, estudiante, administrador + roles adicionales
 // del módulo de usuarios (tesoreria, asistente_matricula, tercero...).
 // User.role conserva el rol principal (menor sortOrder) sincronizado desde
 // UserRole para compatibilidad con la sesión y el filtrado del menú.
@@ -652,10 +652,10 @@ model CustomModule {
   publishedById   String?
   status          String   @default("draft") // draft, pending_review, published, rejected
   rejectionReason String?
-  visibleRolesJson    String @default("[\"docente\",\"director_grupo\",\"coordinador\",\"rector\",\"orientador\",\"acudiente\",\"estudiante\",\"administrativo\"]")
-  canCreateRolesJson  String @default("[\"docente\",\"director_grupo\",\"coordinador\",\"rector\",\"orientador\",\"acudiente\",\"estudiante\",\"administrativo\"]")
-  canEditRolesJson    String @default("[\"rector\",\"administrativo\"]")
-  canDeleteRolesJson  String @default("[\"rector\",\"administrativo\"]")
+  visibleRolesJson    String @default("[\"docente\",\"director_grupo\",\"coordinador\",\"rector\",\"orientador\",\"acudiente\",\"estudiante\",\"administrador\"]")
+  canCreateRolesJson  String @default("[\"docente\",\"director_grupo\",\"coordinador\",\"rector\",\"orientador\",\"acudiente\",\"estudiante\",\"administrador\"]")
+  canEditRolesJson    String @default("[\"rector\",\"administrador\"]")
+  canDeleteRolesJson  String @default("[\"rector\",\"administrador\"]")
   createdById     String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

@@ -58,7 +58,7 @@ const ALL_ROLES = [
   { value: "orientador", label: "Orientador" },
   { value: "acudiente", label: "Acudiente" },
   { value: "estudiante", label: "Estudiante" },
-  { value: "administrativo", label: "Administrativo" },
+  { value: "administrador", label: "Administrador" },
 ];
 
 const ICONS = ["FileText", "BookOpen", "Users", "Vote", "Bell", "Shield", "HeartHandshake", "ClipboardCheck", "Star", "GraduationCap", "Building2", "Calendar"];

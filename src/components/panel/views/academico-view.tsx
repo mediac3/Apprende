@@ -320,8 +320,8 @@ function AsignacionView() {
   // del servidor (canEdit en la respuesta) con los roles frescos de la BD.
   const [canEdit, setCanEdit] = useState(
     () =>
-      !!user?.roles?.some((r) => ["rector", "coordinador", "administrativo"].includes(r)) ||
-      ["rector", "coordinador", "administrativo"].includes(user?.role ?? "")
+      !!user?.roles?.some((r) => ["rector", "coordinador", "administrador"].includes(r)) ||
+      ["rector", "coordinador", "administrador"].includes(user?.role ?? "")
   );
 
   useEffect(() => {
@@ -411,7 +411,7 @@ function AsignacionView() {
         <div className="mt-3 flex items-center gap-2">
           {!canEdit && (
             <span className="text-xs text-muted-foreground">
-              Solo rector, coordinador o administrativo pueden editar la asignación.
+              Solo rector, coordinador o administrador pueden editar la asignación.
             </span>
           )}
           <Button onClick={saveAssignments} disabled={!canEdit || dirtyKeys.size === 0 || saving}>

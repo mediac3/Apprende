@@ -55,7 +55,7 @@ const ROLE_COLORS: Record<string, string> = {
   orientador: "bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300",
   acudiente: "bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300",
   estudiante: "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300",
-  administrativo: "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
+  administrador: "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
   supervisor: "bg-slate-100 text-slate-800 dark:bg-slate-950/60 dark:text-slate-300",
   auxiliar_principal: "bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300",
   asistente_matricula: "bg-cyan-100 text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-300",

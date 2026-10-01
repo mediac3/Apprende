@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
 
     // Notificar al admin (creador del módulo) y administradores de la institución
     const admins = await db.user.findMany({
-      where: { institutionId, role: "administrativo", active: true },
+      where: { institutionId, role: "administrador", active: true },
       select: { id: true },
     });
     const notifyTargets = new Set<string>();

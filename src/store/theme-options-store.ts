@@ -132,7 +132,7 @@ export function applyThemeToDocument(rawTheme: unknown) {
   document.head.appendChild(style);
 
   // Códigos personalizados — solo se inyectan con el toggle activo.
-  // (La edición está restringida a rector/administrativo a nivel de API.)
+  // (La edición está restringida a rector/administrador a nivel de API.)
   injectScript("theme-custom-js", d.customCode.enabled ? d.customCode.js : "", "body");
   document.getElementById("theme-custom-head")?.remove();
   if (d.customCode.enabled && d.customCode.headCode) {
