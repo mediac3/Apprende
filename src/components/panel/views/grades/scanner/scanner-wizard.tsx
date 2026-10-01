@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,6 +11,12 @@ import {
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import {
+  captureDocumentFrame,
+  cameraSupported,
+  startCamera,
+  stopCamera,
+} from "@/lib/ocr/capture";
 import {
   useScannerWizard,
   type ScannerContextInput,
@@ -34,6 +40,62 @@ const STEP_LABELS = ["Archivo", "Alineación", "Escaneo", "Revisión", "Resultad
 export function ScannerWizard({ open, onOpenChange, ctx, onApplied }: ScannerWizardProps) {
   const wiz = useScannerWizard(ctx, () => onOpenChange(false));
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // === Captura estilo escáner del iPhone (FASE captura) ===
+  const canCamera = cameraSupported();
+  const [cameraMode, setCameraMode] = useState(false);
+  const [captured, setCaptured] = useState<{
+    canvas: HTMLCanvasElement;
+    url: string;
+    rectified: boolean;
+  } | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    if (!cameraMode) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const stream = await startCamera(videoRef.current!);
+        if (cancelled) {
+          stopCamera(stream);
+          return;
+        }
+        streamRef.current = stream;
+      } catch {
+        wiz.setError("No se pudo acceder a la cámara (permiso denegado o contexto no seguro: usa HTTPS o localhost).");
+        setCameraMode(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      stopCamera(streamRef.current);
+      streamRef.current = null;
+    };
+  }, [cameraMode]);
+
+  function onShutter() {
+    const video = videoRef.current;
+    if (!video) return;
+    const { canvas, rectified } = captureDocumentFrame(video);
+    stopCamera(streamRef.current);
+    streamRef.current = null;
+    setCameraMode(false);
+    setCaptured({ canvas, rectified, url: canvas.toDataURL("image/jpeg", 0.85) });
+  }
+
+  function useCapturedPhoto() {
+    if (!captured) return;
+    wiz.loadCanvas(captured.canvas);
+    setCaptured(null);
+  }
+
+  function retakePhoto() {
+    setCaptured(null);
+    setCameraMode(true);
+  }
+  // === fin captura ===
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && wiz.close()}>
@@ -62,25 +124,89 @@ export function ScannerWizard({ open, onOpenChange, ctx, onApplied }: ScannerWiz
         {wiz.step === 1 && (
           <div className="grid gap-3">
             <p className="text-xs text-muted-foreground">
-              Sube la planilla escaneada o fotografiada (.pdf, .jpg, .png). Debe ser una planilla
-              generada por el sistema (lleva QR de contexto) y coincidir con el contexto mostrado arriba.
+              Toma una foto de la planilla o sube un archivo (.pdf, .jpg, .png). Debe ser una
+              planilla generada por el sistema (lleva QR de contexto) y coincidir con el contexto mostrado arriba.
             </p>
-            <div
-              role="button"
-              tabIndex={0}
-              className={cn(
-                "grid cursor-pointer place-items-center rounded-lg border-2 border-dashed p-6 text-center text-sm text-muted-foreground hover:bg-accent",
-                wiz.previewUrl && "p-2"
-              )}
-              onClick={() => fileInputRef.current?.click()}
-              onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
-            >
-              {wiz.previewUrl ? (
-                <img src={wiz.previewUrl} alt="Página cargada" className="max-h-64 w-auto rounded" />
-              ) : (
-                <span>Haz clic para elegir el archivo</span>
-              )}
-            </div>
+
+            {cameraMode ? (
+              <div className="grid gap-2">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full rounded border"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Encuadra toda la planilla sobre un fondo más oscuro; se detectarán los bordes y
+                  la imagen se enderezará automáticamente (como el escáner del iPhone).
+                </p>
+                <div className="flex justify-between">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      stopCamera(streamRef.current);
+                      streamRef.current = null;
+                      setCameraMode(false);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button size="sm" onClick={onShutter}>
+                    📸 Tomar foto
+                  </Button>
+                </div>
+              </div>
+            ) : captured ? (
+              <div className="grid gap-2">
+                <img src={captured.url} alt="Foto capturada" className="max-h-64 w-auto justify-self-center rounded border" />
+                <p
+                  className={cn(
+                    "rounded-lg border px-3 py-1.5 text-xs",
+                    captured.rectified
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
+                      : "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300"
+                  )}
+                >
+                  {captured.rectified
+                    ? "✓ Borde del papel detectado: imagen enderezada y recortada."
+                    : "⚠ No se detectó el borde del papel: se usa la foto completa. Intenta con mejor contraste o más luz."}
+                </p>
+                <div className="flex justify-between">
+                  <Button variant="ghost" size="sm" onClick={retakePhoto}>
+                    Repetir
+                  </Button>
+                  <Button size="sm" onClick={useCapturedPhoto}>
+                    Usar foto
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {canCamera && (
+                  <Button type="button" variant="outline" onClick={() => setCameraMode(true)} className="justify-self-center gap-1">
+                    📷 Tomar foto
+                  </Button>
+                )}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className={cn(
+                    "grid cursor-pointer place-items-center rounded-lg border-2 border-dashed p-6 text-center text-sm text-muted-foreground hover:bg-accent",
+                    wiz.previewUrl && "p-2"
+                  )}
+                  onClick={() => fileInputRef.current?.click()}
+                  onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+                >
+                  {wiz.previewUrl ? (
+                    <img src={wiz.previewUrl} alt="Página cargada" className="max-h-64 w-auto rounded" />
+                  ) : (
+                    <span>Haz clic para elegir el archivo</span>
+                  )}
+                </div>
+              </>
+            )}
             <input
               ref={fileInputRef}
               type="file"

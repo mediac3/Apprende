@@ -120,6 +120,18 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
     onClose();
   }, [reset, onClose]);
 
+  /** Carga un canvas ya preparado (captura de cámara estilo escáner). */
+  const loadCanvas = useCallback((canvas: HTMLCanvasElement) => {
+    setError(null);
+    canvasRef.current = canvas;
+    setRotation(0);
+    setPageNumber(1);
+    setPageCount(1);
+    setPreviewUrl(canvas.toDataURL("image/jpeg", 0.85));
+    setDetection(null);
+    setCells([]);
+  }, []);
+
   /** Paso 1: carga imagen o PDF (página actual) → canvas base. */
   const loadFile = useCallback(async (file: File) => {
     setError(null);
@@ -153,18 +165,13 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
       } else {
         throw new Error("Formato no soportado (usa PDF, JPG o PNG).");
       }
-      canvasRef.current = canvas;
-      setRotation(0);
-      setPageNumber(1);
-      setPreviewUrl(canvas.toDataURL("image/jpeg", 0.85));
-      setDetection(null);
-      setCells([]);
+      loadCanvas(canvas);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo cargar el archivo.");
     } finally {
       setBusy(null);
     }
-  }, []);
+  }, [loadCanvas]);
 
   /** Carga la página N de un PDF multipágina. */
   const goToPage = useCallback(async (n: number) => {
@@ -455,7 +462,7 @@ export function useScannerWizard(input: ScannerContextInput, onClose: () => void
 
   return {
     step, setStep, busy, error, setError,
-    previewUrl, pageNumber, pageCount, goToPage, loadFile,
+    previewUrl, pageNumber, pageCount, goToPage, loadFile, loadCanvas,
     rotation, rotate, detect, detection,
     cells, scan, updateCell, toggleExclude, threshold, setThreshold,
     included, apply, undo, undoLeft, csv, result, canRegister: input.canRegister, close, reset,

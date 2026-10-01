@@ -92,10 +92,11 @@ function drawPageHeader(doc: jsPDF, ctx: BuildContext): number {
   );
   y += 4;
 
-  // QR identificador (arriba a la derecha) + fecha de generación bajo el QR
+  // QR identificador (arriba a la derecha) + fecha de generación bajo el QR.
+  // 20mm: módulos más grandes para lectura desde foto en perspectiva.
   if (header.qrDataUrl) {
     try {
-      doc.addImage(header.qrDataUrl, "PNG", pageWidth - 26, 7, 16, 16);
+      doc.addImage(header.qrDataUrl, "PNG", pageWidth - 30, 6, 20, 20);
     } catch {
       // QR inválido: no bloquea la generación
     }

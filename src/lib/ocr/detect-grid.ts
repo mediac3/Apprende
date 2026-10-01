@@ -22,21 +22,161 @@ export interface QrContext {
   ac?: Record<string, number>; // v3: actividades IMPRESAS por concepto (orden de columnas)
 }
 
-/** Decodifica el QR del header (requiere ImageData RGBA completo de la página). */
+/** Downscale RGBA por factor entero (vecino más cercano) — pure. */
+export function downscaleRgba(
+  img: { width: number; height: number; data: Uint8ClampedArray },
+  factor: number
+): { width: number; height: number; data: Uint8ClampedArray } {
+  if (factor <= 1) return { width: img.width, height: img.height, data: img.data };
+  const w = Math.floor(img.width / factor);
+  const h = Math.floor(img.height / factor);
+  const out = new Uint8ClampedArray(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const sx = x * factor;
+      const sy = y * factor;
+      const si = (sy * img.width + sx) * 4;
+      const di = (y * w + x) * 4;
+      out[di] = img.data[si];
+      out[di + 1] = img.data[si + 1];
+      out[di + 2] = img.data[si + 2];
+      out[di + 3] = 255;
+    }
+  }
+  return { width: w, height: h, data: out };
+}
+
+/** Recorta una región RGBA (pure). */
+export function cropRgba(
+  img: { width: number; height: number; data: Uint8ClampedArray },
+  x: number,
+  y: number,
+  w: number,
+  h: number
+): { width: number; height: number; data: Uint8ClampedArray } {
+  const out = new Uint8ClampedArray(w * h * 4);
+  for (let yy = 0; yy < h; yy++) {
+    const si = ((y + yy) * img.width + x) * 4;
+    out.set(img.data.subarray(si, si + w * 4), yy * w * 4);
+  }
+  return { width: w, height: h, data: out };
+}
+
+/** Estira contraste (percentiles 5-95) sobre copia RGBA — pure. */
+function stretchContrast(img: { width: number; height: number; data: Uint8ClampedArray }): void {
+  const hist = new Array<number>(256).fill(0);
+  for (let i = 0; i < img.data.length; i += 4) {
+    hist[img.data[i]]++; // canal R aproxima gris (QR es B/N)
+  }
+  const total = img.data.length / 4;
+  let lo = 0;
+  let hi = 255;
+  let acc = 0;
+  for (let v = 0; v < 256; v++) {
+    acc += hist[v];
+    if (acc >= total * 0.05) {
+      lo = v;
+      break;
+    }
+  }
+  acc = 0;
+  for (let v = 255; v >= 0; v--) {
+    acc += hist[v];
+    if (acc >= total * 0.05) {
+      hi = v;
+      break;
+    }
+  }
+  const range = Math.max(1, hi - lo);
+  for (let i = 0; i < img.data.length; i += 4) {
+    for (let c = 0; c < 3; c++) {
+      img.data[i + c] = Math.max(0, Math.min(255, ((img.data[i + c] - lo) * 255) / range));
+    }
+  }
+}
+
+async function decodeWithBarcodeDetector(
+  img: { width: number; height: number; data: Uint8ClampedArray }
+): Promise<string | null> {
+  const BD = (globalThis as { BarcodeDetector?: new (opts: { formats: string[] }) => { detect(src: unknown): Promise<Array<{ rawValue?: string }>> } }).BarcodeDetector;
+  if (!BD) return null;
+  try {
+    const detector = new BD({ formats: ["qr_code"] });
+    const codes = await detector.detect(img);
+    return codes.find((c) => c.rawValue)?.rawValue ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function decodeWithJsQr(
+  img: { width: number; height: number; data: Uint8ClampedArray }
+): Promise<string | null> {
+  const jsQR = (await import("jsqr")).default;
+  const attempts = [img.data, img.data]; // normal + invertido
+  for (let inv = 0; inv < 2; inv++) {
+    if (inv === 1) {
+      for (let i = 0; i < img.data.length; i += 4) {
+        img.data[i] = 255 - img.data[i];
+        img.data[i + 1] = 255 - img.data[i + 1];
+        img.data[i + 2] = 255 - img.data[i + 2];
+      }
+    }
+    const code = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
+    if (code?.data) return code.data;
+  }
+  void attempts;
+  return null;
+}
+
+/**
+ * Decodificación robusta del QR (puede llegar en perspectiva desde una foto):
+ * 1) BarcodeDetector nativo (Chrome/Android; tolera distorsión) sobre escala media.
+ * 2) jsQR multi-escala con contraste estirado (escala completa y medias).
+ * 3) jsQR sobre ROI superior-derecha a resolución completa (el QR vive ahí).
+ */
 export async function decodeQrContext(rgba: {
   width: number;
   height: number;
   data: Uint8ClampedArray;
 }): Promise<QrContext | null> {
-  const jsQR = (await import("jsqr")).default;
-  const code = jsQR(new Uint8ClampedArray(rgba.data), rgba.width, rgba.height);
-  if (!code?.data) return null;
-  try {
-    const ctx = JSON.parse(code.data) as QrContext;
-    return ctx && (ctx.v === 1 || ctx.v === 2 || ctx.v === 3) && ctx.group && ctx.subj && ctx.period ? ctx : null;
-  } catch {
-    return null;
+  const parse = (raw: string | null): QrContext | null => {
+    if (!raw) return null;
+    try {
+      const ctx = JSON.parse(raw) as QrContext;
+      return ctx && (ctx.v === 1 || ctx.v === 2 || ctx.v === 3) && ctx.group && ctx.subj && ctx.period ? ctx : null;
+    } catch {
+      return null;
+    }
+  };
+
+  // 1) Detector nativo a media resolución (rápido y tolerante a perspectiva)
+  const mid = downscaleRgba(rgba, Math.max(1, Math.floor(Math.max(rgba.width, rgba.height) / 1400)));
+  const native = await decodeWithBarcodeDetector(mid);
+  if (native) return parse(native);
+
+  // 2) jsQR multi-escala sobre copias con contraste estirado
+  for (const factor of [2, 3, 1]) {
+    const scaled = downscaleRgba(rgba, factor);
+    stretchContrast(scaled);
+    const raw = await decodeWithJsQr(scaled);
+    if (raw) return parse(raw);
   }
+
+  // 3) ROI superior-derecha a resolución completa (mayor dpi efectivo en el QR)
+  try {
+    const roiW = Math.min(rgba.width, Math.floor(rgba.width * 0.45));
+    const roiH = Math.min(rgba.height, Math.floor(rgba.height * 0.3));
+    if (roiW > 60 && roiH > 60) {
+      const roi = cropRgba(rgba, rgba.width - roiW, 0, roiW, roiH);
+      stretchContrast(roi);
+      const raw = await decodeWithJsQr(roi);
+      if (raw) return parse(raw);
+    }
+  } catch {
+    // imagen demasiado pequeña para el ROI: ignorar
+  }
+  return null;
 }
 
 /** Y de cada línea horizontal larga (tinta). Merge de adyacentes. */
