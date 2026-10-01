@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/auth-store";
 import { useCan } from "@/store/perm-store";
+import { useUIStore } from "@/store/ui-store";
 import {
   Search,
   Users,
@@ -114,6 +115,29 @@ export function StudentsListView() {
   const [selected, setSelected] = useState<StudentRow | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // [F2] Apertura desde la búsqueda global: carga la ficha del estudiante elegido.
+  // Se aplica una vez por `ts` (ref) para sobrevivir al doble montaje de StrictMode.
+  const searchTarget = useUIStore((s) => s.searchTarget);
+  const appliedTargetRef = useRef(0);
+  useEffect(() => {
+    const t = searchTarget;
+    if (!t?.studentId || t.ts === appliedTargetRef.current) return;
+    appliedTargetRef.current = t.ts;
+    const instId = user?.institution.id;
+    if (!instId) return;
+    let cancelled = false;
+    fetch(`/api/students/${t.studentId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.ok || !d.student) return;
+        setSelected({ ...d.student, groupName: d.student.group?.name ?? null });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [searchTarget, user]);
   // [C1] Selección masiva (Set de IDs) + confirmación + estado de borrado
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);

@@ -72,6 +72,18 @@ interface UIState {
   /** Contexto del módulo activo para el asistente de IA (agregados + estudiantes en riesgo) */
   aiContext: AiModuleContext | null;
   setAiContext: (ctx: AiModuleContext | null) => void;
+  /** [F2] Destino pendiente de la búsqueda global (abrir perfil/publicación) */
+  searchTarget: SearchTarget | null;
+  setSearchTarget: (t: SearchTarget | null) => void;
+}
+
+/** [F2] Resultado elegido en la búsqueda global */
+export interface SearchTarget {
+  studentId?: string;
+  postId?: string;
+  spaceId?: string | null;
+  /** marca de tiempo para re-disparar aunque sea el mismo id */
+  ts: number;
 }
 
 /** Acción rápida sugerida por el módulo (botón del asistente IA) */
@@ -101,6 +113,8 @@ export const useUIStore = create<UIState>((set) => ({
   setDemoSheet: (demoSheetOpen) => set({ demoSheetOpen }),
   aiContext: null,
   setAiContext: (aiContext) => set({ aiContext }),
+  searchTarget: null,
+  setSearchTarget: (searchTarget) => set({ searchTarget }),
 }));
 
 // Helper para detectar módulos personalizados y extraer su ID

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/auth-store";
 import { useCan } from "@/store/perm-store";
+import { useUIStore } from "@/store/ui-store";
 import {
   Send,
   MessageSquare,
@@ -70,6 +71,35 @@ export function CommunityView() {
   const [composer, setComposer] = useState("");
   // [F1] Permiso de crear publicaciones en Comunidad
   const canCreatePosts = useCan("comunidad", "canCreate");
+
+  // [F2] Apertura desde la búsqueda global: cambia al espacio y resalta la publicación.
+  // Se aplica una vez por `ts` (ref) para sobrevivir al doble montaje de StrictMode.
+  const searchTarget = useUIStore((s) => s.searchTarget);
+  const [highlightPostId, setHighlightPostId] = useState<string | null>(null);
+  const appliedTargetRef = useRef(0);
+  useEffect(() => {
+    const t = searchTarget;
+    if (!t?.postId || t.ts === appliedTargetRef.current) return;
+    appliedTargetRef.current = t.ts;
+    setActiveSpace(t.spaceId ?? "all");
+    setHighlightPostId(t.postId);
+    // espera a que el feed cargue con el espacio activo y desplaza hasta el post
+    let tries = 0;
+    const timer = setInterval(() => {
+      const el = document.querySelector(`[data-post-id="${t.postId}"]`);
+      if (el) {
+        clearInterval(timer);
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else if (++tries > 10) {
+        clearInterval(timer);
+      }
+    }, 300);
+    const fade = setTimeout(() => setHighlightPostId(null), 4000);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(fade);
+    };
+  }, [searchTarget]);
   const [composerSpace, setComposerSpace] = useState<string>("");
   const [posting, setPosting] = useState(false);
 
@@ -221,7 +251,19 @@ export function CommunityView() {
             </CardContent>
           </Card>
         ) : (
-          posts.map((p) => <PostCard key={p.id} post={p} />)
+          posts.map((p) => (
+            <div
+              key={p.id}
+              data-post-id={p.id}
+              className={
+                highlightPostId === p.id
+                  ? "rounded-xl ring-2 ring-primary ring-offset-2 ring-offset-background transition-shadow"
+                  : undefined
+              }
+            >
+              <PostCard post={p} />
+            </div>
+          ))
         )}
       </main>
     </motion.div>

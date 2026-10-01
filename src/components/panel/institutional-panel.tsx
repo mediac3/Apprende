@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useAuthStore } from "@/store/auth-store";
 import { usePermStore } from "@/store/perm-store";
+import { GlobalSearch, useSearchOpen } from "@/components/panel/search/global-search";
 import { useUIStore, type ModuleKey } from "@/store/ui-store";
 import { cn } from "@/lib/utils";
 import {
@@ -44,6 +45,7 @@ import {
   Table2,
   Sparkles,
   ShieldCheck,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -454,6 +456,17 @@ export function InstitutionalPanel() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* [F2] Búsqueda global — lupa junto a notificaciones (⌘K) */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-2 rounded-lg"
+              aria-label="Buscar (Ctrl+K)"
+              title="Buscar (Ctrl+K)"
+              onClick={() => useSearchOpen.getState().setOpen(true)}
+            >
+              <Search className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="sm" className="hidden sm:flex gap-2 rounded-lg" aria-label="Notificaciones">
               <Bell className="h-4 w-4" />
               <Badge variant="secondary" className="text-[10px] h-4 px-1">3</Badge>
@@ -524,6 +537,9 @@ export function InstitutionalPanel() {
 
       {/* Asistente de IA contextual */}
       <AiChatWidget />
+
+      {/* [F2] Búsqueda global (⌘K) */}
+      <GlobalSearch />
     </div>
   );
 }
