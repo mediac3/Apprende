@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { forbiddenUnless } from "@/lib/permissions/server";
 import crypto from "crypto";
 
 // Gestión de usuarios (módulo Administración)
@@ -78,6 +79,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // [F1] Validación de permisos en servidor (regla dura, no solo UI)
+    const deniedCreate = await forbiddenUnless(actorId, institutionId, "usuarios", "canCreate", "crear usuarios");
+    if (deniedCreate) return deniedCreate;
+
     const dup = await db.user.findFirst({
       where: { username: String(username).trim() },
     });
@@ -148,6 +153,10 @@ export async function PATCH(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // [F1] Validación de permisos en servidor (regla dura, no solo UI)
+    const deniedEdit = await forbiddenUnless(actorId, institutionId, "usuarios", "canEdit", "editar usuarios");
+    if (deniedEdit) return deniedEdit;
 
     const existing = await db.user.findFirst({ where: { id, institutionId } });
     if (!existing) {
@@ -221,6 +230,10 @@ export async function DELETE(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // [F1] Validación de permisos en servidor (regla dura, no solo UI)
+    const deniedDelete = await forbiddenUnless(userId, institutionId, "usuarios", "canDelete", "eliminar usuarios");
+    if (deniedDelete) return deniedDelete;
 
     if (id === userId) {
       return NextResponse.json(

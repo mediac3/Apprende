@@ -10,6 +10,7 @@
 // (getUserRoleCodes), nunca se confía en un rol enviado por el cliente.
 
 import { db } from "@/lib/db";
+import { NextResponse } from "next/server";
 import { getUserRoleCodes } from "@/lib/teaching-rules";
 import { ADMIN_ROLE, STATIC_MODULES, CUSTOM_PREFIX, defaultCanView, type ModuleDef, type PermAction } from "./modules";
 
@@ -125,4 +126,30 @@ export async function checkPermission(
   const flags = map[moduleKey];
   if (!flags) return false;
   return flags[action];
+}
+
+/**
+ * [F1] Gate de API: devuelve una respuesta 403 lista para retornar si el usuario
+ * no tiene el permiso; `null` si puede continuar. Regla dura: validar en servidor,
+ * no solo en UI. El administrador siempre pasa.
+ */
+export async function forbiddenUnless(
+  userId: string | null | undefined,
+  institutionId: string | null | undefined,
+  moduleKey: string,
+  action: PermAction,
+  what: string
+): Promise<NextResponse | null> {
+  if (!userId || !institutionId) {
+    return NextResponse.json(
+      { ok: false, error: "FORBIDDEN", message: "userId e institutionId son requeridos" },
+      { status: 403 }
+    );
+  }
+  const allowed = await checkPermission(userId, institutionId, moduleKey, action);
+  if (allowed) return null;
+  return NextResponse.json(
+    { ok: false, error: "FORBIDDEN", message: `Sin permiso para ${what}` },
+    { status: 403 }
+  );
 }

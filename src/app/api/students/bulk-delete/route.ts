@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { forbiddenUnless } from "@/lib/permissions/server";
 
 // [C1] Eliminación masiva de estudiantes en transacción atómica.
 // Regla dura: si ALGÚN estudiante del lote tiene notas registradas (Grade o
@@ -18,6 +19,9 @@ export async function POST(req: NextRequest) {
     if (!Array.isArray(ids) || ids.length === 0 || !institutionId) {
       return NextResponse.json({ ok: false, error: "ids e institutionId requeridos" }, { status: 400 });
     }
+    // [F1] Validación de permisos en servidor (regla dura, no solo UI)
+    const deniedBulk = await forbiddenUnless(userId, institutionId, "gestion-estudiantes", "canDelete", "eliminar estudiantes (masivo)");
+    if (deniedBulk) return deniedBulk;
     const studentIds = ids.filter((v): v is string => typeof v === "string");
 
     const students = await db.student.findMany({

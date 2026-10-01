@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/auth-store";
+import { useCan } from "@/store/perm-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -86,6 +87,10 @@ export function UsersView() {
 
   // Diálogos
   const [showForm, setShowForm] = useState(false);
+  // [F1] Permisos de la matriz sobre el módulo Usuarios
+  const canCreateUsers = useCan("usuarios", "canCreate");
+  const canEditUsers = useCan("usuarios", "canEdit");
+  const canDeleteUsers = useCan("usuarios", "canDelete");
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [rolesTarget, setRolesTarget] = useState<UserRow | null>(null);
 
@@ -181,9 +186,11 @@ export function UsersView() {
             Gestión de usuarios de la institución: datos de contacto, estado de acceso y roles asignados (un usuario puede ejercer varios roles).
           </p>
         </div>
-        <Button size="sm" onClick={() => { setEditing(null); setShowForm(true); }} className="gap-1.5">
-          <Plus className="h-3.5 w-3.5" /> Nuevo usuario
-        </Button>
+        {canCreateUsers && (
+          <Button size="sm" onClick={() => { setEditing(null); setShowForm(true); }} className="gap-1.5">
+            <Plus className="h-3.5 w-3.5" /> Nuevo usuario
+          </Button>
+        )}
       </header>
 
       <Card className="hairline">
@@ -264,17 +271,21 @@ export function UsersView() {
                           >
                             <BadgeCheck className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => { setEditing(u); setShowForm(true); }}>
-                            <Edit className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost" size="icon" className="h-7 w-7 text-destructive"
-                            title={isSelf ? "No puede eliminar su propio usuario" : "Eliminar"}
-                            disabled={isSelf}
-                            onClick={() => del(u)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          {canEditUsers && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => { setEditing(u); setShowForm(true); }}>
+                              <Edit className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {canDeleteUsers && (
+                            <Button
+                              variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                              title={isSelf ? "No puede eliminar su propio usuario" : "Eliminar"}
+                              disabled={isSelf}
+                              onClick={() => del(u)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     );

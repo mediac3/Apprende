@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useAuthStore } from "@/store/auth-store";
+import { usePermStore } from "@/store/perm-store";
 import { useUIStore, type ModuleKey } from "@/store/ui-store";
 import { cn } from "@/lib/utils";
 import {
@@ -246,11 +247,34 @@ export function InstitutionalPanel() {
   }, [user]);
 
   // Filtrar navegación por rol (un ítem es visible si corresponde a cualquiera de los roles del usuario)
+  // [F1] + exige canView de la matriz de permisos (roles resueltos en BD; fail-open si aún carga)
+  const perms = usePermStore((s) => s.perms);
+  const isAdminUser = usePermStore((s) => s.isAdmin);
+  const permLoaded = usePermStore((s) => s.loaded);
   const filteredNav = useMemo(() => {
     if (!user) return [];
     const myRoles = user.roles?.length ? user.roles : [user.role];
-    return NAV.filter((n) => !n.hidden && (!n.roles || n.roles.some((r) => myRoles.includes(r))));
+    return NAV.filter(
+      (n) =>
+        !n.hidden &&
+        (!n.roles || n.roles.some((r) => myRoles.includes(r))) &&
+        usePermStore.getState().canDo(n.key)
+    );
+  }, [user, perms, isAdminUser, permLoaded]);
+
+  // [F1] Cargar permisos efectivos del usuario al iniciar sesión / cambiar de usuario
+  useEffect(() => {
+    if (user) usePermStore.getState().load();
+    else usePermStore.getState().reset();
   }, [user]);
+
+  // [F1] Bloqueo de ruta directa: si el módulo activo no tiene canView → dashboard
+  useEffect(() => {
+    if (!permLoaded || isAdminUser || !user) return;
+    if (activeModule !== "dashboard" && !usePermStore.getState().canDo(activeModule)) {
+      setModule("dashboard");
+    }
+  }, [activeModule, permLoaded, isAdminUser, user, setModule]);
 
   // Agrupar
   const groups = useMemo(() => {
@@ -261,6 +285,8 @@ export function InstitutionalPanel() {
     });
     // Añadir módulos personalizados a su área (o a "Personalizado" por defecto)
     customModules.forEach((m) => {
+      // [F1] respeta canView de la matriz (custom:<id>)
+      if (!usePermStore.getState().canDo(customModuleKey(m.id))) return;
       const area = m.area || "Personalizado";
       if (!g[area]) g[area] = [];
       g[area].push({
@@ -270,8 +296,12 @@ export function InstitutionalPanel() {
         group: area,
       });
     });
+    // [F1] si un grupo quedó sin ítems visibles, no se muestra
+    for (const k of Object.keys(g)) {
+      if (g[k].length === 0) delete g[k];
+    }
     return g;
-  }, [filteredNav, customModules]);
+  }, [filteredNav, customModules, perms, isAdminUser, permLoaded]);
 
   if (!user) return null;
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { forbiddenUnless } from "@/lib/permissions/server";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -123,6 +124,9 @@ export async function POST(req: NextRequest) {
     if (!institutionId || !code || !firstName || !lastName) {
       return NextResponse.json({ ok: false, error: "Faltan datos" }, { status: 400 });
     }
+    // [F1] Validación de permisos en servidor (regla dura, no solo UI)
+    const deniedCreate = await forbiddenUnless(userId, institutionId, "gestion-estudiantes", "canCreate", "crear estudiantes");
+    if (deniedCreate) return deniedCreate;
     // Regla dura [F2]: documento requerido con tipo, único en BD; correo con formato si viene.
     if (documentNumber && !documentType) {
       return NextResponse.json({ ok: false, error: "Tipo documento es requerido cuando se ingresa el documento" }, { status: 400 });
@@ -212,6 +216,9 @@ export async function PATCH(req: NextRequest) {
     if (!id || !institutionId) {
       return NextResponse.json({ ok: false, error: "id e institutionId requeridos" }, { status: 400 });
     }
+    // [F1] Validación de permisos en servidor (regla dura, no solo UI)
+    const deniedEdit = await forbiddenUnless(userId, institutionId, "gestion-estudiantes", "canEdit", "editar estudiantes");
+    if (deniedEdit) return deniedEdit;
 
     const data: any = {};
     const textFields = [
@@ -285,6 +292,9 @@ export async function DELETE(req: NextRequest) {
   if (!id || !institutionId) {
     return NextResponse.json({ ok: false, error: "id e institutionId requeridos" }, { status: 400 });
   }
+  // [F1] Validación de permisos en servidor (regla dura, no solo UI)
+  const deniedDelete = await forbiddenUnless(userId, institutionId, "gestion-estudiantes", "canDelete", "eliminar estudiantes");
+  if (deniedDelete) return deniedDelete;
 
   try {
     // [C1] Regla dura: bloquear la eliminación si el estudiante tiene notas registradas

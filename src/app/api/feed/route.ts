@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { forbiddenUnless } from "@/lib/permissions/server";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -49,6 +50,10 @@ export async function POST(req: NextRequest) {
     if (!institutionId || !authorId || !content) {
       return NextResponse.json({ ok: false, error: "Faltan datos" }, { status: 400 });
     }
+
+    // [F1] Validación de permisos en servidor (regla dura, no solo UI)
+    const deniedPost = await forbiddenUnless(authorId, institutionId, "comunidad", "canCreate", "publicar en la comunidad");
+    if (deniedPost) return deniedPost;
 
     const post = await db.post.create({
       data: {

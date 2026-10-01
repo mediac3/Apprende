@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import crypto from "crypto";
+import { forbiddenUnless } from "@/lib/permissions/server";
 
 type ImportRow = Record<string, any>;
 
@@ -29,6 +30,9 @@ export async function POST(req: NextRequest) {
     if (!institutionId || !Array.isArray(rows) || rows.length === 0) {
       return NextResponse.json({ ok: false, error: "institutionId y rows son requeridos" }, { status: 400 });
     }
+    // [F1] Validación de permisos en servidor (regla dura, no solo UI)
+    const deniedImport = await forbiddenUnless(userId, institutionId, "importar-estudiantes", "canCreate", "importar estudiantes");
+    if (deniedImport) return deniedImport;
     if (rows.length > 5000) {
       return NextResponse.json({ ok: false, error: "Máximo 5000 filas por importación" }, { status: 400 });
     }

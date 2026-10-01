@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/auth-store";
+import { useCan } from "@/store/perm-store";
 import {
   Send,
   MessageSquare,
@@ -67,6 +68,8 @@ export function CommunityView() {
   const [activeSpace, setActiveSpace] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [composer, setComposer] = useState("");
+  // [F1] Permiso de crear publicaciones en Comunidad
+  const canCreatePosts = useCan("comunidad", "canCreate");
   const [composerSpace, setComposerSpace] = useState<string>("");
   const [posting, setPosting] = useState(false);
 
@@ -157,43 +160,45 @@ export function CommunityView() {
 
       {/* Main */}
       <main className="lg:col-span-3 space-y-4">
-        {/* Composer */}
-        <Card className="hairline rounded-xl">
-          <CardContent className="space-y-3 py-4">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-secondary text-xs">
-                  {user?.fullName.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="text-sm">
-                <div className="font-medium">{user?.fullName}</div>
-                <div className="text-[11px] text-muted-foreground">Comparta algo con la comunidad…</div>
+        {/* Composer — [F1] solo con canCreate en Comunidad */}
+        {canCreatePosts && (
+          <Card className="hairline rounded-xl">
+            <CardContent className="space-y-3 py-4">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-secondary text-xs">
+                    {user?.fullName.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="text-sm">
+                  <div className="font-medium">{user?.fullName}</div>
+                  <div className="text-[11px] text-muted-foreground">Comparta algo con la comunidad…</div>
+                </div>
               </div>
-            </div>
-            <Textarea
-              value={composer}
-              onChange={(e) => setComposer(e.target.value)}
-              rows={3}
-              placeholder="Anuncios, reflexiones, preguntas o recursos para la comunidad educativa…"
-            />
-            <div className="flex items-center gap-3">
-              <Select value={composerSpace} onValueChange={setComposerSpace}>
-                <SelectTrigger className="w-52" size="sm">
-                  <SelectValue placeholder="Espacio (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {spaces.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button className="ml-auto gap-1.5" onClick={submitPost} disabled={posting}>
-                <Send className="h-4 w-4" /> Publicar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <Textarea
+                value={composer}
+                onChange={(e) => setComposer(e.target.value)}
+                rows={3}
+                placeholder="Anuncios, reflexiones, preguntas o recursos para la comunidad educativa…"
+              />
+              <div className="flex items-center gap-3">
+                <Select value={composerSpace} onValueChange={setComposerSpace}>
+                  <SelectTrigger className="w-52" size="sm">
+                    <SelectValue placeholder="Espacio (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {spaces.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button className="ml-auto gap-1.5" onClick={submitPost} disabled={posting}>
+                  <Send className="h-4 w-4" /> Publicar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Posts */}
         {loading ? (

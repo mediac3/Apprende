@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/auth-store";
+import { useCan } from "@/store/perm-store";
 import {
   Search,
   Users,
@@ -99,6 +100,9 @@ function bucketOf(status: string): "activos" | "retirados" | "sin_formalizar" {
 
 export function StudentsListView() {
   const user = useAuthStore((s) => s.user);
+  // [F1] Permisos de la matriz (Ver/Crear/Eliminar sobre Gestión de Estudiantes)
+  const canCreateStudents = useCan("gestion-estudiantes", "canCreate");
+  const canDeleteStudents = useCan("gestion-estudiantes", "canDelete");
   const [years, setYears] = useState<AcademicYear[]>([]);
   const [yearId, setYearId] = useState("");
   const [students, setStudents] = useState<StudentRow[]>([]);
@@ -368,9 +372,11 @@ export function StudentsListView() {
         <CardHeader>
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="text-base">Listado de Estudiantes</CardTitle>
-            <Button size="sm" className="gap-1.5" onClick={() => setShowNew(true)}>
-              <UserPlus className="h-4 w-4" /> Nuevo estudiante
-            </Button>
+            {canCreateStudents && (
+              <Button size="sm" className="gap-1.5" onClick={() => setShowNew(true)}>
+                <UserPlus className="h-4 w-4" /> Nuevo estudiante
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -468,16 +474,18 @@ export function StudentsListView() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          aria-label="Eliminar estudiante"
-                          title="Eliminar"
-                          onClick={() => handleDelete(s)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canDeleteStudents && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            aria-label="Eliminar estudiante"
+                            title="Eliminar"
+                            onClick={() => handleDelete(s)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -526,14 +534,16 @@ export function StudentsListView() {
             <span className="text-xs font-medium tabular-nums px-1">
               {checked.size} seleccionados
             </span>
-            <Button
-              size="sm"
-              variant="destructive"
-              className="h-8 gap-1.5"
-              onClick={() => setBulkOpen(true)}
-            >
-              <Trash2 className="h-4 w-4" /> Eliminar seleccionados
-            </Button>
+            {canDeleteStudents && (
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-8 gap-1.5"
+                onClick={() => setBulkOpen(true)}
+              >
+                <Trash2 className="h-4 w-4" /> Eliminar seleccionados
+              </Button>
+            )}
             <Button size="sm" variant="ghost" className="h-8" onClick={() => setChecked(new Set())}>
               Cancelar selección
             </Button>
