@@ -37,6 +37,7 @@ export type ModuleKey =
   | "modelos-educativos"
   | "opciones-tema"
   | "permisos"
+  | "complementos"
   | "auditoria"
   | "comunidad"
   | "mensajeria"

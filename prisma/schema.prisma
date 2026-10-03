@@ -1189,3 +1189,14 @@ model GradeSheetArchive {
 
   @@index([institutionId, createdAt])
 }
+
+// [F1] Gestor de complementos: activación y visibilidad (móvil/PC/ambos)
+// de características opcionales por institución.
+model AddonConfig {
+  id            String  @id @default(cuid())
+  institutionId String
+  featureKey    String
+  enabled       Boolean @default(true)
+  targets       String  @default("both") // both | mobile | pc
+  @@unique([institutionId, featureKey])
+}

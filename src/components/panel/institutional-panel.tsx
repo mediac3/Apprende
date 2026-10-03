@@ -3,6 +3,9 @@
 import { useMemo } from "react";
 import { useAuthStore } from "@/store/auth-store";
 import { usePermStore } from "@/store/perm-store";
+import { useAddonsStore, useAddonsMap } from "@/store/addons-store";
+import { addonVisible, type AddonKey } from "@/lib/addons";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { GlobalSearch, useSearchOpen } from "@/components/panel/search/global-search";
 import { useUIStore, type ModuleKey } from "@/store/ui-store";
 import { cn } from "@/lib/utils";
@@ -45,6 +48,7 @@ import {
   Table2,
   Sparkles,
   ShieldCheck,
+  Puzzle,
   Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -79,6 +83,7 @@ import { MessagesView } from "./views/messages-view";
 import { AcademicoView } from "./views/academico-view";
 import { ThemeOptionsView } from "./views/theme-options-view";
 import { PermissionsView } from "./views/permissions/permissions-view";
+import { AddonsView } from "./views/addons-view";
 import { useThemeOptionsStore } from "@/store/theme-options-store";
 import { CustomModuleBuilderView } from "./views/custom-module-builder-view";
 import { CustomModuleRuntimeView } from "./views/custom-module-runtime-view";
@@ -110,6 +115,7 @@ interface NavItem {
   roles?: string[]; // si no se especifica, todos
   group: string;
   hidden?: boolean; // deprecado: se oculta del menú sin borrar la clave ni la vista
+  addon?: AddonKey; // [F1] complemento que controla su visibilidad (móvil/PC/ambos)
 }
 
 const NAV: NavItem[] = [
@@ -121,7 +127,7 @@ const NAV: NavItem[] = [
   // [F2] Consolidado anual — junto a Notas parciales
   { key: "consolidado", label: "Consolidado anual", icon: Table2, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
   // Base de conocimientos: materiales y documentos por categoría (embed URL + IA)
-  { key: "base-conocimientos", label: "Base de conocimientos", icon: BookOpen, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "administrador", "rector"] },
+  { key: "base-conocimientos", label: "Base de conocimientos", icon: BookOpen, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "administrador", "rector"], addon: "knowledge_base" },
   // [F3] Gestión de Actividades — junto a Notas parciales (decisión del usuario)
   { key: "gestion-actividades", label: "Gestión de Actividades", icon: ListChecks, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
   { key: "pre-informe", label: "Pre-Informe", icon: Bell, group: "Académico", roles: ["docente", "director_grupo", "coordinador", "rector"] },
@@ -168,6 +174,8 @@ const NAV: NavItem[] = [
   { key: "opciones-tema", label: "Opciones de tema", icon: Palette, group: "Administración", roles: ["rector", "administrador"] },
   // [F1] Matriz de permisos por rol — solo administrador
   { key: "permisos", label: "Permisos", icon: ShieldCheck, group: "Administración", roles: ["administrador"] },
+  // [F1] Gestor de complementos — solo administrador
+  { key: "complementos", label: "Complementos", icon: Puzzle, group: "Administración", roles: ["administrador"] },
 
   // Constructor de módulos — admin
   { key: "custom-module-builder", label: "Constructor de módulos", icon: Boxes, group: "Constructor", roles: ["administrador"] },
@@ -250,9 +258,12 @@ export function InstitutionalPanel() {
 
   // Filtrar navegación por rol (un ítem es visible si corresponde a cualquiera de los roles del usuario)
   // [F1] + exige canView de la matriz de permisos (roles resueltos en BD; fail-open si aún carga)
+  // [F1] + complementos: visibilidad por activación y versión (móvil/PC/ambos)
   const perms = usePermStore((s) => s.perms);
   const isAdminUser = usePermStore((s) => s.isAdmin);
   const permLoaded = usePermStore((s) => s.loaded);
+  const addonsMap = useAddonsMap();
+  const isMobileDevice = useIsMobile();
   const filteredNav = useMemo(() => {
     if (!user) return [];
     const myRoles = user.roles?.length ? user.roles : [user.role];
@@ -260,9 +271,16 @@ export function InstitutionalPanel() {
       (n) =>
         !n.hidden &&
         (!n.roles || n.roles.some((r) => myRoles.includes(r))) &&
-        usePermStore.getState().canDo(n.key)
+        usePermStore.getState().canDo(n.key) &&
+        (!n.addon || addonVisible(addonsMap, n.addon, isMobileDevice))
     );
-  }, [user, perms, isAdminUser, permLoaded]);
+  }, [user, perms, isAdminUser, permLoaded, addonsMap, isMobileDevice]);
+
+  // [F1] Cargar complementos de la institución una vez
+  useEffect(() => {
+    const institutionId = user?.institution?.id;
+    if (institutionId) void useAddonsStore.getState().load(institutionId);
+  }, [user?.institution?.id]);
 
   // [F1] Cargar permisos efectivos del usuario al iniciar sesión / cambiar de usuario
   useEffect(() => {
@@ -361,6 +379,9 @@ export function InstitutionalPanel() {
       // [F1] Matriz de permisos
       case "permisos":
         return <PermissionsView />;
+      // [F1] Gestor de complementos
+      case "complementos":
+        return <AddonsView />;
       case "usuarios":
         return <UsersView />;
       case "gestion-grupos":
@@ -536,7 +557,7 @@ export function InstitutionalPanel() {
       </div>
 
       {/* Asistente de IA contextual */}
-      <AiChatWidget />
+      {addonVisible(addonsMap, "ai", isMobileDevice) && <AiChatWidget />}
 
       {/* [F2] Búsqueda global (⌘K) */}
       <GlobalSearch />

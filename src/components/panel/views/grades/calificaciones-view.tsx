@@ -18,6 +18,9 @@ import type { GradeSheetGeneratorInput } from "./grade-sheets/use-grade-sheet-ge
 import { ScannerWizard } from "./scanner/scanner-wizard";
 import type { ScannerContextInput } from "./scanner/use-scanner-wizard";
 import { useUIStore } from "@/store/ui-store";
+import { useAddonsMap } from "@/store/addons-store";
+import { addonVisible, type AddonKey } from "@/lib/addons";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { GradesSidebar, type SidebarSubject } from "./grades-sidebar";
 import { GradesToolbar } from "./grades-toolbar";
@@ -105,6 +108,13 @@ export function CalificacionesView() {
   const user = useAuthStore((s) => s.user);
   const institutionId = user?.institution?.id ?? null;
   const setAiContext = useUIStore((s) => s.setAiContext);
+  // [F1] complementos: visibilidad por activación y versión (móvil/PC/ambos)
+  const addonsMap = useAddonsMap();
+  const isMobileDevice = useIsMobile();
+  const vis = useCallback(
+    (k: AddonKey) => addonVisible(addonsMap, k, isMobileDevice),
+    [addonsMap, isMobileDevice]
+  );
 
   // Catálogos
   const [plans, setPlans] = useState<PlanLite[]>([]);
@@ -749,8 +759,9 @@ export function CalificacionesView() {
               canEdit={editable}
               commentMode={commentMode}
               onToggleCommentMode={() => setCommentMode((v) => !v)}
+              showComment={vis("comments")}
             />
-            {editable && (
+            {editable && vis("import_excel") && (
               <div className="flex justify-end">
                 <Button
                   variant="outline"
@@ -764,22 +775,26 @@ export function CalificacionesView() {
             )}
             {gradeSheetInput && (
               <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setScannerOpen(true)}
-                  className="gap-1 text-xs"
-                >
-                  Escanear planilla…
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSheetOpen(true)}
-                  className="gap-1 text-xs"
-                >
-                  Generar planilla…
-                </Button>
+                {vis("scan_sheet") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setScannerOpen(true)}
+                    className="gap-1 text-xs"
+                  >
+                    Escanear planilla…
+                  </Button>
+                )}
+                {vis("grade_sheets") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSheetOpen(true)}
+                    className="gap-1 text-xs"
+                  >
+                    Generar planilla…
+                  </Button>
+                )}
               </div>
             )}
             {!editable && (
@@ -912,7 +927,7 @@ export function CalificacionesView() {
       </AlertDialog>
 
       {/* [chat-notas] asistente de voz/texto para registrar notas (solo este módulo) */}
-      <ChatFab />
+      {vis("grades_assistant") && <ChatFab />}
       <ChatPanel
         ctx={chatCtx}
         groupLabel={activeSubject?.groupName}
