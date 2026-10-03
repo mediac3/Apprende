@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { MessageSquarePlus, Plus, Save, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -21,6 +22,8 @@ export interface GradesToolbarProps {
   onToggleCommentMode?: () => void;
   /** [F1] complementos: false → oculta el botón Comentar */
   showComment?: boolean;
+  /** [F1] acciones secundarias (Importar/Escanear/Generar) en la misma línea */
+  extraActions?: ReactNode;
 }
 
 export function GradesToolbar({
@@ -36,6 +39,7 @@ export function GradesToolbar({
   commentMode,
   onToggleCommentMode,
   showComment = true,
+  extraActions,
 }: GradesToolbarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2 md:flex-nowrap md:gap-3 md:px-4 md:py-3">
@@ -59,7 +63,8 @@ export function GradesToolbar({
           <p className="text-[11px] text-muted-foreground">{subtitle}</p>
         </div>
       </div>
-      <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
+      <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto">
+        {extraActions}
         {showComment && (
           <Button
             variant={commentMode ? "default" : "outline"}

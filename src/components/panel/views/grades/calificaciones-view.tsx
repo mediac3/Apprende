@@ -17,6 +17,7 @@ import { GradeSheetModal } from "./grade-sheets/grade-sheet-modal";
 import type { GradeSheetGeneratorInput } from "./grade-sheets/use-grade-sheet-generator";
 import { ScannerWizard } from "./scanner/scanner-wizard";
 import type { ScannerContextInput } from "./scanner/use-scanner-wizard";
+import { Upload, ScanLine, Printer } from "lucide-react";
 import { useUIStore } from "@/store/ui-store";
 import { useAddonsMap } from "@/store/addons-store";
 import { addonVisible, type AddonKey } from "@/lib/addons";
@@ -760,43 +761,26 @@ export function CalificacionesView() {
               commentMode={commentMode}
               onToggleCommentMode={() => setCommentMode((v) => !v)}
               showComment={vis("comments")}
+              extraActions={
+                <>
+                  {editable && vis("import_excel") && (
+                    <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)} className="gap-1 text-xs">
+                      <Upload className="h-3.5 w-3.5" /> Importar
+                    </Button>
+                  )}
+                  {gradeSheetInput && vis("scan_sheet") && (
+                    <Button variant="ghost" size="sm" onClick={() => setScannerOpen(true)} className="gap-1 text-xs">
+                      <ScanLine className="h-3.5 w-3.5" /> Escanear
+                    </Button>
+                  )}
+                  {gradeSheetInput && vis("grade_sheets") && (
+                    <Button variant="ghost" size="sm" onClick={() => setSheetOpen(true)} className="gap-1 text-xs">
+                      <Printer className="h-3.5 w-3.5" /> Planilla
+                    </Button>
+                  )}
+                </>
+              }
             />
-            {editable && vis("import_excel") && (
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setImportOpen(true)}
-                  className="gap-1 text-xs"
-                >
-                  Importar Excel…
-                </Button>
-              </div>
-            )}
-            {gradeSheetInput && (
-              <div className="flex justify-end gap-2">
-                {vis("scan_sheet") && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setScannerOpen(true)}
-                    className="gap-1 text-xs"
-                  >
-                    Escanear planilla…
-                  </Button>
-                )}
-                {vis("grade_sheets") && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSheetOpen(true)}
-                    className="gap-1 text-xs"
-                  >
-                    Generar planilla…
-                  </Button>
-                )}
-              </div>
-            )}
             {!editable && (
               <p className={cn(
                 "rounded-lg border px-3 py-1.5 text-xs",
