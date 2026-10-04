@@ -15,6 +15,7 @@ import { RequirementsTab } from "./tabs/requirements-tab";
 import { CertificatesTab } from "./tabs/certificates-tab";
 import { GradesTab } from "./tabs/grades-tab";
 import { CoexistenceTab } from "./tabs/coexistence-tab";
+import { UserTab } from "./tabs/user-tab";
 
 export interface StudentRow {
   id: string;
@@ -129,6 +130,7 @@ export function StudentDetailView({
           <TabsTrigger value="certificados">Certificados anteriores</TabsTrigger>
           <TabsTrigger value="calificaciones">Calificaciones</TabsTrigger>
           <TabsTrigger value="convivencia">Convivencia</TabsTrigger>
+          <TabsTrigger value="usuario">Usuario</TabsTrigger>
         </TabsList>
 
         <TabsContent value="matricula">
@@ -154,6 +156,9 @@ export function StudentDetailView({
         </TabsContent>
         <TabsContent value="convivencia">
           <CoexistenceTab student={student} />
+        </TabsContent>
+        <TabsContent value="usuario">
+          <UserTab student={student} />
         </TabsContent>
       </Tabs>
     </motion.div>
