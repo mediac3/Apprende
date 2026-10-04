@@ -17,8 +17,9 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  Plus, Edit, Trash2, Users, Save, BadgeCheck, ChevronLeft, ChevronRight, Search, KeyRound,
+  Plus, Edit, Trash2, Users, Save, BadgeCheck, ChevronLeft, ChevronRight, Search, KeyRound, Eye,
 } from "lucide-react";
+import { UserProfileView } from "./users/user-profile-view";
 
 // ============================================================
 // GESTIÓN DE USUARIOS — módulo de Administración
@@ -82,6 +83,8 @@ export function UsersView() {
 
   // Listado
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("todos"); // [F4.2] filtro por rol
+  const [profileId, setProfileId] = useState<string | null>(null); // [F4.2] perfil universal
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(1);
 
@@ -110,18 +113,22 @@ export function UsersView() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Filtro de búsqueda: usuario, persona, celular, email y roles
+  // Filtro de búsqueda: usuario, persona, celular, email y roles + filtro por rol [F4.2]
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter((u) =>
+    const base = users.filter((u) =>
+      roleFilter === "todos" ||
+      u.userRoles.some((ur) => ur.role.code === roleFilter)
+    );
+    if (!q) return base;
+    return base.filter((u) =>
       u.username.toLowerCase().includes(q) ||
       u.fullName.toLowerCase().includes(q) ||
       (u.phone || "").toLowerCase().includes(q) ||
       (u.email || "").toLowerCase().includes(q) ||
       u.userRoles.some((ur) => ur.role.name.toLowerCase().includes(q) || ur.role.code.toLowerCase().includes(q))
     );
-  }, [users, search]);
+  }, [users, search, roleFilter]);
 
   // Paginación
   const total = filtered.length;
@@ -131,7 +138,7 @@ export function UsersView() {
   const end = Math.min(safePage * rowsPerPage, total);
   const paged = filtered.slice((safePage - 1) * rowsPerPage, safePage * rowsPerPage);
 
-  useEffect(() => { setPage(1); }, [search, rowsPerPage]);
+  useEffect(() => { setPage(1); }, [search, rowsPerPage, roleFilter]);
 
   async function saveUser(data: {
     username: string; fullName: string; phone: string; email: string;
@@ -169,6 +176,11 @@ export function UsersView() {
     if (d.ok) load();
   }
 
+  // [F4.2] Vista de perfil universal (reemplaza el listado mientras está abierta)
+  if (profileId) {
+    return <UserProfileView userId={profileId} onBack={() => setProfileId(null)} />;
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -198,7 +210,7 @@ export function UsersView() {
           <CardTitle className="text-sm tracking-wide">USUARIOS ({total})</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* Barra de herramientas: registros por página + búsqueda */}
+          {/* Barra de herramientas: registros por página + búsqueda + filtro rol [F4.2] */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="hidden sm:inline">Mostrar</span>
@@ -211,6 +223,15 @@ export function UsersView() {
                 </SelectContent>
               </Select>
               <span className="hidden sm:inline">registros</span>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="h-8 w-[150px]" aria-label="Filtrar por rol"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos los roles</SelectItem>
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={r.code}>{r.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="relative">
               <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -247,7 +268,13 @@ export function UsersView() {
                     return (
                       <tr key={u.id} className="hairline-b hover:bg-secondary/50">
                         <td className="py-2 pr-3 font-mono text-xs">{u.username}</td>
-                        <td className="py-2 pr-3 font-medium">{u.fullName}{isSelf && <span className="ml-1.5 text-[10px] text-primary">(usted)</span>}</td>
+                        <td
+                          className="py-2 pr-3 font-medium cursor-pointer hover:underline decoration-dotted underline-offset-2"
+                          title="Ver perfil"
+                          onClick={() => setProfileId(u.id)}
+                        >
+                          {u.fullName}{isSelf && <span className="ml-1.5 text-[10px] text-primary">(usted)</span>}
+                        </td>
                         <td className="py-2 pr-3 tabular-nums">{u.phone || "—"}</td>
                         <td className="py-2 pr-3 text-muted-foreground">{u.email || "—"}</td>
                         <td className="py-2 pr-3">
@@ -263,6 +290,13 @@ export function UsersView() {
                           </button>
                         </td>
                         <td className="py-2 pr-3 text-right whitespace-nowrap">
+                          <Button
+                            variant="ghost" size="icon" className="h-7 w-7"
+                            title="Ver perfil"
+                            onClick={() => setProfileId(u.id)}
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
                           <Button
                             variant="ghost" size="icon" className="h-7 w-7"
                             title={isSelf ? "No puede cambiar sus propios roles" : "Cambiar estado de los roles"}

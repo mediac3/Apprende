@@ -89,6 +89,7 @@ model User {
   jobTitle        String?
   active          Boolean  @default(true)
   lastLoginAt     DateTime?
+  mustChangePassword Boolean @default(false) // [F2] forzar cambio de contraseña en primer login (contraseña inicial = documento)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -112,6 +113,8 @@ model User {
   spaceMemberships SpaceMember[]
   headedGroups    Group[]             @relation("GroupHeadTeacher")
   userRoles       UserRole[]
+  impersonationsStarted ImpersonationLog[] @relation("ImpersonationAdmin")   // [F4.3]
+  impersonationsReceived ImpersonationLog[] @relation("ImpersonationTarget") // [F4.3]
 }
 
 model Group {
@@ -519,6 +522,22 @@ model AuditLog {
   ip            String?
   hash          String?
   createdAt     DateTime @default(now())
+}
+
+/// [F4.3] Auditoría de impersonación "Ver como" (solo Administrador, no admins)
+model ImpersonationLog {
+  id            String   @id @default(cuid())
+  institutionId String
+  adminId       String
+  admin         User     @relation("ImpersonationAdmin", fields: [adminId], references: [id], onDelete: Cascade)
+  targetId      String
+  target        User     @relation("ImpersonationTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  startedAt     DateTime @default(now())
+  endedAt       DateTime?
+  expiresAt     DateTime // startedAt + 30 min (salvaguarda de expiración automática)
+
+  @@index([adminId])
+  @@index([targetId])
 }
 
 // === Comunidad (FluentCommunity-like) ===
