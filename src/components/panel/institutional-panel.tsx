@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useAuthStore } from "@/store/auth-store";
 import { ChangePasswordDialog } from "@/components/shared/change-password-dialog";
+import { ImpersonationBanner } from "@/components/panel/impersonation-banner";
 import { usePermStore } from "@/store/perm-store";
 import { useAddonsStore, useAddonsMap } from "@/store/addons-store";
 import { addonVisible, type AddonKey } from "@/lib/addons";
@@ -453,6 +454,8 @@ export function InstitutionalPanel() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--app-bg)]">
+      {/* [F4.3] Banner rojo de impersonación "Ver como" */}
+      <ImpersonationBanner />
       {/* [F2] Cambio de contraseña forzado (contraseña inicial = documento) */}
       <ChangePasswordDialog />
       {/* Topbar moderno con glassmorphism */}

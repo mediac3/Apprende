@@ -7,10 +7,23 @@
  * con datos disponibles (regla dura). Montado desde el módulo Usuarios [F4.2].
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Mail, Phone, BriefcaseBusiness } from "lucide-react";
+import { ArrowLeft, Eye, Mail, Phone, BriefcaseBusiness } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useAuthStore } from "@/store/auth-store";
+import { useUIStore } from "@/store/ui-store";
 
 interface ProfileUser {
   id: string;
@@ -60,9 +73,15 @@ function EmptyHint({ text }: { text: string }) {
 }
 
 export function UserProfileView({ userId, onBack }: { userId: string; onBack?: () => void }) {
+  const me = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
+  const setImpersonating = useAuthStore((s) => s.setImpersonating);
+  const setModule = useUIStore((s) => s.setModule);
   const [data, setData] = useState<ProfileData | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmVerComo, setConfirmVerComo] = useState(false);
+  const [starting, setStarting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -126,6 +145,42 @@ export function UserProfileView({ userId, onBack }: { userId: string; onBack?: (
   }
 
   const u = data.user;
+  // [F4.3] "Ver como": solo Administrador, nunca sobre sí mismo ni sobre otro Admin
+  const meIsAdmin = me?.role === "administrador" || !!me?.roles?.includes("administrador");
+  const targetIsAdmin = u.role === "administrador" || data.roles.some((r) => r.code === "administrador");
+  const canVerComo = !!me && meIsAdmin && !targetIsAdmin && me.id !== u.id;
+
+  // Inicia la impersonación: la sesión real queda preservada en impersonating.originalUser
+  async function startVerComo() {
+    if (!me) return;
+    setStarting(true);
+    try {
+      const res = await fetch("/api/impersonation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminId: me.id, targetId: u.id }),
+      });
+      const d = await res.json();
+      if (d.ok) {
+        setImpersonating({
+          logId: d.logId,
+          originalUser: me,
+          startedAt: d.startedAt,
+          expiresAt: d.expiresAt,
+        });
+        setUser(d.user);
+        setModule("dashboard");
+        toast.info(`Viendo como ${d.user.fullName}`);
+      } else {
+        toast.error(d.error || "No se pudo iniciar «Ver como»");
+      }
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setStarting(false);
+      setConfirmVerComo(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -167,7 +222,38 @@ export function UserProfileView({ userId, onBack }: { userId: string; onBack?: (
             )}
           </div>
         </div>
+        {canVerComo && (
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setConfirmVerComo(true)}>
+            <Eye className="h-3.5 w-3.5" /> Ver como
+          </Button>
+        )}
       </div>
+
+      {/* [F4.3] Confirmación de impersonación (texto de negocio) */}
+      <AlertDialog open={confirmVerComo} onOpenChange={setConfirmVerComo}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ver como {u.fullName}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vas a ver la app como{" "}
+              <span className="font-semibold">{u.fullName}</span> ({u.role}).
+              Tu sesión seguirá activa. ¿Continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={starting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={starting}
+              onClick={(e) => {
+                e.preventDefault();
+                startVerComo();
+              }}
+            >
+              {starting ? "Iniciando…" : "Continuar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Tabs defaultValue={tabs[0]?.key} className="gap-4">
         <TabsList className="flex-wrap h-auto">
