@@ -10,6 +10,7 @@ export interface SessionUser {
   email?: string | null;
   phone?: string | null;
   jobTitle?: string | null;
+  mustChangePassword?: boolean; // [F2] bloquea el panel hasta cambiar la contraseña inicial
   avatarUrl?: string | null;
   institution: {
     id: string;

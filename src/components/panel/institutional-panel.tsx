@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useAuthStore } from "@/store/auth-store";
+import { ChangePasswordDialog } from "@/components/shared/change-password-dialog";
 import { usePermStore } from "@/store/perm-store";
 import { useAddonsStore, useAddonsMap } from "@/store/addons-store";
 import { addonVisible, type AddonKey } from "@/lib/addons";
@@ -452,6 +453,8 @@ export function InstitutionalPanel() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--app-bg)]">
+      {/* [F2] Cambio de contraseña forzado (contraseña inicial = documento) */}
+      <ChangePasswordDialog />
       {/* Topbar moderno con glassmorphism */}
       <header className="sticky top-0 z-30 glass-header">
         <div className="px-4 sm:px-6 h-16 flex items-center justify-between gap-4">

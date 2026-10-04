@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
       email: user.email,
       phone: user.phone,
       jobTitle: user.jobTitle,
+      mustChangePassword: user.mustChangePassword, // [F2] forzar cambio en primer login
       avatarUrl: user.avatarUrl,
       institution: {
         id: user.institution.id,
