@@ -108,8 +108,8 @@ export function UserTab({ student }: { student: StudentRow }) {
       const data = await res.json();
       if (data.ok) {
         if (confirmAction === "reset-password") {
-          setNotice("Contraseña restablecida al documento. Deberá cambiarla en su próximo login.");
-          setUser((u) => (u ? { ...u, mustChangePassword: true } : u));
+          setNotice(`Acceso normalizado: usuario y contraseña = ${student.documentNumber}. El estudiante deberá cambiarla en su próximo login.`);
+          setUser((u) => (u ? { ...u, username: data.username || u.username, mustChangePassword: true } : u));
         } else {
           setUser((u) => (u ? { ...u, active: data.active } : u));
           setNotice(data.active ? "Usuario activado." : "Usuario desactivado. No podrá iniciar sesión.");

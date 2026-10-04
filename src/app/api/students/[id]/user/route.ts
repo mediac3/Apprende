@@ -145,11 +145,22 @@ export async function PATCH(
       if (!documento) {
         return NextResponse.json({ ok: false, error: "El estudiante no tiene documento" }, { status: 400 });
       }
+      // [F3] El reset normaliza el acceso completo al documento: username y
+      // contraseña pasan a ser el documento (p. ej. estudiantes cuyo documento
+      // se completó después del sync inicial, con username=código).
+      let username = student.user.username;
+      if (username !== documento) {
+        const taken = await db.user.findUnique({ where: { username: documento } });
+        if (taken && taken.id !== student.user.id) {
+          return NextResponse.json({ ok: false, error: "El documento ya existe como usuario de otra persona" }, { status: 409 });
+        }
+        username = documento;
+      }
       await db.user.update({
         where: { id: student.user.id },
-        data: { passwordHash: hashPassword(documento), mustChangePassword: true },
+        data: { username, passwordHash: hashPassword(documento), mustChangePassword: true },
       });
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true, username });
     }
 
     if (action === "toggle-active") {
