@@ -29,17 +29,21 @@ export function subjectEmoji(name: string): string {
 
 interface SubjectCardProps {
   subject: DashboardSubject;
+  onSelect: (subject: DashboardSubject) => void;
 }
 
-export const SubjectCard = memo(function SubjectCard({ subject }: SubjectCardProps) {
+export const SubjectCard = memo(function SubjectCard({ subject, onSelect }: SubjectCardProps) {
   const accent = getAreaColor(subject.id);
   const barColor = progressColor(subject.progress);
   const empty = subject.total === 0;
 
   return (
-    <div
-      className="group rounded-xl border bg-card p-3.5 shadow-sm transition-shadow hover:shadow-md"
-      data-subject-id={subject.id}
+    <button
+      type="button"
+      onClick={() => onSelect(subject)}
+      aria-haspopup="dialog"
+      aria-label={`${subject.name}: ${subject.progress}% de progreso, ver detalle de actividades`}
+      className="group rounded-xl border bg-card p-3.5 text-left shadow-sm transition hover:shadow-md hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="flex items-center gap-2.5">
         <span
@@ -77,13 +81,15 @@ export const SubjectCard = memo(function SubjectCard({ subject }: SubjectCardPro
           <span className="text-sm font-bold" style={{ color: barColor }}>
             {subject.progress}%
           </span>
-          {subject.prom !== null && (
+          {subject.prom !== null ? (
             <span className="text-[11px] text-muted-foreground">
               nota {subject.prom.toFixed(1)}/5.0
             </span>
+          ) : (
+            <span className="text-[11px] text-muted-foreground">Ver detalle →</span>
           )}
         </div>
       </div>
-    </div>
+    </button>
   );
 });

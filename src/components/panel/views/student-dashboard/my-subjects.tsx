@@ -1,10 +1,12 @@
 "use client";
 
 // [F1] Bloque C — Mis asignaturas como mini-apps (grid responsive)
-// 2 columnas en móvil, 3 en tablet, 4 en desktop. Cada card = materia con progreso.
+// 2 columnas en móvil, 3 en tablet, 4 en desktop. Click → detalle de actividades.
+import { useCallback, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen } from "lucide-react";
 import { SubjectCard } from "./subject-card";
+import { SubjectDetailDialog } from "./subject-detail-dialog";
 import type { DashboardSubject } from "./use-student-dashboard";
 
 interface MySubjectsProps {
@@ -12,6 +14,10 @@ interface MySubjectsProps {
 }
 
 export function MySubjects({ subjects }: MySubjectsProps) {
+  const [selected, setSelected] = useState<DashboardSubject | null>(null);
+  const handleSelect = useCallback((s: DashboardSubject) => setSelected(s), []);
+  const handleOpenChange = useCallback((o: boolean) => !o && setSelected(null), []);
+
   if (subjects.length === 0) return null; // sin grupo asignado: el resto del panel basta
 
   return (
@@ -26,11 +32,14 @@ export function MySubjects({ subjects }: MySubjectsProps) {
         <CardContent>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {subjects.map((s) => (
-              <SubjectCard key={s.id} subject={s} />
+              <SubjectCard key={s.id} subject={s} onSelect={handleSelect} />
             ))}
           </div>
         </CardContent>
       </Card>
+
+      {/* Detalle de actividades de la asignatura (consulta, sin edición) */}
+      <SubjectDetailDialog subject={selected} open={selected !== null} onOpenChange={handleOpenChange} />
     </section>
   );
 }

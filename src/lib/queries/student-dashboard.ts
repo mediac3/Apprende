@@ -9,6 +9,14 @@ export interface NextAction {
   urgency: "red" | "yellow" | "green";
 }
 
+export interface SubjectActivityItem {
+  id: string;
+  title: string;
+  graded: boolean;
+  value: number | null; // nota 0.0–5.0 si está calificada
+  dateISO: string | null; // fecha de registro (updatedAt)
+}
+
 export interface SubjectCard {
   id: string;
   name: string;
@@ -16,6 +24,7 @@ export interface SubjectCard {
   graded: number;
   total: number;
   prom: number | null;
+  items: SubjectActivityItem[]; // detalle para el modal de la asignatura
 }
 
 export interface AchievementCard {
@@ -129,7 +138,7 @@ export async function getStudentDashboard(userId: string) {
   const recByActivity = new Map(records.map((r) => [r.activityId, r]));
   const subjectById = new Map(subjects.map((s) => [s.id, s]));
 
-  // ── Bloque C: mini-apps por asignatura ──
+  // ── Bloque C: mini-apps por asignatura (con detalle de actividades) ──
   const subjectCards: SubjectCard[] = subjects.map((s) => {
     const acts = activities.filter((ac) => ac.subjectId === s.id);
     const recs = acts.map((ac) => recByActivity.get(ac.id)).filter(Boolean);
@@ -143,6 +152,16 @@ export async function getStudentDashboard(userId: string) {
       graded: recs.length,
       total: acts.length,
       prom: prom !== null ? Math.round(prom * 10) / 10 : null,
+      items: acts.map((ac) => {
+        const r = recByActivity.get(ac.id);
+        return {
+          id: ac.id,
+          title: ac.label || ac.name,
+          graded: !!r,
+          value: r ? Math.round(r.value * 10) / 10 : null,
+          dateISO: r?.updatedAt.toISOString() ?? null,
+        };
+      }),
     };
   });
 

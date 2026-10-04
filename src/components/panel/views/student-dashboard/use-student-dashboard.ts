@@ -11,6 +11,14 @@ export interface DashboardNextAction {
   urgency: "red" | "yellow" | "green";
 }
 
+export interface SubjectActivityItem {
+  id: string;
+  title: string;
+  graded: boolean;
+  value: number | null;
+  dateISO: string | null;
+}
+
 export interface DashboardSubject {
   id: string;
   name: string;
@@ -18,6 +26,7 @@ export interface DashboardSubject {
   graded: number;
   total: number;
   prom: number | null;
+  items: SubjectActivityItem[];
 }
 
 export interface DashboardAchievement {
