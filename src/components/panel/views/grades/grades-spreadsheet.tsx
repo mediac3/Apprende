@@ -521,6 +521,15 @@ export function GradesSpreadsheet(props: Props) {
             }
           }
         }
+        // [F1-fix] En modo comentario, el tap puede abrir/cerrar el editor y emitir
+        // "" (vacío pasa la validación = "sin nota") → la nota previa se borraba al
+        // guardar el comentario. Los taps de comentario nunca modifican la nota.
+        if (propsRef.current.commentMode && raw === "" && (p.values[key] ?? "") !== "") {
+          const prev = p.values[key] ?? "";
+          instance.setValueFromCoords(c, r, prev, true);
+          echoRef.current.add(key);
+          return;
+        }
         if (!isValidNote(raw)) {
           // Revertir al valor previo y avisar (paridad con la tabla original)
           toast.error("Nota fuera de rango: debe estar entre 0.0 y 5.0");

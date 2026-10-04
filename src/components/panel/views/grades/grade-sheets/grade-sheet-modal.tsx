@@ -123,38 +123,26 @@ export function GradeSheetModal({ open, onOpenChange, input }: GradeSheetModalPr
 
           <div className="grid gap-1.5">
             <div className="flex items-center justify-between">
-              <Label>Conceptos</Label>
-              <div className="flex gap-1">
-                <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setConceptIds(input.concepts.map((c) => c.id))}>
-                  Todos
-                </Button>
-                <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setConceptIds([])}>
-                  Ninguno
-                </Button>
+              <Label>Conceptos y actividades</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-muted-foreground">Total a imprimir</span>
+                <div className="flex gap-1">
+                  <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setConceptIds(input.concepts.map((c) => c.id))}>
+                    Todos
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setConceptIds([])}>
+                    Ninguno
+                  </Button>
+                </div>
               </div>
             </div>
-            <ScrollArea className="h-28 rounded-md border p-2">
-              {input.concepts.map((c) => (
-                <label key={c.id} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-accent">
-                  <Checkbox checked={conceptIds.includes(c.id)} onCheckedChange={() => toggleConcept(c.id)} />
-                  {c.name}
-                </label>
-              ))}
-            </ScrollArea>
-          </div>
-
-          <div className="grid gap-1.5">
-            <div className="flex items-center justify-between">
-              <Label>Actividades por concepto</Label>
-              <span className="text-[11px] text-muted-foreground">Total a imprimir</span>
-            </div>
-            <ScrollArea className="h-32 rounded-md border p-2">
+            <ScrollArea className="h-36 rounded-md border p-2">
               {input.concepts.map((c) => {
                 const created = (input.activitiesByConcept[c.id] ?? []).length;
                 const total = totals[c.id] ?? created;
                 const willCreate = Math.max(0, total - created);
                 return (
-                  <div key={c.id} className="flex items-center justify-between gap-2 rounded px-1 py-1">
+                  <div key={c.id} className="flex items-center justify-between gap-2 rounded px-1 py-1.5">
                     <label
                       className={cn(
                         "flex flex-1 cursor-pointer items-center gap-2 text-sm",
