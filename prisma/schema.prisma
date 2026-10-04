@@ -108,6 +108,7 @@ model User {
   syncOps         SyncOp[]
   enrollments     Enrollment[]    @relation("ProcessedBy")
   assignments     SubjectAssignment[] @relation("Teacher")
+  students        Student[] // [F1] vínculo usuario↔estudiante (dashboard)
   spaceMemberships SpaceMember[]
   headedGroups    Group[]             @relation("GroupHeadTeacher")
   userRoles       UserRole[]
@@ -207,6 +208,34 @@ model Student {
   requirements       StudentRequirement[]
   externalCertificates ExternalCertificate[]
   gradeRecords       GradeRecord[] // Módulo Calificaciones
+
+  // [F1] Dashboard del estudiante — gamificación y vínculo con usuario (aditivo)
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId        String?
+  xp            Int       @default(0)  // XP acumulado (gamificación ligera)
+  streak        Int       @default(0)  // racha de días consecutivos
+  lastActiveAt  DateTime?              // última actividad en el dashboard (cálculo de racha)
+  missionProgress   MissionProgress[]
+
+  @@index([userId])
+}
+
+// [F1] Progreso de la misión diaria — 1 misión por estudiante/día, evita XP duplicado
+model MissionProgress {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date        String   // "YYYY-MM-DD" (fecha local, clave de rotación diaria)
+  missionKey  String   // clave de la regla de misión (ej. "review_pending")
+  progress    Int      @default(0)
+  target      Int      @default(1)
+  completed   Boolean  @default(false)
+  xpAwarded   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([studentId, date, missionKey])
+  @@index([studentId, date])
 }
 
 model Subject {

@@ -61,6 +61,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { DashboardView } from "./views/dashboard-view";
+import { StudentDashboardView } from "./views/student-dashboard/student-dashboard-view";
 import { GradesView } from "./views/grades-view";
 import ConsolidadoView from "./views/consolidado/consolidado-view";
 import PromocionWizardView from "./views/promocion/promocion-wizard";
@@ -333,7 +334,8 @@ export function InstitutionalPanel() {
     }
     switch (activeModule) {
       case "dashboard":
-        return <DashboardView />;
+        // [F1] El estudiante ve SU dashboard; los demás roles conservan el institucional
+        return user?.role === "estudiante" ? <StudentDashboardView /> : <DashboardView />;
       case "notas":
         return <GradesView mode="default" />;
       case "indicadores":
@@ -443,7 +445,8 @@ export function InstitutionalPanel() {
       case "param-report-variables":
         return <ParamsView module="report-variables" />;
       default:
-        return <DashboardView />;
+        // [F1] mismo gate de rol que "dashboard"
+        return user?.role === "estudiante" ? <StudentDashboardView /> : <DashboardView />;
     }
   }
 
