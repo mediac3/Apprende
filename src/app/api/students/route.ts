@@ -262,6 +262,33 @@ export async function PATCH(req: NextRequest) {
       include: { group: { select: { id: true, name: true } } },
     });
 
+    // [F3] Sincronizar el acceso del usuario vinculado al documento guardado:
+    // login = contraseña = documento (normaliza también el username).
+    let userSync: { ok: boolean; username?: string; error?: string } | undefined;
+    if (data.documentNumber) {
+      const linked = await db.student.findUnique({
+        where: { id },
+        select: { user: { select: { id: true, username: true } } },
+      });
+      const u = linked?.user;
+      if (u && u.username !== data.documentNumber) {
+        const taken = await db.user.findUnique({ where: { username: data.documentNumber } });
+        if (taken && taken.id !== u.id) {
+          userSync = { ok: false, error: "El documento ya existe como usuario de otra persona; el acceso del estudiante no se actualizó" };
+        } else {
+          await db.user.update({
+            where: { id: u.id },
+            data: {
+              username: data.documentNumber,
+              passwordHash: crypto.createHash("sha256").update(String(data.documentNumber)).digest("hex"),
+              mustChangePassword: true,
+            },
+          });
+          userSync = { ok: true, username: data.documentNumber };
+        }
+      }
+    }
+
     await db.auditLog.create({
       data: {
         institutionId,
@@ -270,12 +297,12 @@ export async function PATCH(req: NextRequest) {
         module: "students",
         entityType: "Student",
         entityId: id,
-        details: JSON.stringify({ fields: Object.keys(data) }),
+        details: JSON.stringify({ fields: Object.keys(data), userSync }),
         hash: crypto.randomUUID().replace(/-/g, "").slice(0, 32),
       },
     });
 
-    return NextResponse.json({ ok: true, student });
+    return NextResponse.json({ ok: true, student, userSync });
   } catch (e) {
     console.error("[students.update]", e);
     return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });

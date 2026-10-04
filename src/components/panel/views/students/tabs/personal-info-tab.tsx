@@ -79,7 +79,15 @@ export function PersonalInfoTab({ student }: { student: StudentRow }) {
         }),
       });
       const d = await res.json();
-      if (d.ok) toast.success("Información personal actualizada");
+      if (d.ok) {
+        toast.success("Información personal actualizada");
+        // [F3] El acceso del estudiante se normaliza al documento guardado
+        if (d.userSync?.ok) {
+          toast.info(`Acceso actualizado: usuario y contraseña = ${d.userSync.username} (cambio forzado en el próximo login)`);
+        } else if (d.userSync && !d.userSync.ok) {
+          toast.warning(d.userSync.error || "No se pudo actualizar el acceso del estudiante");
+        }
+      }
       else toast.error(d.error || "No se pudo actualizar");
     } finally {
       setSaving(false);
