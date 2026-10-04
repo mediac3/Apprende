@@ -84,17 +84,33 @@ export async function getStudentDashboard(userId: string) {
     groupId = enr?.groupId ?? null;
   }
 
-  const assignments = groupId
-    ? await db.subjectAssignment.findMany({
-        where: { groupId },
-        include: { subject: { select: { id: true, name: true } } },
-      })
-    : [];
+  // Asignaturas visibles = unión de SubjectAssignment del grupo y materias con
+  // actividades reales en el periodo (la asignación académica puede estar incompleta
+  // mientras el docente ya registra actividades en Notas parciales).
+  const [assignments, activitySubjects] = await Promise.all([
+    groupId
+      ? db.subjectAssignment.findMany({
+          where: { groupId },
+          include: { subject: { select: { id: true, name: true } } },
+        })
+      : Promise.resolve([]),
+    groupId && period
+      ? db.activity.findMany({
+          where: { groupId, periodId: period.id },
+          select: { subjectId: true, subject: { select: { id: true, name: true } } },
+          distinct: ["subjectId"],
+        })
+      : Promise.resolve([]),
+  ]);
+  const subjectMap = new Map<string, { id: string; name: string }>();
+  for (const a of assignments) subjectMap.set(a.subject.id, a.subject);
+  for (const a of activitySubjects) subjectMap.set(a.subject.id, a.subject);
+  const subjects = [...subjectMap.values()].sort((a, b) => a.name.localeCompare(b.name, "es"));
+  const subjectIds = subjects.map((s) => s.id);
 
-  const assignmentSubjectIds = assignments.map((a) => a.subject.id);
   const activities = groupId && period
     ? await db.activity.findMany({
-        where: { groupId, periodId: period.id, subjectId: { in: assignmentSubjectIds } },
+        where: { groupId, periodId: period.id, subjectId: { in: subjectIds } },
         select: { id: true, subjectId: true, name: true, label: true, order: true },
         orderBy: [{ subjectId: "asc" }, { order: "asc" }],
       })
@@ -104,25 +120,25 @@ export async function getStudentDashboard(userId: string) {
     ? await db.gradeRecord.findMany({
         where: {
           studentId: student.id,
-          activity: { periodId: period.id, subjectId: { in: assignmentSubjectIds } },
+          activity: { periodId: period.id, subjectId: { in: subjectIds } },
         },
         select: { activityId: true, value: true, updatedAt: true, createdAt: true },
       })
     : [];
 
   const recByActivity = new Map(records.map((r) => [r.activityId, r]));
-  const subjectById = new Map(assignments.map((a) => [a.subject.id, a.subject]));
+  const subjectById = new Map(subjects.map((s) => [s.id, s]));
 
   // ── Bloque C: mini-apps por asignatura ──
-  const subjects: SubjectCard[] = assignments.map((a) => {
-    const acts = activities.filter((ac) => ac.subjectId === a.subject.id);
+  const subjectCards: SubjectCard[] = subjects.map((s) => {
+    const acts = activities.filter((ac) => ac.subjectId === s.id);
     const recs = acts.map((ac) => recByActivity.get(ac.id)).filter(Boolean);
     const prom = recs.length
-      ? recs.reduce((s, r) => s + (r!.value ?? 0), 0) / recs.length
+      ? recs.reduce((sum, r) => sum + (r!.value ?? 0), 0) / recs.length
       : null;
     return {
-      id: a.subject.id,
-      name: a.subject.name,
+      id: s.id,
+      name: s.name,
       progress: progressFormula(recs.length, acts.length, prom),
       graded: recs.length,
       total: acts.length,
@@ -303,7 +319,7 @@ export async function getStudentDashboard(userId: string) {
     progressDelta,
     nextActions,
     totalPending,
-    subjects,
+    subjects: subjectCards,
     achievements,
     streak,
     mission: { ...mission, justCompleted: xpGain > 0 },
