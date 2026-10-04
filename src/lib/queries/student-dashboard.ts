@@ -59,7 +59,7 @@ function progressFormula(graded: number, total: number, prom: number | null): nu
   if (total === 0) return 0;
   const delivery = (graded / total) * 40;
   const perf = prom !== null ? (prom / 5.0) * 100 * 0.6 : 0;
-  return Math.max(0, Math.min(100, Math.round(delivery * 0.4 + perf)));
+  return Math.max(0, Math.min(100, Math.round(delivery + perf)));
 }
 
 export async function getStudentDashboard(userId: string) {
