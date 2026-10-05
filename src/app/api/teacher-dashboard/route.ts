@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       headers: { "Cache-Control": "no-store" }, // datos operativos vivos (KPIs, alertas)
     });
   } catch (e) {
-    console.error("[teacher-dashboard]", e instanceof Error ? e.message : e);
+    console.error("[teacher-dashboard]", e instanceof Error ? `${e.message}\n${e.stack}` : e);
     return NextResponse.json({ error: "internal" }, { status: 500 });
   }
 }

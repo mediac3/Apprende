@@ -88,7 +88,7 @@ export default function RootLayout({
         {/* [theme-options] Inyecta variables CSS del tema (cliente, sin afectar render del servidor) */}
         <ThemeOptionsVars />
         <Toaster />
-        <SonnerToaster position="top-right" richColors closeButton />
+        <SonnerToaster position="bottom-right" richColors closeButton />
       </body>
     </html>
   );

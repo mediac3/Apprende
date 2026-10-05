@@ -22,10 +22,10 @@ export interface TeacherAlert {
 export interface SubjectPerformanceRow {
   subjectId: string;
   subjectName: string;
-  percentage: number; // 0-100 (avg / 5)
-  avgGrade: number; // 0.0-5.0
+  percentage: number; // % de cobertura: notas registradas / esperadas en el periodo
+  avgGrade: number | null; // promedio de las notas registradas (null si no hay)
   studentCount: number;
-  groups: { groupId: string; groupName: string; percentage: number; studentCount: number }[];
+  groups: { groupId: string; groupName: string; percentage: number; studentCount: number; avgGrade: number | null }[];
 }
 
 export interface PendingTaskRow {
@@ -92,7 +92,6 @@ const DEFAULT_CONFIG: TeacherDashboardConfigDTO = {
 };
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
-const pct = (avg: number) => Math.round((avg / 5) * 100);
 const fmtDate = (d: Date) =>
   `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}`;
 
@@ -137,6 +136,30 @@ export async function getTeacherDashboard(
 
   const groupIds = [...new Set(assignments.map((a) => a.groupId))];
   const subjectIds = [...new Set(assignments.map((a) => a.subjectId))];
+
+  // Modelos educativos de los grupos con asignación académica (grupo → grado →
+  // ítem de plan → plan → modelo). Solo esos periodos son válidos para el docente.
+  const groupRows = await db.group.findMany({
+    where: { id: { in: groupIds } },
+    select: { gradeLevelId: true },
+  });
+  const gradeLevelIds = [...new Set(groupRows.map((g) => g.gradeLevelId).filter((x): x is string => Boolean(x)))];
+  const planItems = gradeLevelIds.length
+    ? await db.curriculumPlanItem.findMany({
+        where: { gradeLevelId: { in: gradeLevelIds } },
+        select: { planId: true },
+      })
+    : [];
+  const plans = planItems.length
+    ? await db.curriculumPlan.findMany({
+        where: {
+          id: { in: [...new Set(planItems.map((i) => i.planId))] },
+          institutionId: user.institutionId,
+        },
+        select: { educationalModelId: true },
+      })
+    : [];
+  const modelIds = [...new Set(plans.map((p) => p.educationalModelId))];
 
   if (!ay || groupIds.length === 0) {
     return {
@@ -189,7 +212,14 @@ export async function getTeacherDashboard(
       },
     }),
     db.period.findMany({
-      where: { institutionId: user.institutionId },
+      where: {
+        institutionId: user.institutionId,
+        // Solo periodos de los modelos de los grupos asignados; si la cadena
+        // grupo→modelo no resolvió, se muestran únicamente los que tienen registros.
+        ...(modelIds.length > 0
+          ? { educationalModelId: { in: modelIds } }
+          : {}),
+      },
       orderBy: { startDate: "asc" },
       select: { id: true, name: true, startDate: true, endDate: true },
     }),
@@ -313,15 +343,29 @@ export async function getTeacherDashboard(
   ).length;
 
   // ---------- Rendimiento por asignatura (agregado) ----------
+  // % = cobertura de evaluación: notas registradas / esperadas (estudiantes activos
+  // × actividades del periodo), ponderada por grupo. Promedio = de las notas registradas.
   const subjectPerformance: SubjectPerformanceRow[] = subjectIds
     .map((subjectId) => {
       const subjectAssignments = assignments.filter((a) => a.subjectId === subjectId);
       const subjectName = subjectAssignments[0]?.subject.name ?? "—";
-      const groups: { groupId: string; groupName: string; percentage: number; studentCount: number }[] = [];
+      const groups: { groupId: string; groupName: string; percentage: number; studentCount: number; avgGrade: number | null }[] = [];
       let allValues: number[] = [];
+      let totalGraded = 0;
+      let totalExpected = 0;
       let studentsWithRecords = new Set<string>();
 
       for (const asg of subjectAssignments) {
+        const activeCount = activeByGroup.get(asg.groupId)?.size ?? 0;
+        const groupActs = activities.filter(
+          (a) => a.groupId === asg.groupId && a.subjectId === subjectId && a.periodId === (selectedPeriod?.id ?? "")
+        );
+        const expected = activeCount * groupActs.length;
+        const graded = groupActs.reduce((sum, a) => sum + (gradedByActivity.get(a.id) ?? 0), 0);
+        const completion = expected > 0 ? Math.round((graded / expected) * 100) : 0;
+        totalGraded += graded;
+        totalExpected += expected;
+
         const groupValues: number[] = [];
         const groupStudents = new Set<string>();
         for (const [studentId, perPeriod] of bySubject.get(subjectId)?.entries() ?? []) {
@@ -336,8 +380,9 @@ export async function getTeacherDashboard(
         groups.push({
           groupId: asg.groupId,
           groupName: asg.group.name,
-          percentage: pct(avg(groupValues)),
+          percentage: completion,
           studentCount: groupStudents.size,
+          avgGrade: groupValues.length ? round1(avg(groupValues)) : null,
         });
         allValues.push(...groupValues);
       }
@@ -345,8 +390,8 @@ export async function getTeacherDashboard(
       return {
         subjectId,
         subjectName,
-        percentage: pct(avg(allValues)),
-        avgGrade: round1(avg(allValues)),
+        percentage: totalExpected > 0 ? Math.round((totalGraded / totalExpected) * 100) : 0,
+        avgGrade: allValues.length ? round1(avg(allValues)) : null,
         studentCount: studentsWithRecords.size,
         groups: groups.sort((a, b) => b.percentage - a.percentage),
       };
@@ -422,6 +467,32 @@ export async function getTeacherDashboard(
       return !last || last < cutoff;
     });
     if (inactive.length) {
+      // Contexto por estudiante: grupo y asignaturas del docente aún sin evaluar en el periodo
+      const studentGroup = new Map<string, string>();
+      for (const e of enrollments) {
+        if (!studentGroup.has(e.studentId)) studentGroup.set(e.studentId, e.groupId);
+      }
+      const subjectsByGroup = new Map<string, { subjectId: string; name: string }[]>();
+      for (const a of assignments) {
+        if (!subjectsByGroup.has(a.groupId)) subjectsByGroup.set(a.groupId, []);
+        subjectsByGroup.get(a.groupId)!.push({ subjectId: a.subjectId, name: a.subject.name });
+      }
+      const inactiveDetail = (sid: string): string => {
+        const groupId = studentGroup.get(sid);
+        const groupName = groupId ? assignments.find((a) => a.groupId === groupId)?.group.name : null;
+        const pendientes: string[] = [];
+        if (groupId && selectedPeriod) {
+          for (const subj of subjectsByGroup.get(groupId) ?? []) {
+            const perPeriod = bySubject.get(subj.subjectId)?.get(sid);
+            const values = perPeriod?.get(selectedPeriod.id) ?? [];
+            if (values.length === 0) pendientes.push(subj.name);
+          }
+        }
+        const grupo = groupName ? `Grupo ${groupName}` : "Sin grupo";
+        if (pendientes.length === 0) return `${grupo} · Sin registros en el periodo`;
+        if (pendientes.length === 1) return `${grupo} · Sin evaluar: ${pendientes[0]}`;
+        return `${grupo} · Sin evaluar: ${pendientes[0]} (+${pendientes.length - 1})`;
+      };
       alerts.push({
         type: "inactive",
         emoji: "⏰",
@@ -432,10 +503,11 @@ export async function getTeacherDashboard(
         students: inactive
           .map((sid) => {
             const last = lastRecordAt.get(sid);
+            const base = inactiveDetail(sid);
             return {
               studentId: sid,
               name: studentName.get(sid) ?? "—",
-              detail: last ? `Último registro: ${fmtDate(last)}` : "Sin registros",
+              detail: last ? `${base} · Último: ${fmtDate(last)}` : base,
             };
           })
           .sort((a, b) => a.name.localeCompare(b.name)),

@@ -8,7 +8,7 @@ import { usePermStore } from "@/store/perm-store";
 import { useAddonsStore, useAddonsMap } from "@/store/addons-store";
 import { addonVisible, type AddonKey } from "@/lib/addons";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { GlobalSearch, useSearchOpen } from "@/components/panel/search/global-search";
+import { GlobalSearch, InlineGlobalSearch, useSearchOpen } from "@/components/panel/search/global-search";
 import { useUIStore, type ModuleKey } from "@/store/ui-store";
 import { cn } from "@/lib/utils";
 import {
@@ -491,19 +491,10 @@ export function InstitutionalPanel() {
                 </div>
               </div>
             </div>
-            {/* [Búsqueda global] Trigger tipo input a la izquierda en escritorio; móvil usa la lupa + lightbox */}
-            <button
-              type="button"
-              onClick={() => useSearchOpen.getState().setOpen(true)}
-              className="hidden lg:flex items-center gap-2 h-9 max-w-sm w-64 xl:w-80 rounded-lg border bg-secondary/40 px-3 text-sm text-muted-foreground hover:bg-secondary transition-colors shrink"
-              aria-label="Buscar (Ctrl+K)"
-            >
-              <Search className="h-4 w-4 shrink-0" />
-              <span className="truncate">Buscar estudiantes, grupos…</span>
-              <kbd className="ml-auto hidden xl:inline-flex h-5 items-center rounded border bg-background px-1.5 text-[10px] font-medium text-muted-foreground">
-                Ctrl K
-              </kbd>
-            </button>
+            {/* [Búsqueda global] Escritorio: lupa que se expande inline (sin lightbox) */}
+            <div className="hidden lg:flex ml-2">
+              <InlineGlobalSearch />
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {/* [F2] Búsqueda global — lupa (móvil/tablet); abre el lightbox de búsqueda */}

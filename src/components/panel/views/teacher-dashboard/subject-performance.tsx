@@ -24,11 +24,11 @@ function textColor(pct: number): string {
   return "text-red-500";
 }
 
-// Estado del promedio según rango (escala 0-5 → %)
-function perfLabel(pct: number): string {
-  if (pct >= 80) return "Superior";
-  if (pct >= 60) return "Alto";
-  if (pct >= 40) return "Básico";
+// Estado del promedio según la nota (escala 0.0-5.0)
+function perfLabel(avgGrade: number): string {
+  if (avgGrade >= 4.6) return "Superior";
+  if (avgGrade >= 4.0) return "Alto";
+  if (avgGrade >= 3.0) return "Básico";
   return "Bajo";
 }
 
@@ -127,10 +127,12 @@ export function SubjectPerformance({
                           <span
                             className={cn(
                               "text-xs font-semibold shrink-0 text-right",
-                              g.studentCount > 0 ? textColor(g.percentage) : "text-muted-foreground"
+                              g.studentCount > 0 ? textColor(g.avgGrade ? g.avgGrade * 20 : 0) : "text-muted-foreground"
                             )}
                           >
-                            {g.studentCount > 0 ? `${g.percentage}% · ${perfLabel(g.percentage)}` : "Sin notas"}
+                            {g.studentCount > 0
+                              ? `${g.percentage}% registrado · ${perfLabel(g.avgGrade ?? 0)}`
+                              : "Sin notas"}
                           </span>
                         </button>
                       ))}
