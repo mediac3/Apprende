@@ -65,6 +65,7 @@ import {
 import { DashboardView } from "./views/dashboard-view";
 import { StudentDashboardView } from "./views/student-dashboard/student-dashboard-view";
 import { TeacherDashboardView } from "./views/teacher-dashboard/teacher-dashboard-view"; // [Dashboard Docente]
+import { useGradesPreselectStore } from "@/store/grades-prefill-store"; // [Dashboard Docente] pre-filtro Notas
 import { GradesView } from "./views/grades-view";
 import ConsolidadoView from "./views/consolidado/consolidado-view";
 import PromocionWizardView from "./views/promocion/promocion-wizard";
@@ -342,7 +343,8 @@ export function InstitutionalPanel() {
         if (user?.role === "docente") return <TeacherDashboardView />; // [Dashboard Docente]
         return <DashboardView />;
       case "notas":
-        return <GradesView mode="default" />;
+        // [Dashboard Docente] pre-selección grupo/asignatura/periodo si viene del dashboard
+        return <GradesView mode="default" preselect={useGradesPreselectStore.getState().preselect ?? undefined} />;
       case "indicadores":
         return <InformesAcademicosModule />;
       // [F2] Consolidado anual
@@ -466,7 +468,7 @@ export function InstitutionalPanel() {
       {/* Topbar moderno con glassmorphism */}
       <header className="sticky top-0 z-30 glass-header">
         <div className="px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <button
               className="lg:hidden p-2 -ml-1 rounded-lg hover:bg-secondary transition-colors"
               onClick={() => setSidebar(true)}
@@ -489,13 +491,26 @@ export function InstitutionalPanel() {
                 </div>
               </div>
             </div>
+            {/* [Búsqueda global] Trigger tipo input a la izquierda en escritorio; móvil usa la lupa + lightbox */}
+            <button
+              type="button"
+              onClick={() => useSearchOpen.getState().setOpen(true)}
+              className="hidden lg:flex items-center gap-2 h-9 max-w-sm w-64 xl:w-80 rounded-lg border bg-secondary/40 px-3 text-sm text-muted-foreground hover:bg-secondary transition-colors shrink"
+              aria-label="Buscar (Ctrl+K)"
+            >
+              <Search className="h-4 w-4 shrink-0" />
+              <span className="truncate">Buscar estudiantes, grupos…</span>
+              <kbd className="ml-auto hidden xl:inline-flex h-5 items-center rounded border bg-background px-1.5 text-[10px] font-medium text-muted-foreground">
+                Ctrl K
+              </kbd>
+            </button>
           </div>
           <div className="flex items-center gap-2">
-            {/* [F2] Búsqueda global — lupa junto a notificaciones (⌘K) */}
+            {/* [F2] Búsqueda global — lupa (móvil/tablet); abre el lightbox de búsqueda */}
             <Button
               variant="ghost"
               size="sm"
-              className="gap-2 rounded-lg"
+              className="lg:hidden gap-2 rounded-lg shrink-0 h-9 w-9 p-0 justify-center"
               aria-label="Buscar (Ctrl+K)"
               title="Buscar (Ctrl+K)"
               onClick={() => useSearchOpen.getState().setOpen(true)}

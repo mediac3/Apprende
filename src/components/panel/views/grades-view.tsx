@@ -66,8 +66,15 @@ const INDICADORES = ["Razonamiento", "Comunicación", "Resolución de problemas"
 
 // El módulo "notas" (default) usa el nuevo módulo Calificaciones (planilla por
 // actividades). "indicadores" conserva la planilla legada sin cambios.
-export function GradesView({ mode = "default" }: { mode?: "default" | "indicadores" }) {
-  if (mode === "default") return <CalificacionesView />;
+export function GradesView({
+  mode = "default",
+  preselect,
+}: {
+  mode?: "default" | "indicadores";
+  // [Dashboard Docente] pre-selección grupo/asignatura/periodo (renderiza directo la planilla)
+  preselect?: { groupId: string; groupName: string; subjectId: string; subjectName: string; periodId: string | null };
+}) {
+  if (mode === "default") return <CalificacionesView preselect={preselect} />;
   return <LegacyNotasView />;
 }
 

@@ -8,8 +8,9 @@ export async function GET(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "userId requerido" }, { status: 400 });
   }
+  const periodId = req.nextUrl.searchParams.get("periodId"); // opcional: periodo del selector
   try {
-    const result = await getTeacherDashboard(userId);
+    const result = await getTeacherDashboard(userId, { periodId });
     if (!result.ok) {
       return NextResponse.json({ error: result.reason }, { status: 403 });
     }

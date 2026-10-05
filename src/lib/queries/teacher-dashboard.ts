@@ -25,7 +25,7 @@ export interface SubjectPerformanceRow {
   percentage: number; // 0-100 (avg / 5)
   avgGrade: number; // 0.0-5.0
   studentCount: number;
-  groups: { groupName: string; percentage: number }[];
+  groups: { groupId: string; groupName: string; percentage: number; studentCount: number }[];
 }
 
 export interface PendingTaskRow {
@@ -52,10 +52,20 @@ export interface TeacherDashboardConfigDTO {
   riskThreshold: number;
 }
 
+export interface PeriodOption {
+  id: string;
+  name: string;
+  startDateISO: string;
+  endDateISO: string;
+}
+
 export interface TeacherDashboardData {
   teacherName: string;
   hasAssignments: boolean;
   currentPeriodName: string | null;
+  selectedPeriodId: string | null;
+  selectedPeriod: PeriodOption | null;
+  periods: PeriodOption[];
   kpis: {
     courses: number;
     students: number;
@@ -86,7 +96,10 @@ const pct = (avg: number) => Math.round((avg / 5) * 100);
 const fmtDate = (d: Date) =>
   `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}`;
 
-export async function getTeacherDashboard(userId: string): Promise<TeacherDashboardResult> {
+export async function getTeacherDashboard(
+  userId: string,
+  opts?: { periodId?: string | null }
+): Promise<TeacherDashboardResult> {
   const user = await db.user.findUnique({
     where: { id: userId },
     select: { id: true, role: true, active: true, institutionId: true, fullName: true },
@@ -132,6 +145,9 @@ export async function getTeacherDashboard(userId: string): Promise<TeacherDashbo
         teacherName: user.fullName,
         hasAssignments: false,
         currentPeriodName: null,
+        selectedPeriodId: null,
+        selectedPeriod: null,
+        periods: [],
         kpis: { courses: 0, students: 0, pendingTasks: 0, gradedWeek: 0, gradedWeekDelta: 0 },
         subjectPerformance: [],
         alerts: [],
@@ -175,7 +191,7 @@ export async function getTeacherDashboard(userId: string): Promise<TeacherDashbo
     db.period.findMany({
       where: { institutionId: user.institutionId },
       orderBy: { startDate: "asc" },
-      select: { id: true, name: true, startDate: true },
+      select: { id: true, name: true, startDate: true, endDate: true },
     }),
   ]);
 
@@ -221,8 +237,8 @@ export async function getTeacherDashboard(userId: string): Promise<TeacherDashbo
   const lastRecordAt = new Map<string, Date>();
   // subjectId → studentId → periodId → values[]
   const bySubject = new Map<string, Map<string, Map<string, number[]>>>();
-  // conceptId → studentId → values[]
-  const byConcept = new Map<string, Map<string, number[]>>();
+  // conceptId → studentId → periodId → values[]
+  const byConcept = new Map<string, Map<string, Map<string, number[]>>>();
   // activityId → notas registradas (entre estudiantes activos del grupo)
   const gradedByActivity = new Map<string, number>();
 
@@ -245,36 +261,48 @@ export async function getTeacherDashboard(userId: string): Promise<TeacherDashbo
 
     if (!byConcept.has(act.evaluativeConceptId)) byConcept.set(act.evaluativeConceptId, new Map());
     const cMap = byConcept.get(act.evaluativeConceptId)!;
-    cMap.set(r.studentId, [...(cMap.get(r.studentId) ?? []), r.value]);
+    if (!cMap.has(r.studentId)) cMap.set(r.studentId, new Map());
+    const cPerPeriod = cMap.get(r.studentId)!;
+    cPerPeriod.set(act.periodId, [...(cPerPeriod.get(act.periodId) ?? []), r.value]);
   }
 
   const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 
-  // Periodo de contexto: el más reciente (por fecha) que tenga registros del docente;
-  // si no hay registros, el último iniciado. Se ignoran periodos vacíos porque la
-  // institución puede tener varios juegos de periodos (observado en datos reales).
   const periodsWithRecords = new Set<string>();
   for (const r of records) {
     const act = activityById.get(r.activityId);
     if (act) periodsWithRecords.add(act.periodId);
   }
-  let contextPeriod = periods[periods.length - 1] ?? null;
-  for (let i = periods.length - 1; i >= 0; i--) {
-    if (periods[i].startDate <= now) {
-      contextPeriod = periods[i];
-      break;
+
+  // Periodo de trabajo: 1) el pedido explícitamente (selector del dashboard);
+  // 2) el que contiene la fecha actual; 3) el más reciente con registros;
+  // 4) el último iniciado. (La institución puede tener varios juegos de periodos.)
+  let selectedPeriod: { id: string; name: string; startDate: Date; endDate: Date } | null = null;
+  if (opts?.periodId) {
+    selectedPeriod = periods.find((p) => p.id === opts.periodId) ?? null;
+  }
+  if (!selectedPeriod) {
+    for (const p of periods) {
+      if (p.startDate <= now && p.endDate >= now) {
+        selectedPeriod = p;
+        break;
+      }
     }
   }
-  for (let i = periods.length - 1; i >= 0; i--) {
-    if (periodsWithRecords.has(periods[i].id)) {
-      contextPeriod = periods[i];
-      break;
+  if (!selectedPeriod) {
+    for (let i = periods.length - 1; i >= 0; i--) {
+      if (periodsWithRecords.has(periods[i].id)) {
+        selectedPeriod = periods[i];
+        break;
+      }
     }
   }
-  // Periodo previo CON registros (para el alerta de declive)
-  const recordedPeriodsOrdered = periods.filter((p) => periodsWithRecords.has(p.id));
-  const ctxIdx = contextPeriod ? recordedPeriodsOrdered.findIndex((p) => p.id === contextPeriod!.id) : -1;
-  const previousPeriod = ctxIdx > 0 ? recordedPeriodsOrdered[ctxIdx - 1] : null;
+  if (!selectedPeriod) {
+    selectedPeriod = periods[periods.length - 1] ?? null;
+  }
+  // Periodo previo (por orden de fechas) para el alerta de declive
+  const selIdx = selectedPeriod ? periods.findIndex((p) => p.id === selectedPeriod!.id) : -1;
+  const previousPeriod = selIdx > 0 ? periods[selIdx - 1] : null;
 
   // ---------- KPIs ----------
   const gradedWeek = records.filter((r) => r.updatedAt >= new Date(now.getTime() - weekMs)).length;
@@ -289,21 +317,28 @@ export async function getTeacherDashboard(userId: string): Promise<TeacherDashbo
     .map((subjectId) => {
       const subjectAssignments = assignments.filter((a) => a.subjectId === subjectId);
       const subjectName = subjectAssignments[0]?.subject.name ?? "—";
-      const groups: { groupName: string; percentage: number }[] = [];
+      const groups: { groupId: string; groupName: string; percentage: number; studentCount: number }[] = [];
       let allValues: number[] = [];
       let studentsWithRecords = new Set<string>();
 
       for (const asg of subjectAssignments) {
         const groupValues: number[] = [];
+        const groupStudents = new Set<string>();
         for (const [studentId, perPeriod] of bySubject.get(subjectId)?.entries() ?? []) {
           if (!activeByGroup.get(asg.groupId)?.has(studentId)) continue;
-          const values = [...perPeriod.values()].flat();
+          const values = perPeriod.get(selectedPeriod?.id ?? "") ?? [];
           if (values.length) {
             groupValues.push(...values);
+            groupStudents.add(studentId);
             studentsWithRecords.add(studentId);
           }
         }
-        groups.push({ groupName: asg.group.name, percentage: pct(avg(groupValues)) });
+        groups.push({
+          groupId: asg.groupId,
+          groupName: asg.group.name,
+          percentage: pct(avg(groupValues)),
+          studentCount: groupStudents.size,
+        });
         allValues.push(...groupValues);
       }
 
@@ -327,7 +362,7 @@ export async function getTeacherDashboard(userId: string): Promise<TeacherDashbo
     const subjectName = assignments.find((a) => a.subjectId === subjectId)?.subject.name ?? "—";
     const affected: AlertStudent[] = [];
     for (const [studentId, perPeriod] of bySubject.get(subjectId)?.entries() ?? []) {
-      const values = [...perPeriod.values()].flat();
+      const values = perPeriod.get(selectedPeriod?.id ?? "") ?? [];
       const a = avg(values);
       if (values.length && a < config.riskThreshold) {
         affected.push({ studentId, name: studentName.get(studentId) ?? "—", detail: `Prom. ${round1(a)}` });
@@ -348,12 +383,12 @@ export async function getTeacherDashboard(userId: string): Promise<TeacherDashbo
   }
 
   // 2) Disminución de rendimiento (periodo actual vs anterior > declineThreshold)
-  if (previousPeriod && contextPeriod) {
+  if (previousPeriod && selectedPeriod) {
     for (const subjectId of subjectIds) {
       const subjectName = assignments.find((a) => a.subjectId === subjectId)?.subject.name ?? "—";
       const affected: AlertStudent[] = [];
       for (const [studentId, perPeriod] of bySubject.get(subjectId)?.entries() ?? []) {
-        const cur = avg(perPeriod.get(contextPeriod?.id ?? "") ?? []);
+        const cur = avg(perPeriod.get(selectedPeriod?.id ?? "") ?? []);
         const prev = avg(perPeriod.get(previousPeriod?.id ?? "") ?? []);
         if (cur > 0 && prev > 0 && prev - cur > config.declineThreshold) {
           affected.push({
@@ -409,12 +444,13 @@ export async function getTeacherDashboard(userId: string): Promise<TeacherDashbo
     }
   }
 
-  // 4) Concepto bajo (avg < riskThreshold en un concepto evaluativo)
+  // 4) Concepto bajo (avg < riskThreshold en un concepto, periodo seleccionado)
   for (const [conceptId, cMap] of byConcept.entries()) {
     const conceptName = activities.find((a) => a.evaluativeConceptId === conceptId)?.evaluativeConcept.name;
     if (!conceptName) continue;
     const affected: AlertStudent[] = [];
-    for (const [studentId, values] of cMap.entries()) {
+    for (const [studentId, cPerPeriod] of cMap.entries()) {
+      const values = cPerPeriod.get(selectedPeriod?.id ?? "") ?? [];
       const a = avg(values);
       if (values.length && a < config.riskThreshold) {
         affected.push({ studentId, name: studentName.get(studentId) ?? "—", detail: `Prom. ${round1(a)}` });
@@ -492,12 +528,22 @@ export async function getTeacherDashboard(userId: string): Promise<TeacherDashbo
   }
   recent.sort((a, b) => b.createdAtISO.localeCompare(a.createdAtISO));
 
+  const toPeriodOption = (p: { id: string; name: string; startDate: Date; endDate: Date }): PeriodOption => ({
+    id: p.id,
+    name: p.name,
+    startDateISO: p.startDate.toISOString(),
+    endDateISO: p.endDate.toISOString(),
+  });
+
   return {
     ok: true,
     data: {
       teacherName: user.fullName,
       hasAssignments: true,
-      currentPeriodName: contextPeriod?.name ?? null,
+      currentPeriodName: selectedPeriod?.name ?? null,
+      selectedPeriodId: selectedPeriod?.id ?? null,
+      selectedPeriod: selectedPeriod ? toPeriodOption(selectedPeriod) : null,
+      periods: periods.map(toPeriodOption),
       kpis: {
         courses: groupIds.length,
         students: studentIds.length,

@@ -1,10 +1,22 @@
 "use client";
 
 // [Dashboard Docente] Bloque D — 🤖 Alertas IA priorizadas, cada una con acción.
-// "Ver estudiantes" → modal con lista afectada; "Intervenir" → modal con 3 acciones
-// (Observación / Mensajería / Actividad de refuerzo). Engranaje: umbrales configurables.
+// El signo + despliega los estudiantes afectados; cada fila ofrece notificar al
+// acudiente (módulo de notificaciones pendiente → aviso informativo).
+// "Intervenir" abre acciones que usan módulos existentes. Engranaje: umbrales.
 import { useState } from "react";
-import { Bot, Settings2, ArrowRight, MessageSquare, ListChecks, NotebookPen, CheckCircle2 } from "lucide-react";
+import {
+  Bot,
+  Settings2,
+  ArrowRight,
+  MessageSquare,
+  ListChecks,
+  NotebookPen,
+  CheckCircle2,
+  Plus,
+  Minus,
+  Bell,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,32 +35,67 @@ import type { TeacherAlert, TeacherDashboardConfigDTO } from "@/lib/queries/teac
 
 type Navigate = (m: "observador" | "mensajeria" | "gestion-actividades") => void;
 
-function AlertCard({
-  alert,
-  onStudents,
-  onIntervene,
-}: {
-  alert: TeacherAlert;
-  onStudents: (a: TeacherAlert) => void;
-  onIntervene: (a: TeacherAlert) => void;
-}) {
-  const action = alert.actionLabel === "Intervenir" ? onIntervene : onStudents;
+function AlertCard({ alert, onIntervene }: { alert: TeacherAlert; onIntervene: (a: TeacherAlert) => void }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-amber-200/60 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 p-3">
-      <span className="text-lg leading-none mt-0.5" aria-hidden>
-        {alert.emoji}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-foreground">{alert.message}</p>
-        <div className="flex items-center gap-2 mt-2">
-          <Badge variant="secondary" className="text-[11px]">
-            {alert.count} estudiante{alert.count > 1 ? "s" : ""}
-          </Badge>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => action(alert)}>
-            {alert.actionLabel} <ArrowRight className="h-3 w-3" />
-          </Button>
+    <div className="rounded-lg border border-amber-200/60 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+      <div className="flex items-start gap-3">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-label={open ? "Ocultar estudiantes" : "Ver estudiantes"}
+          title={open ? "Ocultar estudiantes" : "Ver estudiantes"}
+          className="mt-0.5 h-6 w-6 shrink-0 rounded-md border bg-card flex items-center justify-center hover:bg-muted transition-colors"
+        >
+          {open ? <Minus className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-foreground">
+            <span className="mr-1" aria-hidden>
+              {alert.emoji}
+            </span>
+            {alert.message}
+          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant="secondary" className="text-[11px]">
+              {alert.count} estudiante{alert.count > 1 ? "s" : ""}
+            </Badge>
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => onIntervene(alert)}>
+              Intervenir <ArrowRight className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
       </div>
+
+      {open && (
+        <div className="mt-2 ml-9 space-y-1.5">
+          {alert.students.map((s) => (
+            <div
+              key={s.studentId}
+              className="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-1.5"
+            >
+              <div className="min-w-0">
+                <span className="text-sm font-medium truncate block">{s.name}</span>
+                <span className="text-[11px] text-muted-foreground">{s.detail}</span>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-[11px] gap-1 shrink-0 text-muted-foreground"
+                onClick={() =>
+                  toast.info("Módulo de notificaciones en preparación", {
+                    description: `Pronto podrás notificar al acudiente de ${s.name.split(" ")[0]} desde aquí.`,
+                  })
+                }
+              >
+                <Bell className="h-3 w-3" />
+                Notificar acudiente
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -64,7 +111,6 @@ export function AiAlerts({
   onSaveConfig: (c: TeacherDashboardConfigDTO) => Promise<boolean>;
   onNavigate: Navigate;
 }) {
-  const [studentsAlert, setStudentsAlert] = useState<TeacherAlert | null>(null);
   const [interveneAlert, setInterveneAlert] = useState<TeacherAlert | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
   const [cfg, setCfg] = useState<TeacherDashboardConfigDTO>(config);
@@ -116,39 +162,9 @@ export function AiAlerts({
             <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Todo en orden ✅
           </p>
         ) : (
-          alerts.map((a, i) => (
-            <AlertCard
-              key={`${a.type}-${i}`}
-              alert={a}
-              onStudents={setStudentsAlert}
-              onIntervene={setInterveneAlert}
-            />
-          ))
+          alerts.map((a, i) => <AlertCard key={`${a.type}-${i}`} alert={a} onIntervene={setInterveneAlert} />)
         )}
       </CardContent>
-
-      {/* Modal: estudiantes afectados */}
-      <Dialog open={!!studentsAlert} onOpenChange={(o) => !o && setStudentsAlert(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-base">Estudiantes afectados</DialogTitle>
-            <DialogDescription>{studentsAlert?.message}</DialogDescription>
-          </DialogHeader>
-          <div className="max-h-72 overflow-y-auto space-y-1.5">
-            {studentsAlert?.students.map((s) => (
-              <div key={s.studentId} className="flex items-center justify-between text-sm rounded-md border px-3 py-2">
-                <span className="font-medium truncate">{s.name}</span>
-                <span className="text-xs text-muted-foreground shrink-0 ml-2">{s.detail}</span>
-              </div>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setStudentsAlert(null)}>
-              Cerrar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Modal: intervenir */}
       <Dialog open={!!interveneAlert} onOpenChange={(o) => !o && setInterveneAlert(null)}>

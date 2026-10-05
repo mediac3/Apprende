@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/auth-store";
+import { useGradesPreselectStore } from "@/store/grades-prefill-store";
 import type {
   ChatActivity,
   ChatConcept,
@@ -105,7 +106,12 @@ function periodSubtitle(periods: PeriodLite[], periodId: string | null): string 
   return `NOTAS PARCIALES · ${ORDINALS[idx] ?? `${idx + 1}º`} PERIODO`;
 }
 
-export function CalificacionesView() {
+export function CalificacionesView({
+  preselect,
+}: {
+  // [Dashboard Docente] pre-selección grupo/asignatura/periodo (llega del store de navegación)
+  preselect?: { groupId: string; groupName: string; subjectId: string; subjectName: string; periodId: string | null };
+} = {}) {
   const user = useAuthStore((s) => s.user);
   const institutionId = user?.institution?.id ?? null;
   const setAiContext = useUIStore((s) => s.setAiContext);
@@ -126,10 +132,28 @@ export function CalificacionesView() {
   const [yearLabel, setYearLabel] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
-  // Selección
-  const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
-  const [selected, setSelected] = useState<SidebarSubject | null>(null);
+  // Selección — inicializada con la pre-selección del dashboard docente si existe
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string>(preselect?.periodId ?? "");
+  const [selected, setSelected] = useState<SidebarSubject | null>(
+    preselect
+      ? {
+          groupId: preselect.groupId,
+          groupName: preselect.groupName,
+          subjectId: preselect.subjectId,
+          subjectName: preselect.subjectName,
+        }
+      : null
+  );
   const [sidebarOpen, setSidebarOpen] = useState(false); // [C4] modal overlay, se abre con la Lupa
+
+  // La pre-selección ya fue consumida por los estados iniciales: limpiar el store
+  // para que una apertura posterior de "notas" desde el menú no herede el filtro.
+  const preselectCleared = useRef(preselect == null);
+  useEffect(() => {
+    if (preselectCleared.current) return;
+    preselectCleared.current = true;
+    useGradesPreselectStore.getState().clearPreselect();
+  }, []);
 
   // Planilla
   const [students, setStudents] = useState<StudentRow[]>([]);

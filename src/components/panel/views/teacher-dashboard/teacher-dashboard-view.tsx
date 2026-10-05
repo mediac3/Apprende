@@ -7,8 +7,10 @@ import { GraduationCap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useUIStore, type ModuleKey } from "@/store/ui-store";
+import { useGradesPreselectStore } from "@/store/grades-prefill-store";
 import { useTeacherDashboard } from "./use-teacher-dashboard";
 import { HeroGreeting } from "./hero-greeting";
+import { PeriodSelect } from "./period-select";
 import { KpiCards } from "./kpi-cards";
 import { SubjectPerformance } from "./subject-performance";
 import { AiAlerts } from "./ai-alerts";
@@ -24,9 +26,22 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 export function TeacherDashboardView() {
-  const { data, loading, error, refetch, saveConfig } = useTeacherDashboard();
+  const { data, loading, error, refetch, saveConfig, setPeriod } = useTeacherDashboard();
   const setModule = useUIStore((s) => s.setModule);
+  const setPreselect = useGradesPreselectStore((s) => s.setPreselect);
   const nav = (m: ModuleKey) => setModule(m);
+
+  // Click en grupo×asignatura del bloque C → Notas parciales pre-filtrado
+  const openGradesFor = (sel: { subjectId: string; subjectName: string; groupId: string; groupName: string }) => {
+    setPreselect({
+      groupId: sel.groupId,
+      groupName: sel.groupName,
+      subjectId: sel.subjectId,
+      subjectName: sel.subjectName,
+      periodId: data?.selectedPeriodId ?? null,
+    });
+    nav("notas");
+  };
 
   if (loading) {
     return (
@@ -77,7 +92,16 @@ export function TeacherDashboardView() {
 
   return (
     <div>
-      <HeroGreeting teacherName={data.teacherName} />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <HeroGreeting teacherName={data.teacherName} />
+        {/* Selector de periodo: default por fecha actual, cambio arbitrario */}
+        <PeriodSelect
+          periods={data.periods}
+          selectedId={data.selectedPeriodId}
+          onChange={(pid) => setPeriod(pid)}
+          className="mt-2 md:mt-3 order-first w-full sm:w-auto md:order-none"
+        />
+      </div>
       <KpiCards
         courses={data.kpis.courses}
         students={data.kpis.students}
@@ -86,7 +110,11 @@ export function TeacherDashboardView() {
         gradedWeekDelta={data.kpis.gradedWeekDelta}
         onNavigate={nav}
       />
-      <SubjectPerformance subjects={data.subjectPerformance} onSelect={() => nav("notas")} />
+      <SubjectPerformance
+        subjects={data.subjectPerformance}
+        periodName={data.selectedPeriod?.name ?? null}
+        onSelectGroup={openGradesFor}
+      />
       <AiAlerts
         alerts={data.alerts}
         config={data.config}

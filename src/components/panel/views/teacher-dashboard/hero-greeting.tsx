@@ -31,9 +31,8 @@ export function HeroGreeting({ teacherName }: { teacherName: string }) {
 
   const now = new Date();
   const saludo = greetingForHour(now.getHours());
-  const fecha = mounted
-    ? format(now, "EEEE, d 'de' MMMM", { locale: es })
-    : "\u00A0"; // espacio reservado durante SSR
+  const raw = format(now, "EEEE, d 'de' MMMM", { locale: es });
+  const fecha = raw.charAt(0).toUpperCase() + raw.slice(1);
 
   return (
     <div className="mb-6">
@@ -46,7 +45,7 @@ export function HeroGreeting({ teacherName }: { teacherName: string }) {
           "\u00A0"
         )}
       </h1>
-      <p className="text-sm text-muted-foreground mt-1 capitalize">{fecha}</p>
+      <p className="text-sm text-muted-foreground mt-1">{mounted ? fecha : "\u00A0"}</p>
     </div>
   );
 }

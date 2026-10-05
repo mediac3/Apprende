@@ -1,7 +1,8 @@
 "use client";
 
-// [Dashboard Docente] Hook de carga — GET agregado + guardado de umbrales IA
-import { useCallback, useEffect, useState } from "react";
+// [Dashboard Docente] Hook de carga — GET agregado (con periodo seleccionable)
+// + guardado de umbrales IA. El periodo viaja por ref para no re-disparar el fetch inicial.
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuthStore } from "@/store/auth-store";
 import type { TeacherDashboardData, TeacherDashboardConfigDTO } from "@/lib/queries/teacher-dashboard";
 
@@ -10,33 +11,49 @@ export function useTeacherDashboard() {
   const [data, setData] = useState<TeacherDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const periodRef = useRef<string | null>(null); // null = default por fecha actual
 
-  const load = useCallback(async () => {
-    if (!user?.id) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/teacher-dashboard?userId=${encodeURIComponent(user.id)}`, {
-        cache: "no-store",
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        setError(json.error ?? "error");
+  const load = useCallback(
+    async (pid?: string | null) => {
+      if (!user?.id) return;
+      const effective = pid ?? periodRef.current;
+      setLoading(true);
+      setError(null);
+      try {
+        const q = new URLSearchParams({ userId: user.id });
+        if (effective) q.set("periodId", effective);
+        const res = await fetch(`/api/teacher-dashboard?${q.toString()}`, {
+          cache: "no-store",
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          setError(json.error ?? "error");
+          setData(null);
+        } else {
+          setData(json as TeacherDashboardData);
+        }
+      } catch {
+        setError("network");
         setData(null);
-      } else {
-        setData(json as TeacherDashboardData);
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      setError("network");
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id]);
+    },
+    [user?.id]
+  );
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Cambio de periodo desde el selector: fija y recarga
+  const setPeriod = useCallback(
+    (pid: string | null) => {
+      periodRef.current = pid;
+      load(pid);
+    },
+    [load]
+  );
 
   const saveConfig = useCallback(
     async (config: TeacherDashboardConfigDTO): Promise<boolean> => {
@@ -57,5 +74,5 @@ export function useTeacherDashboard() {
     [user?.id]
   );
 
-  return { data, loading, error, refetch: load, saveConfig };
+  return { data, loading, error, refetch: load, saveConfig, setPeriod };
 }
