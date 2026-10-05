@@ -221,7 +221,7 @@ export async function getTeacherDashboard(
           : {}),
       },
       orderBy: { startDate: "asc" },
-      select: { id: true, name: true, startDate: true, endDate: true },
+      select: { id: true, name: true, startDate: true, endDate: true, active: true },
     }),
   ]);
 
@@ -303,13 +303,17 @@ export async function getTeacherDashboard(
     const act = activityById.get(r.activityId);
     if (act) periodsWithRecords.add(act.periodId);
   }
+  const activePeriod = periods.find((p) => p.active) ?? null;
 
   // Periodo de trabajo: 1) el pedido explícitamente (selector del dashboard);
-  // 2) el que contiene la fecha actual; 3) el más reciente con registros;
-  // 4) el último iniciado. (La institución puede tener varios juegos de periodos.)
+  // 2) el ACTIVO del modelo; 3) el que contiene la fecha actual; 4) el más reciente
+  // con registros; 5) el último iniciado. (Puede haber varios juegos de periodos.)
   let selectedPeriod: { id: string; name: string; startDate: Date; endDate: Date } | null = null;
   if (opts?.periodId) {
     selectedPeriod = periods.find((p) => p.id === opts.periodId) ?? null;
+  }
+  if (!selectedPeriod) {
+    selectedPeriod = activePeriod ?? null;
   }
   if (!selectedPeriod) {
     for (const p of periods) {

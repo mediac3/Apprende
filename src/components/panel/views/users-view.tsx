@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/auth-store";
+import { useUIStore } from "@/store/ui-store";
 import { useCan } from "@/store/perm-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,9 +16,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
-  Plus, Edit, Trash2, Users, Save, BadgeCheck, ChevronLeft, ChevronRight, Search, KeyRound, Eye,
+  Plus, Edit, Trash2, Users, Save, BadgeCheck, ChevronLeft, ChevronRight, Search, KeyRound, Eye, VenetianMask,
 } from "lucide-react";
 import { UserProfileView } from "./users/user-profile-view";
 
@@ -96,6 +101,48 @@ export function UsersView() {
   const canDeleteUsers = useCan("usuarios", "canDelete");
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [rolesTarget, setRolesTarget] = useState<UserRow | null>(null);
+  // [F4.3] "Ver como" desde la lista de acciones
+  const [verComoTarget, setVerComoTarget] = useState<UserRow | null>(null);
+  const [startingVerComo, setStartingVerComo] = useState(false);
+  const setImpersonating = useAuthStore((s) => s.setImpersonating);
+  const setUser = useAuthStore((s) => s.setUser);
+  const setModule = useUIStore((s) => s.setModule);
+
+  const meIsAdmin = me.role === "administrador" || !!me.roles?.includes("administrador");
+  const rowCanVerComo = (u: UserRow) =>
+    meIsAdmin &&
+    me.id !== u.id &&
+    !(u.role === "administrador" || u.userRoles.some((ur) => ur.role.code === "administrador"));
+
+  async function startVerComo(u: UserRow) {
+    setStartingVerComo(true);
+    try {
+      const res = await fetch("/api/impersonation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminId: me.id, targetId: u.id }),
+      });
+      const d = await res.json();
+      if (d.ok) {
+        setImpersonating({
+          logId: d.logId,
+          originalUser: me,
+          startedAt: d.startedAt,
+          expiresAt: d.expiresAt,
+        });
+        setUser(d.user);
+        setModule("dashboard");
+        toast.info(`Viendo como ${d.user.fullName}`);
+      } else {
+        toast.error(d.error || "No se pudo iniciar «Ver como»");
+      }
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setStartingVerComo(false);
+      setVerComoTarget(null);
+    }
+  }
 
   const load = useCallback(() => {
     if (!me.institution.id) return;
@@ -297,6 +344,15 @@ export function UsersView() {
                           >
                             <Eye className="h-3.5 w-3.5" />
                           </Button>
+                          {rowCanVerComo(u) && (
+                            <Button
+                              variant="ghost" size="icon" className="h-7 w-7"
+                              title="Ver como"
+                              onClick={() => setVerComoTarget(u)}
+                            >
+                              <VenetianMask className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost" size="icon" className="h-7 w-7"
                             title={isSelf ? "No puede cambiar sus propios roles" : "Cambiar estado de los roles"}
@@ -375,6 +431,25 @@ export function UsersView() {
         onClose={() => setRolesTarget(null)}
         onSaved={load}
       />
+
+      {/* [F4.3] Confirmación «Ver como» desde la lista */}
+      <AlertDialog open={!!verComoTarget} onOpenChange={(v) => !v && setVerComoTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ver como {verComoTarget?.fullName}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tu sesión real seguirá activa y podrás volver a tu rol con el banner «Volver a mi rol».
+              Los permisos durante la sesión serán los de {verComoTarget?.role ?? "este usuario"}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => verComoTarget && startVerComo(verComoTarget)} disabled={startingVerComo}>
+              {startingVerComo ? "Iniciando…" : "Continuar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }

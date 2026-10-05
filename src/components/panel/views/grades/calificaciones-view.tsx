@@ -84,6 +84,8 @@ interface PeriodLite {
   closed: boolean;
   order: number | null;
   educationalModelId: string | null;
+  startDate?: string; // ISO — para el periodo por defecto (activo → rango de hoy)
+  endDate?: string;
 }
 interface ConceptLite {
   id: string;
@@ -211,16 +213,20 @@ export function CalificacionesView({
       fetch(`/api/curriculum-plans?institutionId=${institutionId}`).then((r) => r.json()),
       fetch(`/api/periods?institutionId=${institutionId}`).then((r) => r.json()),
       fetch(`/api/evaluative-concepts?institutionId=${institutionId}`).then((r) => r.json()),
-      fetch(`/api/groups?institutionId=${institutionId}`).then((r) => r.json()),
       fetch(`/api/academic-years?institutionId=${institutionId}`).then((r) => r.json()),
     ])
-      .then(([plansR, periodsR, conceptsR, groupsR, yearsR]) => {
+      .then(async ([plansR, periodsR, conceptsR, yearsR]) => {
         if (plansR?.ok) setPlans(plansR.plans ?? []);
         if (periodsR?.ok) setPeriods(periodsR.periods ?? []);
         if (conceptsR?.ok) setConcepts(conceptsR.concepts ?? []);
-        if (groupsR?.ok) setGroups(groupsR.groups ?? []);
+        // [Año activo] la plataforma usa el año en estado activo (Años académicos):
+        // grupos filtrados por ese año y etiqueta con su año (no el campo institucional).
         const activeYear = (yearsR?.years ?? []).find((y: { active?: boolean }) => y.active);
         if (activeYear?.year) setYearLabel(String(activeYear.year));
+        const groupsR = await fetch(
+          `/api/groups?institutionId=${institutionId}${activeYear ? `&yearId=${encodeURIComponent(activeYear.id)}` : ""}`
+        ).then((r) => r.json());
+        if (groupsR?.ok) setGroups(groupsR.groups ?? []);
       })
       .catch(() => toast.error("Error cargando catálogos de calificaciones"))
       .finally(() => setLoading(false));
@@ -237,10 +243,15 @@ export function CalificacionesView({
       .catch(() => toast.error("Error cargando el plan de estudios"));
   }, [institutionId, activePlan?.id]);
 
-  // Periodo por defecto: el activo del modelo, si no el primero
+  // Periodo por defecto: el activo del modelo; si no hay, el que contenga la fecha
+  // actual según su configuración; en último caso, el primero.
   useEffect(() => {
     if (modelPeriods.length === 0 || modelPeriods.some((p) => p.id === selectedPeriodId)) return;
-    setSelectedPeriodId(modelPeriods.find((p) => p.active)?.id ?? modelPeriods[0].id);
+    const hoy = new Date().toISOString().slice(0, 10);
+    const inRange = modelPeriods.find(
+      (p) => p.startDate && p.endDate && p.startDate.slice(0, 10) <= hoy && p.endDate.slice(0, 10) >= hoy
+    );
+    setSelectedPeriodId(modelPeriods.find((p) => p.active)?.id ?? inRange?.id ?? modelPeriods[0].id);
   }, [modelPeriods, selectedPeriodId]);
 
   // Asignaturas del sidebar: grupo × asignatura del plan para su grado
@@ -286,7 +297,7 @@ export function CalificacionesView({
       institutionId,
       institutionName: user.institution.name,
       institutionLogoUrl: user.institution.logoUrl,
-      yearLabel: user.institution.academicYear || yearLabel,
+        yearLabel: yearLabel || user.institution.academicYear || "",
       groupId: activeSubject.groupId,
       groupName: activeSubject.groupName,
       subjectId: activeSubject.subjectId,
