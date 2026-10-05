@@ -23,7 +23,23 @@ export async function PATCH(req: NextRequest) {
     const { id, userId, ...fields } = body;
     if (!id) return NextResponse.json({ ok: false, error: "id requerido" }, { status: 400 });
 
-    const allowed = ["name", "shortName", "nit", "dane", "logoUrl", "address", "phone", "email", "academicYear", "resolution", "city", "icfesCode", "decree", "etc", "calendario", "sector", "zonaSede", "jornada"];
+    const allowed = ["name", "shortName", "nit", "dane", "logoUrl", "address", "phone", "email", "academicYear", "resolution", "city", "icfesCode", "decree", "etc", "calendario", "sector", "zonaSede", "jornada", "forcePasswordChange", "passwordChangeRoles"];
+
+    // [Seguridad] Normaliza/valida la política de cambio de contraseña
+    if (fields.passwordChangeRoles !== undefined) {
+      let roles: unknown = fields.passwordChangeRoles;
+      if (typeof roles === "string") {
+        try { roles = JSON.parse(roles); } catch { roles = null; }
+      }
+      if (!Array.isArray(roles) || roles.some((r) => typeof r !== "string")) {
+        return NextResponse.json({ ok: false, error: "passwordChangeRoles inválido" }, { status: 400 });
+      }
+      fields.passwordChangeRoles = JSON.stringify(roles);
+    }
+    if (fields.forcePasswordChange !== undefined) {
+      fields.forcePasswordChange = Boolean(fields.forcePasswordChange);
+    }
+
     const update: any = {};
     for (const k of allowed) {
       if (fields[k] !== undefined) update[k] = fields[k];

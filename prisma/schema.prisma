@@ -31,6 +31,9 @@ model Institution {
   sector        String?  // Oficial, Privado, Mixto
   zonaSede      String?  // Urbana, Rural
   jornada       String?  // Mañana, Tarde, Nocturna, Única, Completa
+  // [Seguridad] Política de cambio de contraseña en el primer inicio de sesión
+  forcePasswordChange Boolean @default(true) // false → nunca se solicita el cambio
+  passwordChangeRoles String  @default("[]") // JSON array de códigos de rol; [] = todos los roles
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -115,6 +118,7 @@ model User {
   userRoles       UserRole[]
   impersonationsStarted ImpersonationLog[] @relation("ImpersonationAdmin")   // [F4.3]
   impersonationsReceived ImpersonationLog[] @relation("ImpersonationTarget") // [F4.3]
+  teacherDashboardConfig TeacherDashboardConfig? @relation("TeacherDashboardConfig") // [Dashboard Docente]
 }
 
 model Group {
@@ -1247,4 +1251,17 @@ model AddonConfig {
   enabled       Boolean @default(true)
   targets       String  @default("both") // both | mobile | pc
   @@unique([institutionId, featureKey])
+}
+
+// [Dashboard Docente] Umbrales de alertas IA configurables por docente.
+// Fila única por docente; se crea con defaults on-read si no existe.
+model TeacherDashboardConfig {
+  id               String   @id @default(cuid())
+  teacherId        String   @unique
+  teacher          User     @relation("TeacherDashboardConfig", fields: [teacherId], references: [id], onDelete: Cascade)
+  declineThreshold Float    @default(0.5) // caída de promedio (pts) entre periodos que dispara alerta
+  inactivityDays   Int      @default(4)   // días sin calificaciones nuevas para alerta de inactividad
+  riskThreshold    Float    @default(3.0) // promedio por debajo del cual hay riesgo de reprobar
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }

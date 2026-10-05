@@ -79,6 +79,8 @@ export async function POST(req: NextRequest) {
         shortName: user.institution.shortName,
         logoUrl: user.institution.logoUrl,
         academicYear: user.institution.academicYear,
+        forcePasswordChange: user.institution.forcePasswordChange, // [Seguridad] política de cambio inicial
+        passwordChangeRoles: user.institution.passwordChangeRoles,
       },
     };
 

@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -589,6 +590,116 @@ function subscribeFreeze(cb: () => void) {
   };
 }
 
+// [Seguridad] Política de cambio de contraseña en el primer inicio de sesión.
+// Checkbox principal (activa/inactiva) + roles destino (ninguno marcado = todos).
+// Guardado inmediato vía PATCH /api/institution (queda en auditoría).
+function PasswordChangePolicyCard() {
+  const user = useAuthStore((s) => s.user);
+  const [enabled, setEnabled] = useState(true);
+  const [rolesSel, setRolesSel] = useState<string[]>([]);
+  const [roles, setRoles] = useState<{ code: string; name: string }[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    const instId = encodeURIComponent(user.institution.id);
+    fetch(`/api/institution?institutionId=${instId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        const inst = d?.institution;
+        if (inst) {
+          setEnabled(inst.forcePasswordChange !== false);
+          let sel: unknown = [];
+          try { sel = JSON.parse(inst.passwordChangeRoles ?? "[]"); } catch { sel = []; }
+          setRolesSel(Array.isArray(sel) ? sel.filter((x: unknown) => typeof x === "string") : []);
+        }
+      })
+      .catch(() => {});
+    fetch(`/api/roles?institutionId=${instId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        const rs = Array.isArray(d?.roles) ? d.roles : Array.isArray(d) ? d : [];
+        setRoles(rs.map((r: { code: unknown; name: unknown }) => ({ code: String(r.code), name: String(r.name) })));
+      })
+      .catch(() => {});
+  }, [user?.id]);
+
+  async function save(next: { enabled: boolean; roles: string[] }) {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/institution", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: user.institution.id,
+          userId: user.id,
+          forcePasswordChange: next.enabled,
+          passwordChangeRoles: JSON.stringify(next.roles),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) toast.success("Política de contraseñas actualizada");
+      else toast.error(data.error || "No se pudo guardar la política");
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function toggleEnabled() {
+    const next = { enabled: !enabled, roles: rolesSel };
+    setEnabled(next.enabled);
+    save(next);
+  }
+
+  function toggleRole(code: string) {
+    const next = rolesSel.includes(code) ? rolesSel.filter((c) => c !== code) : [...rolesSel, code];
+    setRolesSel(next);
+    save({ enabled, roles: next });
+  }
+
+  return (
+    <Card className="hairline rounded-xl">
+      <CardHeader>
+        <CardTitle className="text-base">Cambio de contraseña inicial</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <label className="flex items-center gap-2.5 cursor-pointer">
+          <Checkbox checked={enabled} onCheckedChange={toggleEnabled} disabled={saving} />
+          <span className="text-sm">
+            Solicitar cambio de contraseña en el primer inicio de sesión
+          </span>
+        </label>
+        {enabled ? (
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">
+              Roles a los que se les pedirá el cambio (ninguno marcado = todos los roles):
+            </Label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {roles.map((r) => (
+                <label key={r.code} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={rolesSel.includes(r.code)}
+                    onCheckedChange={() => toggleRole(r.code)}
+                    disabled={saving}
+                  />
+                  {r.name}
+                </label>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Desactivado: los usuarios con contraseña inicial sin cambiar no verán el aviso al iniciar sesión.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ConfiguracionView() {
   const freezePref = useSyncExternalStore(subscribeFreeze, readFreezeSnapshot, () => 1);
   function setFreeze(v: number) {
@@ -696,6 +807,9 @@ function ConfiguracionView() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* [Seguridad] Política de cambio de contraseña inicial (checkbox + roles) */}
+      <PasswordChangePolicyCard />
 
       {/* [C2] Control de inmovilización de columnas (movido desde Notas parciales) */}
       <Card className="hairline rounded-xl">

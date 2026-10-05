@@ -6,7 +6,7 @@
  * mustChangePassword=true (contraseña inicial = documento). Bloquea el panel
  * hasta completar el cambio. Se monta una sola vez en el panel principal.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,25 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
 
+/**
+ * Resuelve la política institucional: ¿a este usuario le toca cambio inicial?
+ * forcePasswordChange=false → nadie. passwordChangeRoles="[]" → todos los roles;
+ * si lista roles, aplica al rol principal o a cualquiera de sus roles.
+ * Ante datos ausentes o error de red → true (comportamiento conservador original).
+ */
+function policyApplies(
+  inst: { forcePasswordChange?: boolean; passwordChangeRoles?: string } | undefined,
+  role: string,
+  roles: string[] | undefined
+): boolean {
+  if (!inst || inst.forcePasswordChange === undefined) return true;
+  if (!inst.forcePasswordChange) return false;
+  let allowed: unknown = [];
+  try { allowed = JSON.parse(inst.passwordChangeRoles ?? "[]"); } catch { allowed = []; }
+  if (!Array.isArray(allowed) || allowed.length === 0) return true;
+  return allowed.includes(role) || (roles ?? []).some((r) => allowed.includes(r));
+}
+
 export function ChangePasswordDialog() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
@@ -27,9 +46,32 @@ export function ChangePasswordDialog() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // null = resolviendo política institucional; no renderizar nada mientras tanto
+  const [gateOpen, setGateOpen] = useState<boolean | null>(null);
 
-  const open = !!user?.mustChangePassword;
-  if (!open) return null;
+  const mustChange = !!user?.mustChangePassword;
+  useEffect(() => {
+    if (!mustChange || !user) {
+      setGateOpen(false);
+      return;
+    }
+    let alive = true;
+    // Config vigente (no la del login): el cambio institucional aplica al instante
+    fetch(`/api/institution?institutionId=${encodeURIComponent(user.institution.id)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (alive) setGateOpen(policyApplies(d?.institution, user.role, user.roles));
+      })
+      .catch(() => {
+        if (alive) setGateOpen(true); // conservador
+      });
+    return () => {
+      alive = false;
+    };
+  }, [mustChange, user?.id, user?.role, user?.institution.id]);
+
+  const open = gateOpen === true;
+  if (!mustChange || gateOpen === false || gateOpen === null) return null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

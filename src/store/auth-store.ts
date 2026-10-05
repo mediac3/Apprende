@@ -18,6 +18,8 @@ export interface SessionUser {
     shortName: string | null;
     logoUrl: string | null;
     academicYear: string;
+    forcePasswordChange?: boolean; // [Seguridad] política institucional de cambio inicial
+    passwordChangeRoles?: string; // JSON array de códigos de rol; [] = todos
   };
 }
 
