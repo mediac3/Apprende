@@ -14,7 +14,11 @@ export async function GET(req: NextRequest) {
   const year = sp.get("year") ? parseInt(sp.get("year")!, 10) : await getActiveYear(institutionId);
   const assignments = await db.subjectAssignment.findMany({
     where: { institutionId, year },
-    select: { id: true, groupId: true, subjectId: true, teacherId: true, year: true },
+    select: {
+      id: true, groupId: true, subjectId: true, teacherId: true, year: true,
+      subject: { select: { name: true } },            // [Asistencia/Notas por asignatura]
+      teacher: { select: { fullName: true } },        // [Filtro por docente] coord/rector
+    },
   });
   // [R1] canEdit se resuelve en servidor con los roles frescos de la BD: la sesión
   // guardada en el navegador puede ser vieja y no reflejar los roles reales.

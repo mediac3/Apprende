@@ -15,7 +15,7 @@ export function PendingTasks({
 }: {
   tasks: PendingTaskRow[];
   total: number;
-  onGrade: () => void;
+  onGrade: (task: PendingTaskRow) => void;
 }) {
   return (
     <Card className="mb-6">
@@ -45,16 +45,16 @@ export function PendingTasks({
                     {t.name} · {t.groupName}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {t.subjectName} · {t.graded}/{t.total} calificadas · {t.periodName}
+                    {t.subjectName} | {t.conceptName} · {t.graded}/{t.total} calificadas · {t.periodName}
                   </p>
                 </div>
-                <Button size="sm" variant="outline" className="h-7 text-xs gap-1 shrink-0" onClick={onGrade}>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1 shrink-0" onClick={() => onGrade(t)}>
                   Calificar <ArrowRight className="h-3 w-3" />
                 </Button>
               </div>
             ))}
             {total > tasks.length && (
-              <Button variant="ghost" size="sm" className="w-full text-xs gap-1" onClick={onGrade}>
+              <Button variant="ghost" size="sm" className="w-full text-xs gap-1" onClick={() => onGrade(t)}>
                 Ver todas ({total}) <ArrowRight className="h-3 w-3" />
               </Button>
             )}

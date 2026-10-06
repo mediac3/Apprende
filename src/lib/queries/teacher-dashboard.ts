@@ -36,6 +36,10 @@ export interface PendingTaskRow {
   graded: number;
   total: number;
   periodName: string;
+  periodId: string;
+  groupId: string;
+  subjectId: string;
+  conceptName: string; // concepto evaluativo ("Ser", "Saber"…)
   createdAtISO: string;
 }
 
@@ -563,6 +567,10 @@ export async function getTeacherDashboard(
         graded,
         total,
         periodName: act.period.name,
+        periodId: act.periodId,
+        groupId: act.groupId,
+        subjectId: act.subjectId,
+        conceptName: act.evaluativeConcept.name,
         createdAtISO: act.createdAt.toISOString(),
       });
     }

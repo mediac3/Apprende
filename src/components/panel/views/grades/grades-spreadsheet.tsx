@@ -247,6 +247,8 @@ export interface GradesSpreadsheetProps {
   values: Record<string, string>; // `${studentId}::${activityId}`
   calculations: CalculatedRow[];
   periodClosed: boolean;
+  /** [Dashboard Docente] timestamp: destellar celdas sin nota hasta esta hora (10 s) */
+  flashMissingUntil?: number;
   onCellChange: (studentId: string, activityId: string, raw: string) => void;
   /** [F1] botón "+" del header del concepto */
   onAddActivityForConcept?: (conceptId: string) => void;
@@ -366,6 +368,40 @@ export function GradesSpreadsheet(props: Props) {
   // Default 1 = comportamiento actual. El control vive en Configuración
   // institucional; aquí solo se lee (evento custom + storage).
   const [freezeCount, setFreezeCount] = useState<number>(readFreezeCount);
+
+  // [Dashboard Docente] destello de celdas sin nota (10 s) al llegar de "Calificar"
+  const flashCleanupRef = useRef<(() => void) | null>(null);
+  const flashMissingUntil = props.flashMissingUntil;
+  useEffect(() => {
+    if (!flashMissingUntil) return;
+    const t0 = setTimeout(() => {
+      const root = containerRef.current;
+      if (!root) return;
+      const targets: HTMLTableCellElement[] = [];
+      root.querySelectorAll<HTMLTableCellElement>("td[data-x]").forEach((td) => {
+        const x = Number(td.getAttribute("data-x"));
+        const y = Number(td.getAttribute("data-y"));
+        // x>=3: columnas de actividades (0=Estudiante, 1=PROM, 2=DEF)
+        if (x >= 3 && Number.isFinite(y) && y < propsRef.current.students.length && !td.textContent?.trim()) {
+          targets.push(td);
+        }
+      });
+      if (!targets.length) return;
+      targets.forEach((td) => td.classList.add("jss-flash-missing"));
+      const cleanup = setTimeout(() => {
+        targets.forEach((td) => td.classList.remove("jss-flash-missing"));
+      }, 10000);
+      flashCleanupRef.current = () => {
+        clearTimeout(cleanup);
+        targets.forEach((td) => td.classList.remove("jss-flash-missing"));
+      };
+    }, 400); // deja terminar el render/init de la hoja
+    return () => {
+      clearTimeout(t0);
+      flashCleanupRef.current?.();
+      flashCleanupRef.current = null;
+    };
+  }, [flashMissingUntil, students.length, activities.length]);
 
   useEffect(() => {
     const apply = () => setFreezeCount(readFreezeCount());

@@ -10,6 +10,7 @@ import {
   Clock,
   FileText,
   Users,
+  BookOpen,
   AlertTriangle,
   History,
 } from "lucide-react";
@@ -67,6 +68,9 @@ export function AttendanceView() {
   const user = useAuthStore((s) => s.user);
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupId, setGroupId] = useState<string>("");
+  // [Asistencia por asignatura] "" = jornada general (sin asignatura)
+  const [subjectId, setSubjectId] = useState<string>("");
+  const [assignments, setAssignments] = useState<{ groupId: string; subjectId: string; subjectName: string }[]>([]);
   const [date, setDate] = useState<string>(todayISO());
   const [rows, setRows] = useState<Record<string, string>>({});
   const [students, setStudents] = useState<Array<{ id: string; code: string; firstName: string; lastName: string; }>>([]);
@@ -74,47 +78,71 @@ export function AttendanceView() {
 
   const isAcudiente = user?.role === "acudiente";
 
+  // Bootstrap: grupos + asignación académica. El docente ve solo SUS grupos y
+  // asignaturas; los demás roles ven todo (pueden registrar jornada general).
   useEffect(() => {
     if (!user) return;
-    fetch(`/api/groups?institutionId=${user.institution.id}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.ok) {
-          setGroups(d.groups);
-          if (d.groups[0]) setGroupId(d.groups[0].id);
+    const isDocente = user.role === "docente";
+    const teacherQ = isDocente ? `&teacherId=${encodeURIComponent(user.id)}` : "";
+    Promise.all([
+      fetch(`/api/groups?institutionId=${user.institution.id}`).then((r) => r.json()),
+      fetch(`/api/subject-assignments?institutionId=${user.institution.id}${teacherQ}`).then((r) => r.json()),
+    ])
+      .then(([g, a]) => {
+        const list: { groupId: string; subjectId: string; subjectName: string }[] = (a.ok ? a.assignments : []).map(
+          (x: { groupId: string; subjectId: string; subject?: { name?: string } }) => ({
+            groupId: x.groupId,
+            subjectId: x.subjectId,
+            subjectName: x.subject?.name ?? "—",
+          })
+        );
+        setAssignments(list);
+        let gs: Group[] = g.ok ? g.groups : [];
+        if (isDocente) {
+          const mine = new Set(list.map((x) => x.groupId));
+          gs = gs.filter((gr: Group) => mine.has(gr.id));
         }
+        setGroups(gs);
+        if (gs[0]) setGroupId(gs[0].id);
       })
       .finally(() => setLoading(false));
   }, [user]);
 
+  // Asignaturas del grupo seleccionado (derivado). La selección del usuario se
+  // conserva si sigue válida; si no, se usa la primera de la asignación.
+  const subjectOptions = useMemo(() => assignments.filter((a) => a.groupId === groupId), [assignments, groupId]);
+  const effectiveSubjectId = subjectOptions.some((o) => o.subjectId === subjectId)
+    ? subjectId
+    : (subjectOptions[0]?.subjectId ?? "");
+
   useEffect(() => {
     if (!user || !groupId) return;
-    setLoading(true);
-    Promise.all([
-      fetch(`/api/students?institutionId=${user.institution.id}&groupId=${groupId}`).then((r) => r.json()),
-      fetch(`/api/attendance?institutionId=${user.institution.id}&groupId=${groupId}&date=${date}`).then((r) => r.json()),
-    ])
-      .then(([s, a]) => {
-        if (s.ok) {
-          setStudents(
-            s.students.map((st: any) => ({
-              id: st.id,
-              code: st.code,
-              firstName: st.firstName,
-              lastName: st.lastName,
-            }))
-          );
-        }
-        if (a.ok) {
-          const map: Record<string, string> = {};
-          a.attendances.forEach((at: Attendance) => {
-            map[at.student.id] = at.status;
-          });
-          setRows(map);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [user, groupId, date]);
+    const load = async () => {
+      setLoading(true);
+      const [s, a] = await Promise.all([
+        fetch(`/api/students?institutionId=${user.institution.id}&groupId=${groupId}`).then((r) => r.json()),
+        fetch(`/api/attendance?institutionId=${user.institution.id}&groupId=${groupId}&date=${date}&subjectId=${effectiveSubjectId || "none"}`).then((r) => r.json()),
+      ]);
+      if (s.ok) {
+        setStudents(
+          s.students.map((st: any) => ({
+            id: st.id,
+            code: st.code,
+            firstName: st.firstName,
+            lastName: st.lastName,
+          }))
+        );
+      }
+      if (a.ok) {
+        const map: Record<string, string> = {};
+        a.attendances.forEach((at: Attendance) => {
+          map[at.student.id] = at.status;
+        });
+        setRows(map);
+      }
+    };
+    load().finally(() => setLoading(false));
+  }, [user, groupId, date, effectiveSubjectId]);
 
   function setStatus(studentId: string, status: string) {
     if (!user || !groupId) return;
@@ -126,6 +154,7 @@ export function AttendanceView() {
         institutionId: user.institution.id,
         studentId,
         groupId,
+        subjectId: effectiveSubjectId || null,
         date,
         status,
         recordedById: user.id,
@@ -169,10 +198,11 @@ export function AttendanceView() {
             Control de asistencia
           </h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Registro diario de asistencia por grupo. Seleccione un grupo y una fecha para cargar la
-            lista de estudiantes. Cada cambio se guarda de inmediato y dispara una auditoría; cuando
-            un estudiante queda ausente o llega tarde, el sistema notifica automáticamente al
-            acudiente registrado.
+            Registro de asistencia por grupo y asignatura, según la asignación académica del
+            docente. Seleccione grupo, asignatura y fecha para cargar la lista de estudiantes
+            («Jornada general» registra la asistencia del día sin clase específica). Cada cambio
+            se guarda de inmediato y dispara una auditoría; cuando un estudiante queda ausente o
+            llega tarde, el sistema notifica automáticamente al acudiente registrado.
           </p>
         </div>
       </header>
@@ -202,6 +232,26 @@ export function AttendanceView() {
                 {groups.map((g) => (
                   <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <BookOpen className="h-3.5 w-3.5" /> Asignatura
+            </Label>
+            <Select value={effectiveSubjectId || "__general__"} onValueChange={(v) => setSubjectId(v === "__general__" ? "" : v)}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Asignatura" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__general__">Jornada general</SelectItem>
+                {assignments
+                  .filter((a) => a.groupId === groupId)
+                  .map((a) => (
+                    <SelectItem key={a.subjectId} value={a.subjectId}>
+                      {a.subjectName}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>

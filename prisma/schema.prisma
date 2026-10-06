@@ -264,6 +264,7 @@ model Subject {
   workshops     Workshop[]
   planItems     CurriculumPlanItem[]
   activities    Activity[] // Módulo Calificaciones
+  attendances   Attendance[] // [Asistencia por asignatura]
   performanceIndicators PerformanceIndicator[] // [F3]
 }
 
@@ -414,12 +415,15 @@ model Attendance {
   id            String   @id @default(cuid())
   studentId     String
   groupId       String
+  subjectId     String?  // [Asistencia por asignatura] null = jornada general del grupo
   date          DateTime
   status        String   // presente, ausente, tarde, excusa
   excuseReason  String?
   recordedById  String?
   notifiedAt    DateTime?
   createdAt     DateTime @default(now())
+
+  subject       Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
 
   student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)

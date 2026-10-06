@@ -45,6 +45,11 @@ export async function GET(req: NextRequest) {
       const end = new Date(`${date}T23:59:59.999Z`);
       where.date = { gte: start, lte: end };
     }
+    // [Asistencia por asignatura] subjectId=<id> filtra por clase; subjectId=none
+    // trae solo la jornada general (sin asignatura); ausente = todas (compatibilidad).
+    const subjectIdFilter = searchParams.get("subjectId");
+    if (subjectIdFilter === "none") where.subjectId = null;
+    else if (subjectIdFilter) where.subjectId = subjectIdFilter;
 
     const attendances = await db.attendance.findMany({
       where,
@@ -80,6 +85,7 @@ export async function POST(req: NextRequest) {
       status,
       excuseReason,
       recordedById,
+      subjectId, // [Asistencia por asignatura] opcional; null = jornada general
     } = body;
 
     if (!institutionId || !studentId || !groupId || !date || !status) {
@@ -99,7 +105,7 @@ export async function POST(req: NextRequest) {
     const notifiedAt = status !== "presente" ? new Date() : null;
 
     const existing = await db.attendance.findFirst({
-      where: { studentId, groupId, date: { gte: start, lte: end } },
+      where: { studentId, groupId, subjectId: subjectId ?? null, date: { gte: start, lte: end } },
     });
 
     let attendance;
@@ -121,6 +127,7 @@ export async function POST(req: NextRequest) {
         data: {
           studentId,
           groupId,
+          subjectId: subjectId ?? null,
           date: parsedDate,
           status,
           excuseReason: excuseReason || null,

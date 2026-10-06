@@ -307,7 +307,7 @@ export function InlineGlobalSearch() {
               }
         }
         className={cn(
-          "flex items-center gap-2 h-9 rounded-lg border bg-secondary/40 transition-all duration-200 ease-out",
+          "flex items-center gap-2 h-9 rounded-lg border bg-secondary/40 transition-all duration-200 ease-out outline-none focus-visible:outline-none",
           open ? "w-[27rem] xl:w-[36rem] px-3 bg-background shadow-sm" : "w-9 justify-center px-0 hover:bg-secondary cursor-pointer"
         )}
         onClick={() => !open && setOpen(true)}
@@ -320,7 +320,7 @@ export function InlineGlobalSearch() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar estudiantes, grupos…"
-              className="h-full flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground min-w-0"
+              className="h-full flex-1 bg-transparent text-sm outline-none focus-visible:outline-none placeholder:text-muted-foreground min-w-0"
               aria-label="Buscar estudiantes o publicaciones"
             />
             {query && (

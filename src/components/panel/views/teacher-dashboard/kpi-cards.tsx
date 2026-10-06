@@ -31,6 +31,7 @@ export function KpiCards({
   gradedWeek,
   gradedWeekDelta,
   onNavigate,
+  onPendingTasksClick,
 }: {
   courses: number;
   students: number;
@@ -38,6 +39,8 @@ export function KpiCards({
   gradedWeek: number;
   gradedWeekDelta: number;
   onNavigate: (m: ModuleKey) => void;
+  /** Si se define, el KPI de tareas hace scroll animado a la sección del panel */
+  onPendingTasksClick?: () => void;
 }) {
   const kpis: KpiItem[] = [
     {
@@ -79,8 +82,16 @@ export function KpiCards({
           key={k.label}
           role="link"
           tabIndex={0}
-          onClick={() => onNavigate(k.module)}
-          onKeyDown={(e) => e.key === "Enter" && onNavigate(k.module)}
+          onClick={() =>
+            k.label === "Tareas por revisar" && onPendingTasksClick
+              ? onPendingTasksClick()
+              : onNavigate(k.module)
+          }
+          onKeyDown={(e) => {
+            if (e.key !== "Enter") return;
+            if (k.label === "Tareas por revisar" && onPendingTasksClick) onPendingTasksClick();
+            else onNavigate(k.module);
+          }}
           className="cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
         >
           <CardContent className="flex items-center gap-3 p-4">

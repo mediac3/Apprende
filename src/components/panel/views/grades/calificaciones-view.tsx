@@ -19,6 +19,7 @@ import type { GradeSheetGeneratorInput } from "./grade-sheets/use-grade-sheet-ge
 import { ScannerWizard } from "./scanner/scanner-wizard";
 import type { ScannerContextInput } from "./scanner/use-scanner-wizard";
 import { Upload, ScanLine, Printer } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUIStore } from "@/store/ui-store";
 import { useAddonsMap } from "@/store/addons-store";
 import { addonVisible, type AddonKey } from "@/lib/addons";
@@ -148,12 +149,16 @@ export function CalificacionesView({
   );
   const [sidebarOpen, setSidebarOpen] = useState(false); // [C4] modal overlay, se abre con la Lupa
 
+  // [C2] Destello de celdas sin nota (10 s) cuando la tarea llega del dashboard
+  const [flashUntil, setFlashUntil] = useState<number>(0);
+
   // La pre-selección ya fue consumida por los estados iniciales: limpiar el store
   // para que una apertura posterior de "notas" desde el menú no herede el filtro.
   const preselectCleared = useRef(preselect == null);
   useEffect(() => {
     if (preselectCleared.current) return;
     preselectCleared.current = true;
+    if (preselect?.flash) setFlashUntil(Date.now() + 10000);
     useGradesPreselectStore.getState().clearPreselect();
   }, []);
 
@@ -255,6 +260,55 @@ export function CalificacionesView({
   }, [modelPeriods, selectedPeriodId]);
 
   // Asignaturas del sidebar: grupo × asignatura del plan para su grado
+  // [C5] Asignación académica: el docente solo ve SUS asignaturas-grupo; los roles
+  // elevados (rector/coordinador) pueden filtrar la lista por docente.
+  const esDocente = user?.role === "docente";
+  const esElevado = user?.role === "rector" || user?.role === "coordinador" || user?.role === "administrador";
+  const [assignmentsMatrix, setAssignmentsMatrix] = useState<
+    { teacherId: string | null; teacherName: string; groupId: string; subjectId: string }[]
+  >([]);
+  const [teacherFilter, setTeacherFilter] = useState<string>("todos");
+
+  useEffect(() => {
+    if (!institutionId) return;
+    const teacherQ = esDocente && user ? `&teacherId=${encodeURIComponent(user.id)}` : "";
+    fetch(`/api/subject-assignments?institutionId=${institutionId}${teacherQ}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.ok) {
+          setAssignmentsMatrix(
+            (d.assignments ?? []).map((x: { teacherId: string | null; teacher?: { fullName?: string }; groupId: string; subjectId: string }) => ({
+              teacherId: x.teacherId,
+              teacherName: x.teacher?.fullName ?? "Sin docente",
+              groupId: x.groupId,
+              subjectId: x.subjectId,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, [institutionId, esDocente, user?.id]);
+
+  const allowedPairs = useMemo(() => {
+    if (esDocente) {
+      return new Set(assignmentsMatrix.map((a) => `${a.groupId}:${a.subjectId}`));
+    }
+    if (esElevado && teacherFilter !== "todos") {
+      return new Set(
+        assignmentsMatrix.filter((a) => a.teacherId === teacherFilter).map((a) => `${a.groupId}:${a.subjectId}`)
+      );
+    }
+    return null; // sin filtro
+  }, [esDocente, esElevado, assignmentsMatrix, teacherFilter]);
+
+  const docentesDisponibles = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of assignmentsMatrix) {
+      if (a.teacherId && !map.has(a.teacherId)) map.set(a.teacherId, a.teacherName);
+    }
+    return [...map.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [assignmentsMatrix]);
+
   const sidebarSubjects = useMemo<SidebarSubject[]>(() => {
     const out: SidebarSubject[] = [];
     const sortedGroups = [...groups].sort((a, b) =>
@@ -265,6 +319,7 @@ export function CalificacionesView({
       if (!g.gradeLevel) continue;
       const items = planItems.filter((i) => i.gradeLevelId === g.gradeLevel!.id);
       for (const it of items) {
+        if (allowedPairs && !allowedPairs.has(`${g.id}:${it.subjectId}`)) continue;
         out.push({
           groupId: g.id,
           groupName: g.name,
@@ -274,7 +329,7 @@ export function CalificacionesView({
       }
     }
     return out;
-  }, [groups, planItems]);
+  }, [groups, planItems, allowedPairs]);
 
   // Selección efectiva [C4]: la elegida por el usuario o, por defecto, la primera
   // disponible (derivado, sin efecto: al recargar vuelve al primer item).
@@ -798,6 +853,22 @@ export function CalificacionesView({
               showComment={vis("comments")}
               extraActions={
                 <>
+                  {/* [C5] Filtro por docente (rector/coordinador) */}
+                  {esElevado && docentesDisponibles.length > 0 && (
+                    <Select value={teacherFilter} onValueChange={setTeacherFilter}>
+                      <SelectTrigger size="sm" className="h-8 w-44 text-xs gap-1">
+                        <SelectValue placeholder="Docente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos los docentes</SelectItem>
+                        {docentesDisponibles.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   {editable && vis("import_excel") && (
                     <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)} className="gap-1 text-xs">
                       <Upload className="h-3.5 w-3.5" /> Importar
@@ -845,6 +916,7 @@ export function CalificacionesView({
               values={values}
               calculations={calculations}
               periodClosed={!editable}
+              flashMissingUntil={flashUntil}
               onCellChange={handleCellChange}
               onAddActivityForConcept={handleAddForConcept}
               onEditActivity={handleEditActivity}

@@ -3,6 +3,7 @@
 // [Dashboard Docente] Vista contenedora — operativa + accionable + IA.
 // Orden: saludo → KPIs → rendimiento → alertas IA → atajos → tareas → actividad.
 // Regla dura: solo datos del docente de la sesión (validado también en servidor).
+import { useRef, useState } from "react";
 import { GraduationCap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,8 @@ import { AiAlerts } from "./ai-alerts";
 import { QuickActions } from "./quick-actions";
 import { PendingTasks } from "./pending-tasks";
 import { RecentActivity } from "./recent-activity";
+import type { PendingTaskRow } from "@/lib/queries/teacher-dashboard";
+import { cn } from "@/lib/utils";
 
 const ERROR_MESSAGES: Record<string, string> = {
   not_teacher: "Este dashboard es exclusivo para docentes.",
@@ -31,6 +34,15 @@ export function TeacherDashboardView() {
   const setPreselect = useGradesPreselectStore((s) => s.setPreselect);
   const nav = (m: ModuleKey) => setModule(m);
 
+  // [C1] KPI "Tareas por revisar" → scroll animado a la sección del panel
+  const pendingRef = useRef<HTMLDivElement>(null);
+  const [highlightPending, setHighlightPending] = useState(false);
+  function goToPendingTasks() {
+    pendingRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightPending(true);
+    setTimeout(() => setHighlightPending(false), 2400);
+  }
+
   // Click en grupo×asignatura del bloque C → Notas parciales pre-filtrado
   const openGradesFor = (sel: { subjectId: string; subjectName: string; groupId: string; groupName: string }) => {
     setPreselect({
@@ -39,6 +51,19 @@ export function TeacherDashboardView() {
       subjectId: sel.subjectId,
       subjectName: sel.subjectName,
       periodId: data?.selectedPeriodId ?? null,
+    });
+    nav("notas");
+  };
+
+  // [C2] Botón Calificar de una tarea → planilla pre-filtrada + destello de celdas
+  const openGradesForTask = (t: PendingTaskRow) => {
+    setPreselect({
+      groupId: t.groupId,
+      groupName: t.groupName,
+      subjectId: t.subjectId,
+      subjectName: t.subjectName,
+      periodId: t.periodId,
+      flash: true,
     });
     nav("notas");
   };
@@ -109,6 +134,7 @@ export function TeacherDashboardView() {
         gradedWeek={data.kpis.gradedWeek}
         gradedWeekDelta={data.kpis.gradedWeekDelta}
         onNavigate={nav}
+        onPendingTasksClick={goToPendingTasks}
       />
       <SubjectPerformance
         subjects={data.subjectPerformance}
@@ -122,11 +148,19 @@ export function TeacherDashboardView() {
         onNavigate={(m) => nav(m)}
       />
       <QuickActions onNavigate={nav} />
-      <PendingTasks
-        tasks={data.pendingTasks}
-        total={data.pendingTasksTotal}
-        onGrade={() => nav("notas")}
-      />
+      <div
+        ref={pendingRef}
+        className={cn(
+          "rounded-xl transition-all duration-500",
+          highlightPending && "ring-2 ring-amber-400 ring-offset-2 ring-offset-background shadow-lg"
+        )}
+      >
+        <PendingTasks
+          tasks={data.pendingTasks}
+          total={data.pendingTasksTotal}
+          onGrade={openGradesForTask}
+        />
+      </div>
       <RecentActivity items={data.recentActivity} />
     </div>
   );

@@ -11,6 +11,8 @@ export interface GradesPreselect {
   subjectId: string;
   subjectName: string;
   periodId: string | null;
+  /** [Dashboard Docente] destellar celdas sin nota durante 10 s */
+  flash?: boolean;
 }
 
 interface GradesPreselectState {
