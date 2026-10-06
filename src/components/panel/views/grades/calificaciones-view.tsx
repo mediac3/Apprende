@@ -276,13 +276,16 @@ export function CalificacionesView({
       .then((r) => r.json())
       .then((d) => {
         if (d?.ok) {
+          // [Seguridad] doble filtro en cliente: el docente solo trata sus filas
           setAssignmentsMatrix(
-            (d.assignments ?? []).map((x: { teacherId: string | null; teacher?: { fullName?: string }; groupId: string; subjectId: string }) => ({
-              teacherId: x.teacherId,
-              teacherName: x.teacher?.fullName ?? "Sin docente",
-              groupId: x.groupId,
-              subjectId: x.subjectId,
-            }))
+            (d.assignments ?? [])
+              .filter((x: { teacherId: string | null }) => !esDocente || x.teacherId === user?.id)
+              .map((x: { teacherId: string | null; teacher?: { fullName?: string }; groupId: string; subjectId: string }) => ({
+                teacherId: x.teacherId,
+                teacherName: x.teacher?.fullName ?? "Sin docente",
+                groupId: x.groupId,
+                subjectId: x.subjectId,
+              }))
           );
         }
       })

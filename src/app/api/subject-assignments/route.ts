@@ -12,8 +12,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "institutionId requerido" }, { status: 400 });
   }
   const year = sp.get("year") ? parseInt(sp.get("year")!, 10) : await getActiveYear(institutionId);
+  // [Seguridad] teacherId=<id> devuelve SOLO las asignaciones de ese docente: los
+  // módulos de notas y asistencia del docente se alimentan de esta consulta.
+  const teacherId = sp.get("teacherId");
   const assignments = await db.subjectAssignment.findMany({
-    where: { institutionId, year },
+    where: { institutionId, year, ...(teacherId ? { teacherId } : {}) },
     select: {
       id: true, groupId: true, subjectId: true, teacherId: true, year: true,
       subject: { select: { name: true } },            // [Asistencia/Notas por asignatura]

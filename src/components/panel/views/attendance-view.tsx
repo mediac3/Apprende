@@ -89,17 +89,18 @@ export function AttendanceView() {
       fetch(`/api/subject-assignments?institutionId=${user.institution.id}${teacherQ}`).then((r) => r.json()),
     ])
       .then(([g, a]) => {
-        const list: { groupId: string; subjectId: string; subjectName: string }[] = (a.ok ? a.assignments : []).map(
-          (x: { groupId: string; subjectId: string; subject?: { name?: string } }) => ({
+        // [Seguridad] doble filtro en cliente: el docente solo trata sus filas
+        const rows: { groupId: string; subjectId: string; subjectName: string }[] = (a.ok ? a.assignments : [])
+          .filter((x: { teacherId: string | null }) => !isDocente || x.teacherId === user.id)
+          .map((x: { groupId: string; subjectId: string; subject?: { name?: string } }) => ({
             groupId: x.groupId,
             subjectId: x.subjectId,
             subjectName: x.subject?.name ?? "—",
-          })
-        );
-        setAssignments(list);
+          }));
+        setAssignments(rows);
         let gs: Group[] = g.ok ? g.groups : [];
         if (isDocente) {
-          const mine = new Set(list.map((x) => x.groupId));
+          const mine = new Set(rows.map((x) => x.groupId));
           gs = gs.filter((gr: Group) => mine.has(gr.id));
         }
         setGroups(gs);
