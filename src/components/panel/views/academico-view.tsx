@@ -862,6 +862,102 @@ function PeriodsConfigCard() {
   );
 }
 
+// [Dashboard directivo] Umbrales de alertas configurables por institución
+// (riesgo académico, asistencia baja, tareas pendientes). Rector/admin.
+function DashboardSettingsCard() {
+  const user = useAuthStore((s) => s.user);
+  const institutionId = user?.institution?.id;
+  const [risk, setRisk] = useState("3");
+  const [attendance, setAttendance] = useState("90");
+  const [pending, setPending] = useState("20");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!institutionId) return;
+    let cancelled = false;
+    fetch(`/api/dashboard-settings?institutionId=${institutionId}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancelled || !j.ok) return;
+        setRisk(String(j.settings.riskThreshold));
+        setAttendance(String(j.settings.attendanceThreshold));
+        setPending(String(j.settings.pendingTasksLimit));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [institutionId]);
+
+  const save = async () => {
+    if (!institutionId || !user) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/dashboard-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          institutionId,
+          userId: user.id,
+          riskThreshold: Number(risk.replace(",", ".")),
+          attendanceThreshold: Number(attendance.replace(",", ".")),
+          pendingTasksLimit: Number(pending),
+        }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.ok) {
+        toast.error(j.message ?? "No se pudo guardar");
+        return;
+      }
+      toast.success("Umbrales del dashboard actualizados");
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="hairline rounded-xl">
+      <CardHeader>
+        <CardTitle className="text-base">Dashboard directivo · Umbrales de alertas</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Cargando umbrales…</p>
+        ) : (
+          <>
+            <div className="grid max-w-md grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Riesgo (0–5)</Label>
+                <Input type="number" min={1} max={5} step={0.1} value={risk} onChange={(e) => setRisk(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Asistencia %</Label>
+                <Input type="number" min={50} max={100} value={attendance} onChange={(e) => setAttendance(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Tareas pendientes</Label>
+                <Input type="number" min={1} max={500} value={pending} onChange={(e) => setPending(e.target.value)} />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Promedio por debajo del umbral → alerta 🔴 de riesgo académico; asistencia bajo el umbral (por periodo o
+              por grado) → alerta 🟠; tareas sin calificar ≥ límite → alerta 🟡.
+            </p>
+            <Button size="sm" onClick={() => void save()} disabled={saving}>
+              {saving ? "Guardando…" : "Guardar umbrales"}
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ConfiguracionView() {
   const freezePref = useSyncExternalStore(subscribeFreeze, readFreezeSnapshot, () => 1);
   // [Año activo] Variables institucionales muestra el año académico en estado activo
@@ -988,6 +1084,9 @@ function ConfiguracionView() {
 
       {/* [Configuración de periodos] modelo educativo → periodos (fechas/cerrado/activo) */}
       <PeriodsConfigCard />
+
+      {/* [Dashboard directivo] umbrales de alertas del panel estratégico */}
+      <DashboardSettingsCard />
 
       {/* [C2] Control de inmovilización de columnas (movido desde Notas parciales) */}
       <Card className="hairline rounded-xl">

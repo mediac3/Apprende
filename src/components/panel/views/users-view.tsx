@@ -424,6 +424,7 @@ export function UsersView() {
         user={editing}
         roles={roles}
         onSave={saveUser}
+        me={me}
       />
       <RolesStateDialog
         user={rolesTarget}
@@ -458,15 +459,23 @@ export function UsersView() {
 // FORMULARIO: crear / editar usuario
 // ============================================================
 
-function UserFormDialog({ open, onOpenChange, user, roles, onSave }: {
+function UserFormDialog({ open, onOpenChange, user, roles, onSave, me }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   user: UserRow | null;
   roles: RoleRef[];
   onSave: (d: { username: string; fullName: string; phone: string; email: string; jobTitle: string; password: string; roleIds: string[] }) => void;
+  me: { id: string; institution: { id: string } };
 }) {
   const [form, setForm] = useState({ username: "", fullName: "", phone: "", email: "", jobTitle: "", password: "" });
   const [selected, setSelected] = useState<string[]>([]);
+
+  // [Dashboard directivo] Alcance del coordinador: sedes/grados que puede ver (null = toda la institución)
+  const isCoordinator = !!user?.userRoles.some((ur) => ur.role.code === "coordinador");
+  const [branchCatalog, setBranchCatalog] = useState<{ id: string; name: string }[]>([]);
+  const [gradeCatalog, setGradeCatalog] = useState<{ id: string; name: string }[]>([]);
+  const [scopeBranches, setScopeBranches] = useState<string[] | null>(null);
+  const [scopeGrados, setScopeGrados] = useState<string[] | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -478,8 +487,58 @@ function UserFormDialog({ open, onOpenChange, user, roles, onSave }: {
     }
   }, [user, open]);
 
+  // Catálogos de sedes/grados (solo cuando el diálogo abre)
+  useEffect(() => {
+    if (!open || !me) return;
+    let cancelled = false;
+    fetch(`/api/branches?institutionId=${me.institution.id}`).then((r) => r.json()).then((j) => {
+      if (!cancelled && j.ok) setBranchCatalog(j.branches ?? []);
+    }).catch(() => {});
+    fetch(`/api/grade-levels?institutionId=${me.institution.id}`).then((r) => r.json()).then((j) => {
+      if (!cancelled && j.ok) setGradeCatalog(j.gradeLevels ?? []);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [open, me]);
+
+  // Alcance actual del usuario en edición
+  useEffect(() => {
+    if (!open || !user) return;
+    let cancelled = false;
+    fetch(`/api/user-scope?userId=${user.id}`).then((r) => r.json()).then((j) => {
+      if (!cancelled && j.ok) { setScopeBranches(j.scopeBranchIds); setScopeGrados(j.scopeGradeLevelIds); }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [open, user]);
+
   function toggleRole(id: string) {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  }
+
+  function toggleScope(list: string[] | null, id: string, set: (v: string[]) => void) {
+    const arr = list ?? [];
+    set(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]);
+  }
+
+  // Guarda el alcance en paralelo al guardado del usuario (API dedicada, sin tocar /api/users)
+  async function saveScope() {
+    if (!me || !user) return;
+    try {
+      const res = await fetch("/api/user-scope", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          editorId: me.id,
+          institutionId: me.institution.id,
+          userId: user.id,
+          scopeBranchIds: scopeBranches,
+          scopeGradeLevelIds: scopeGrados,
+        }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.ok) toast.error(j.message ?? "No se pudo guardar el alcance");
+    } catch {
+      toast.error("Error de conexión al guardar el alcance");
+    }
   }
 
   return (
@@ -520,11 +579,51 @@ function UserFormDialog({ open, onOpenChange, user, roles, onSave }: {
               </div>
             </div>
           )}
+          {user && isCoordinator && (
+            <div className="space-y-2 rounded-md hairline p-3">
+              <Label className="text-xs font-medium">Alcance del dashboard directivo</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Limita las sedes/grados que verá este coordinador en su panel. Sin selección = toda la institución.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <span className="text-xs text-muted-foreground">Sedes</span>
+                  <div className="max-h-24 space-y-1 overflow-y-auto">
+                    {branchCatalog.map((b) => (
+                      <label key={b.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={!!scopeBranches?.includes(b.id)}
+                          onCheckedChange={() => toggleScope(scopeBranches, b.id, setScopeBranches)}
+                        />
+                        <span className="truncate">{b.name}</span>
+                      </label>
+                    ))}
+                    {branchCatalog.length === 0 && <span className="text-xs text-muted-foreground">Sin sedes registradas</span>}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-xs text-muted-foreground">Grados</span>
+                  <div className="max-h-24 space-y-1 overflow-y-auto">
+                    {gradeCatalog.map((g) => (
+                      <label key={g.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={!!scopeGrados?.includes(g.id)}
+                          onCheckedChange={() => toggleScope(scopeGrados, g.id, setScopeGrados)}
+                        />
+                        <span className="truncate">{g.name}</span>
+                      </label>
+                    ))}
+                    {gradeCatalog.length === 0 && <span className="text-xs text-muted-foreground">Sin grados registrados</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button
-            onClick={() => onSave({ ...form, roleIds: selected })}
+            onClick={() => { if (user && isCoordinator) void saveScope(); onSave({ ...form, roleIds: selected }); }}
             disabled={!form.username.trim() || !form.fullName.trim() || (!user && !form.password)}
             className="gap-1.5"
           >
