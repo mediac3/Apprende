@@ -70,6 +70,7 @@ model Institution {
   educationalModels    EducationalModel[]
   evaluativeConcepts   EvaluativeConcept[]
   activities           Activity[]
+  dashboardSetting     DashboardSetting?
 }
 
 // UserRole (códigos del catálogo Role): rector, coordinador, director_grupo,
@@ -93,6 +94,8 @@ model User {
   active          Boolean  @default(true)
   lastLoginAt     DateTime?
   mustChangePassword Boolean @default(false) // [F2] forzar cambio de contraseña en primer login (contraseña inicial = documento)
+  scopeBranchIds String? // [Dashboard directivo] JSON array de Branch ids que delimitan el alcance del coordinador (null = sin restricción)
+  scopeGradeLevelIds String? // [Dashboard directivo] JSON array de GradeLevel ids que delimitan el alcance del coordinador (null = sin restricción)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -1268,4 +1271,17 @@ model TeacherDashboardConfig {
   riskThreshold    Float    @default(3.0) // promedio por debajo del cual hay riesgo de reprobar
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+// [Dashboard directivo] Umbrales de alertas configurables por institución.
+// Fila única por institución; la API crea con defaults on-read si no existe.
+model DashboardSetting {
+  id                  String   @id @default(cuid())
+  institutionId       String   @unique
+  institution         Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  riskThreshold       Float    @default(3.0) // promedio (escala 0-5) por debajo del cual hay riesgo académico
+  attendanceThreshold Float    @default(90)  // % de asistencia por debajo del cual hay alerta
+  pendingTasksLimit   Int      @default(20)  // actividades sin calificar que disparan alerta informativa
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }

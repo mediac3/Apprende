@@ -65,6 +65,7 @@ import {
 import { DashboardView } from "./views/dashboard-view";
 import { StudentDashboardView } from "./views/student-dashboard/student-dashboard-view";
 import { TeacherDashboardView } from "./views/teacher-dashboard/teacher-dashboard-view"; // [Dashboard Docente]
+import { DirectivoDashboardView } from "./views/directivo-dashboard/directivo-dashboard-view"; // [Dashboard Directivo]
 import { useGradesPreselectStore } from "@/store/grades-prefill-store"; // [Dashboard Docente] pre-filtro Notas
 import { GradesView } from "./views/grades-view";
 import ConsolidadoView from "./views/consolidado/consolidado-view";
@@ -352,9 +353,11 @@ export function InstitutionalPanel() {
     }
     switch (activeModule) {
       case "dashboard":
-        // [F1] Cada rol con SU dashboard: estudiante → estudiante, docente → docente
+        // [F1] Cada rol con SU dashboard: estudiante → estudiante, docente → docente,
+        // rector/coordinador → dashboard directivo (vista estratégica con drill-down)
         if (user?.role === "estudiante") return <StudentDashboardView />;
         if (user?.role === "docente") return <TeacherDashboardView />; // [Dashboard Docente]
+        if (user?.role === "rector" || user?.role === "coordinador") return <DirectivoDashboardView />; // [Dashboard Directivo]
         return <DashboardView />;
       case "notas":
         // [Dashboard Docente] pre-selección grupo/asignatura/periodo si viene del dashboard
