@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/auth-store";
 import {
@@ -700,8 +700,183 @@ function PasswordChangePolicyCard() {
   );
 }
 
+// [Configuración de periodos] Conecta con los modelos educativos: se selecciona el
+// modelo y se editan sus periodos (fechas, cerrado/abierto) y el activo de forma
+// arbitraria (único activo por modelo; si ninguno, los módulos resuelven por rango
+// de fechas con la fecha del cliente). Guardado inmediato vía PATCH /api/periods.
+interface ModelPeriodLite {
+  id: string;
+  name: string;
+  weight: number;
+  active: boolean;
+  closed: boolean;
+  order: number;
+  startDate: string;
+  endDate: string;
+}
+
+function PeriodsConfigCard() {
+  const user = useAuthStore((s) => s.user);
+  const [models, setModels] = useState<{ id: string; name: string; periods: ModelPeriodLite[] }[]>([]);
+  const [modelId, setModelId] = useState<string>("");
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadModels = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await fetch(`/api/educational-models?institutionId=${encodeURIComponent(user.institution.id)}`);
+      const d = await res.json();
+      if (d?.ok) {
+        setModels(d.models ?? []);
+        setModelId((prev) => prev || d.models?.[0]?.id || "");
+      }
+    } catch {
+      toast.error("Error cargando modelos educativos");
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.institution.id]);
+
+  useEffect(() => {
+    loadModels();
+  }, [loadModels]);
+
+  const model = models.find((m) => m.id === modelId) ?? null;
+
+  async function patchPeriod(id: string, payload: Record<string, unknown>) {
+    setSavingId(id);
+    try {
+      const res = await fetch("/api/periods", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...payload }),
+      });
+      const d = await res.json();
+      if (res.ok && d.ok) {
+        toast.success("Periodo actualizado");
+      } else {
+        toast.error(d.error || "No se pudo actualizar el periodo");
+      }
+      await loadModels(); // refresca (y revierte valores locales si hubo error)
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  return (
+    <Card className="hairline rounded-xl">
+      <CardHeader>
+        <CardTitle className="text-base">Configuración de periodos</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Cargando modelos…</p>
+        ) : models.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sin modelos educativos registrados.</p>
+        ) : (
+          <>
+            <div className="space-y-1.5 max-w-sm">
+              <Label className="text-xs text-muted-foreground">Modelo educativo</Label>
+              <Select value={modelId} onValueChange={setModelId}>
+                <SelectTrigger size="sm" className="w-full">
+                  <SelectValue placeholder="Selecciona un modelo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {model && (
+              <div className="space-y-2">
+                {model.periods.length === 0 && (
+                  <p className="text-xs text-muted-foreground">El modelo no tiene periodos configurados.</p>
+                )}
+                {model.periods.map((p) => (
+                  <div
+                    key={p.id}
+                    className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-2 items-center rounded-lg border p-3"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium w-28 shrink-0">{p.name}</span>
+                      <Input
+                        type="date"
+                        defaultValue={p.startDate ? p.startDate.slice(0, 10) : ""}
+                        key={`${p.id}-ini-${p.startDate}`}
+                        disabled={savingId === p.id}
+                        onChange={(e) => e.target.value && patchPeriod(p.id, { startDate: e.target.value })}
+                        className="h-8 w-[150px] text-xs"
+                        aria-label={`Fecha de inicio ${p.name}`}
+                      />
+                      <span className="text-xs text-muted-foreground">a</span>
+                      <Input
+                        type="date"
+                        defaultValue={p.endDate ? p.endDate.slice(0, 10) : ""}
+                        key={`${p.id}-fin-${p.endDate}`}
+                        disabled={savingId === p.id}
+                        onChange={(e) => e.target.value && patchPeriod(p.id, { endDate: e.target.value })}
+                        className="h-8 w-[150px] text-xs"
+                        aria-label={`Fecha de fin ${p.name}`}
+                      />
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <Checkbox
+                          checked={p.closed}
+                          disabled={savingId === p.id}
+                          onCheckedChange={(v) => patchPeriod(p.id, { closed: v === true })}
+                        />
+                        Cerrado
+                      </label>
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`periodo-activo-${model.id}`}
+                          checked={p.active}
+                          disabled={savingId === p.id}
+                          onChange={() => patchPeriod(p.id, { active: true })}
+                          className="accent-[var(--app-primary,#7c5cff)]"
+                        />
+                        Activo
+                      </label>
+                    </div>
+                  </div>
+                ))}
+                <p className="text-xs text-muted-foreground">
+                  Marca «Activo» en el periodo vigente; si ninguno está activo, la plataforma usa el
+                  que contenga la fecha actual.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ConfiguracionView() {
   const freezePref = useSyncExternalStore(subscribeFreeze, readFreezeSnapshot, () => 1);
+  // [Año activo] Variables institucionales muestra el año académico en estado activo
+  const [anioActivo, setAnioActivo] = useState<string>("");
+  const userCfg = useAuthStore((s) => s.user);
+  useEffect(() => {
+    if (!userCfg) return;
+    fetch(`/api/academic-years?institutionId=${encodeURIComponent(userCfg.institution.id)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        const y = (d?.years ?? []).find((x: { active?: boolean }) => x.active);
+        if (y?.year) setAnioActivo(String(y.year));
+      })
+      .catch(() => {});
+  }, [userCfg?.institution.id]);
   function setFreeze(v: number) {
     window.localStorage.setItem(FREEZE_STORAGE_KEY, String(v));
     window.dispatchEvent(new Event("apprende:grades:freeze-changed"));
@@ -811,6 +986,9 @@ function ConfiguracionView() {
       {/* [Seguridad] Política de cambio de contraseña inicial (checkbox + roles) */}
       <PasswordChangePolicyCard />
 
+      {/* [Configuración de periodos] modelo educativo → periodos (fechas/cerrado/activo) */}
+      <PeriodsConfigCard />
+
       {/* [C2] Control de inmovilización de columnas (movido desde Notas parciales) */}
       <Card className="hairline rounded-xl">
         <CardHeader>
@@ -823,7 +1001,7 @@ function ConfiguracionView() {
               [0, "Ninguna"],
               [1, "Estudiantes"],
               [2, "Estudiantes + PROM"],
-              [3, "Todas"],
+              [3, "Estudiantes + DEF"],
             ] as const).map(([value, label]) => (
               <button
                 key={value}
@@ -858,8 +1036,8 @@ function ConfiguracionView() {
               <Input defaultValue="Institución Educativa Demo" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Año académico</Label>
-              <Input defaultValue="2025" />
+              <Label className="text-xs text-muted-foreground">Año académico (activo en Años académicos)</Label>
+              <Input key={anioActivo} defaultValue={anioActivo || userCfg?.institution.academicYear || ""} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">DANE</Label>

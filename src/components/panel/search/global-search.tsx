@@ -308,7 +308,7 @@ export function InlineGlobalSearch() {
         }
         className={cn(
           "flex items-center gap-2 h-9 rounded-lg border bg-secondary/40 transition-all duration-200 ease-out",
-          open ? "w-72 xl:w-96 px-3 bg-background shadow-sm ring-1 ring-ring/30" : "w-9 justify-center px-0 hover:bg-secondary cursor-pointer"
+          open ? "w-[27rem] xl:w-[36rem] px-3 bg-background shadow-sm" : "w-9 justify-center px-0 hover:bg-secondary cursor-pointer"
         )}
         onClick={() => !open && setOpen(true)}
       >

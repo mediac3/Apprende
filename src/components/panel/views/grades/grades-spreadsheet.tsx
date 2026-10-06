@@ -598,7 +598,7 @@ export function GradesSpreadsheet(props: Props) {
       if (contentEl) {
         contentEl.style.width = "100%";
         contentEl.style.overflow = "auto";
-        contentEl.style.maxHeight = "calc(100dvh - 170px)";
+        contentEl.style.maxHeight = "calc(100dvh - 148px)";
         contentEl.style.overscrollBehavior = "contain";
       }
     }

@@ -228,12 +228,26 @@ function InformesAcademicosModule() {
 
 export function InstitutionalPanel() {
   const user = useAuthStore((s) => s.user);
+  // [Año activo] el topbar muestra el año académico EN ESTADO ACTIVO (Años académicos),
+  // con el campo institucional como fallback mientras carga.
+  const [anioActivo, setAnioActivo] = useState<string>(user?.institution.academicYear ?? "");
   // [theme-options] logo configurado (si no, fallback "Ap")
   const sharedTheme = useThemeOptionsStore((s) => s.theme);
   const logoDataUrl = sharedTheme?.logo.enabled ? sharedTheme.logo.dataUrl : "";
   const logout = useAuthStore((s) => s.logout);
   const { activeModule, setModule, sidebarOpen, setSidebar } = useUIStore();
   const [customModules, setCustomModules] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch(`/api/academic-years?institutionId=${encodeURIComponent(user.institution.id)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        const y = (d?.years ?? []).find((x: { active?: boolean }) => x.active);
+        if (y?.year) setAnioActivo(String(y.year));
+      })
+      .catch(() => {});
+  }, [user?.institution.id]);
 
   // Al cambiar de módulo, el contenido vuelve al top. El scroll vertical vive
   // en el documento (raíz min-h-screen), por lo que se usa window.scrollTo
@@ -487,7 +501,7 @@ export function InstitutionalPanel() {
               <div className="hidden sm:block min-w-0">
                 <div className="text-sm font-semibold truncate">{user.institution.name}</div>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                  Año {user.institution.academicYear} · {roleLabel(user.role)}
+                  Año {anioActivo} · {roleLabel(user.role)}
                 </div>
               </div>
             </div>
@@ -570,7 +584,7 @@ export function InstitutionalPanel() {
         {/* Main */}
         <main className="flex-1 min-w-0 overflow-x-hidden">
           {/* [theme-options-movil] Notas parciales usa padding compacto en móvil */}
-          <div className={`max-w-7xl mx-auto ${activeModule === "notas" ? "px-2 py-3 sm:px-6 sm:py-6" : "px-4 py-6 sm:px-6"}`}>
+          <div className={`max-w-7xl mx-auto ${activeModule === "notas" ? "px-2 py-3 sm:px-4 sm:py-4" : "px-4 py-6 sm:px-6"}`}>
             {renderModule()}
           </div>
         </main>
