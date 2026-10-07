@@ -10,8 +10,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "userId requerido" }, { status: 400 });
   }
   const childId = req.nextUrl.searchParams.get("childId"); // opcional: hijo activo del selector
+  const periodId = req.nextUrl.searchParams.get("periodId"); // opcional: periodo del selector (default: activo)
   try {
-    const result = await getParentDashboard(userId, childId);
+    const result = await getParentDashboard(userId, childId, periodId);
     if (!result.ok) {
       return NextResponse.json({ error: result.reason }, { status: 403 });
     }

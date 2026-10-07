@@ -7,6 +7,7 @@ import { useUIStore, type ModuleKey } from "@/store/ui-store";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useParentDashboard } from "./use-parent-dashboard";
 import { WelcomeHeader } from "./welcome-header";
 import { ChildSelector } from "./child-selector";
@@ -67,7 +68,9 @@ export function ParentDashboardView() {
   const [childId, setChildId] = useState<string | null>(() =>
     typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("childId") : null
   );
-  const { data, loading, error, refetch } = useParentDashboard(childId);
+  // [Selector de período] null = usa el período ACTIVO de la configuración del sistema
+  const [periodId, setPeriodId] = useState<string | null>(null);
+  const { data, loading, error, refetch } = useParentDashboard(childId, periodId);
   const setModule = useUIStore((s) => s.setModule);
 
   // Espeja el hijo activo en la URL sin recargar (patrón drill-down directivo)
@@ -97,11 +100,26 @@ export function ParentDashboardView() {
         groupName={data.groupName}
       />
       <ChildSelector items={data.children} activeId={data.activeChildId} onSelect={onSelectChild} />
+      {data.periods.length > 1 && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Período:</span>
+          <Select value={periodId ?? data.periodId ?? ""} onValueChange={(v) => setPeriodId(v)}>
+            <SelectTrigger className="h-8 w-[220px]" aria-label="Seleccionar período"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {data.periods.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}{p.active ? " (actual)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <ChildKpis kpis={data.kpis} prevPeriodName={data.prevPeriodName} onNavigate={navigate} />
       <SubjectProgressList
         subjects={data.subjects}
         childFirstName={data.activeChildFirstName}
-        onNavigate={() => navigate("notas-acudientes")}
+        periodName={data.periodName}
       />
       <HelpRecommendations items={data.helpRecommendations} />
       <UpcomingActivities items={data.upcomingActivities} total={data.pendingTotal} />

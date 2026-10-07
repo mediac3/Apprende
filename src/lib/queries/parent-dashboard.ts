@@ -10,6 +10,14 @@ export interface ParentChild {
   groupName: string | null;
 }
 
+export interface ParentSubjectItem {
+  id: string;
+  title: string;
+  graded: boolean;
+  value: number | null; // nota 0.0–5.0 si está calificada
+  dateISO: string | null;
+}
+
 export interface ParentSubject {
   id: string;
   name: string;
@@ -17,6 +25,7 @@ export interface ParentSubject {
   prevProm: number | null; // promedio del periodo anterior (delta)
   pct: number | null; // prom/5*100
   band: "verde" | "azul" | "amarillo" | "rojo" | null; // verde ≥4, azul 3–3.9, amarillo 2–2.9, rojo <2
+  items: ParentSubjectItem[]; // detalle de evaluaciones de la materia (periodo seleccionado)
 }
 
 export interface HelpRecommendation {
@@ -87,7 +96,7 @@ function bandOf(prom: number): ParentSubject["band"] {
   return "rojo";
 }
 
-export async function getParentDashboard(parentId: string, childId?: string | null) {
+export async function getParentDashboard(parentId: string, childId?: string | null, periodId?: string | null) {
   // ── Gate de rol (fresco desde BD, no de sesión) ──
   const user = await db.user.findUnique({
     where: { id: parentId },
@@ -111,11 +120,20 @@ export async function getParentDashboard(parentId: string, childId?: string | nu
   const activeChild = childId ? children.find((c) => c.id === childId) : children[0];
   if (!activeChild) return { ok: false as const, reason: "child_not_linked" };
 
-  // ── Periodo activo + anterior (mismo modelo educativo) ──
-  const period = await db.period.findFirst({
-    where: { institutionId: user.institutionId, active: true },
-    select: { id: true, name: true, startDate: true, endDate: true, educationalModelId: true },
-  });
+  // ── Periodo seleccionado (o el ACTIVO de la configuración del sistema) + anterior del mismo modelo ──
+  // El periodId del selector se valida contra la institución (ajeno → cae al activo, sin error).
+  let period = periodId
+    ? await db.period.findFirst({
+        where: { id: periodId, institutionId: user.institutionId },
+        select: { id: true, name: true, startDate: true, endDate: true, educationalModelId: true },
+      })
+    : null;
+  if (!period) {
+    period = await db.period.findFirst({
+      where: { institutionId: user.institutionId, active: true },
+      select: { id: true, name: true, startDate: true, endDate: true, educationalModelId: true },
+    });
+  }
   const prevPeriod = period
     ? await db.period.findFirst({
         where: {
@@ -127,6 +145,13 @@ export async function getParentDashboard(parentId: string, childId?: string | nu
         select: { id: true, name: true },
       })
     : null;
+
+  // Catálogo de periodos para el selector del dashboard (asc = Periodo 1 → N)
+  const periods = await db.period.findMany({
+    where: { institutionId: user.institutionId },
+    select: { id: true, name: true, active: true },
+    orderBy: { startDate: "asc" },
+  });
 
   // ── Grupo efectivo (mismo respaldo que student-dashboard) ──
   let groupId = activeChild.groupId ?? null;
@@ -191,6 +216,8 @@ export async function getParentDashboard(parentId: string, childId?: string | nu
   const promPrev = prevPeriod ? (recordsPrev.length ? recordsPrev.reduce((s, r) => s + r.value, 0) / recordsPrev.length : null) : null;
   const averageDelta = promActive !== null && promPrev !== null ? round1(promActive - promPrev) : null;
 
+  const activePeriodActivities = activities.filter((a) => a.periodId === period?.id);
+
   const parentSubjects: ParentSubject[] = subjects.map((s) => {
     const prom = period ? avgFor(s.id, period.id) : avgFor(s.id);
     return {
@@ -200,6 +227,17 @@ export async function getParentDashboard(parentId: string, childId?: string | nu
       prevProm: prevPeriod ? (() => { const p = avgFor(s.id, prevPeriod.id); return p !== null ? round1(p) : null; })() : null,
       pct: prom !== null ? Math.round((prom / 5) * 100) : null,
       band: prom !== null ? bandOf(prom) : null,
+      // [Detalle por materia] evaluaciones del periodo seleccionado con su nota
+      items: activePeriodActivities.filter((a) => a.subjectId === s.id).map((a) => {
+        const r = recByActivity.get(a.id);
+        return {
+          id: a.id,
+          title: a.label || a.name,
+          graded: !!r,
+          value: r ? Math.round(r.value * 10) / 10 : null,
+          dateISO: r?.updatedAt.toISOString() ?? null,
+        };
+      }),
     };
   }).filter((s) => s.prom !== null || s.prevProm !== null); // sin datos en ambos periodos → fuera
 
@@ -210,7 +248,6 @@ export async function getParentDashboard(parentId: string, childId?: string | nu
     if (span > 0) periodElapsed = (Date.now() - period.startDate.getTime()) / span;
   }
   const urgency: ParentActivity["urgency"] = periodElapsed > 0.7 ? "red" : periodElapsed > 0.4 ? "yellow" : "green";
-  const activePeriodActivities = activities.filter((a) => a.periodId === period?.id);
   const pending = activePeriodActivities.filter((a) => !recByActivity.has(a.id));
   const subjectById = new Map(subjects.map((s) => [s.id, s]));
   const upcomingActivities: ParentActivity[] = pending.slice(0, 5).map((a) => ({
@@ -400,6 +437,8 @@ export async function getParentDashboard(parentId: string, childId?: string | nu
     activeChildFirstName: first,
     groupName: activeChild.group?.name ?? null,
     periodName: period?.name ?? null,
+    periodId: period?.id ?? null,
+    periods,
     prevPeriodName: prevPeriod?.name ?? null,
     kpis: {
       average: promActive !== null ? round1(promActive) : null,
