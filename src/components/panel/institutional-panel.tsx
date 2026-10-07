@@ -310,9 +310,16 @@ export function InstitutionalPanel() {
   }, [user]);
 
   // [F1] Bloqueo de ruta directa: si el módulo activo no tiene canView → dashboard
+  // [Seguridad] además valida el ROL actual contra los roles del NAV (la matriz de
+  // permisos puede dar canView a un rol fuera de `roles`; el módulo activo persistido
+  // de una sesión anterior no debe colarse por aquí).
   useEffect(() => {
     if (!permLoaded || isAdminUser || !user) return;
-    if (activeModule !== "dashboard" && !usePermStore.getState().canDo(activeModule)) {
+    const def = NAV.find((m) => m.key === activeModule);
+    const userRoles = [user.role, ...(user.roles ?? [])];
+    const defRoles = def?.roles;
+    const roleAllowed = !defRoles || userRoles.some((r) => defRoles.includes(r));
+    if (activeModule !== "dashboard" && (!usePermStore.getState().canDo(activeModule) || !roleAllowed)) {
       setModule("dashboard");
     }
   }, [activeModule, permLoaded, isAdminUser, user, setModule]);

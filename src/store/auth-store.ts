@@ -46,7 +46,15 @@ export const useAuthStore = create<AuthState>()(
       impersonating: null,
       setUser: (user) => set({ user }),
       setImpersonating: (impersonating) => set({ impersonating }),
-      logout: () => set({ user: null, impersonating: null }),
+      logout: () => {
+        set({ user: null, impersonating: null });
+        // [Seguridad] al salir, el módulo activo y los permisos en caché NO deben
+        // sobrevivir a la sesión: evita que el siguiente usuario herede la vista
+        // (p.ej. un acudiente cayendo en el módulo Usuarios de la rectora anterior).
+        // Import diferido para no crear ciclo de módulos entre stores.
+        void import("./ui-store").then((m) => m.useUIStore.getState().setModule("dashboard"));
+        void import("./perm-store").then((m) => m.usePermStore.getState().reset());
+      },
     }),
     {
       name: "apprende-auth",
