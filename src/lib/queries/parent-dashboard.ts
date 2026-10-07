@@ -184,8 +184,11 @@ export async function getParentDashboard(parentId: string, childId?: string | nu
     const rs = records.filter((r) => r.activity.subjectId === sid && (!pid || r.activity.periodId === pid));
     return rs.length ? rs.reduce((s, r) => s + r.value, 0) / rs.length : null;
   };
-  const promActive = avgFor(period?.id ?? "__all__");
-  const promPrev = prevPeriod ? avgFor(prevPeriod.id) : null;
+  // Promedio general del hijo: todas las materias del periodo (no una materia)
+  const recordsActive = period ? records.filter((r) => r.activity.periodId === period.id) : records;
+  const promActive = recordsActive.length ? recordsActive.reduce((s, r) => s + r.value, 0) / recordsActive.length : null;
+  const recordsPrev = prevPeriod ? records.filter((r) => r.activity.periodId === prevPeriod.id) : [];
+  const promPrev = prevPeriod ? (recordsPrev.length ? recordsPrev.reduce((s, r) => s + r.value, 0) / recordsPrev.length : null) : null;
   const averageDelta = promActive !== null && promPrev !== null ? round1(promActive - promPrev) : null;
 
   const parentSubjects: ParentSubject[] = subjects.map((s) => {
