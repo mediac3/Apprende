@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuthStore } from "@/store/auth-store";
 import type { ParentDashboardResult } from "@/lib/queries/parent-dashboard";
 
-export function useParentDashboard(childId: string | null) {
+export function useParentDashboard(childId: string | null, periodId: string | null) {
   const userId = useAuthStore((s) => s.user?.id);
   const [data, setData] = useState<ParentDashboardResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,6 +18,7 @@ export function useParentDashboard(childId: string | null) {
     try {
       const params = new URLSearchParams({ userId });
       if (childId) params.set("childId", childId);
+      if (periodId) params.set("periodId", periodId);
       const res = await fetch(`/api/parent-dashboard?${params.toString()}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) {
@@ -32,7 +33,7 @@ export function useParentDashboard(childId: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [userId, childId]);
+  }, [userId, childId, periodId]);
 
   useEffect(() => {
     load();

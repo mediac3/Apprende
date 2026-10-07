@@ -107,7 +107,7 @@ async function main() {
     { code: "director_grupo", name: "Director de grupo", sortOrder: 3 },
     { code: "docente", name: "Docente", sortOrder: 4 },
     { code: "orientador", name: "PSI - Docente Orientador", sortOrder: 5 },
-    { code: "acudiente", name: "Contacto familiar", sortOrder: 6 },
+    { code: "acudiente", name: "Acudiente", sortOrder: 6 },
     { code: "estudiante", name: "Estudiante", sortOrder: 7 },
     { code: "administrador", name: "Administrador", sortOrder: 8 },
     { code: "supervisor", name: "Supervisor", sortOrder: 9 },

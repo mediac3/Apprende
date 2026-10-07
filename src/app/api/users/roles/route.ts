@@ -97,3 +97,94 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }
+
+// Asignación MASIVA de roles (módulo Usuarios: selección múltiple en el listado)
+// POST /api/users/roles { institutionId, userId (actor), userIds[], roleIds[], replace? }
+// replace=false (por defecto): AÑADE los roles marcados conservando los actuales.
+// replace=true: REEMPLAZA el conjunto completo de cada usuario por roleIds.
+// El propio actor se omite (evita auto-bloqueo) y se reporta en skippedSelf.
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { institutionId, userId: actorId, userIds, roleIds, replace } = body;
+
+    if (!institutionId || !Array.isArray(userIds) || !Array.isArray(roleIds) || userIds.length === 0) {
+      return NextResponse.json(
+        { ok: false, error: "Faltan datos: institutionId, userIds, roleIds" },
+        { status: 400 }
+      );
+    }
+    if (replace && roleIds.length === 0) {
+      return NextResponse.json(
+        { ok: false, error: "Para reemplazar roles debe seleccionar al menos uno" },
+        { status: 400 }
+      );
+    }
+
+    // Validar roles de la institución
+    const roles = await db.role.findMany({
+      where: { institutionId, id: { in: roleIds } },
+    });
+    const validIds = new Set(roles.map((r) => r.id));
+
+    // Usuarios de la institución; el actor no se toca
+    const targets = await db.user.findMany({
+      where: { institutionId, id: { in: userIds } },
+      select: { id: true, username: true },
+    });
+    const editable = targets.filter((u) => u.id !== actorId);
+    const skippedSelf = targets.length - editable.length;
+
+    let updated = 0;
+    let added = 0;
+    let removed = 0;
+    for (const u of editable) {
+      const current = await db.userRole.findMany({ where: { userId: u.id } });
+      const currentIds = new Set(current.map((ur) => ur.roleId));
+
+      if (replace) {
+        for (const ur of current) {
+          if (!validIds.has(ur.roleId)) {
+            await db.userRole.delete({ where: { id: ur.id } });
+            removed++;
+          }
+        }
+      }
+      for (const rid of validIds) {
+        if (!currentIds.has(rid)) {
+          await db.userRole.create({ data: { userId: u.id, roleId: rid } });
+          added++;
+        }
+      }
+      await syncPrimaryRole(u.id);
+      updated++;
+    }
+
+    if (updated > 0) {
+      await db.auditLog.create({
+        data: {
+          institutionId,
+          userId: actorId || null,
+          action: "update",
+          module: "usuarios",
+          entityType: "UserRole",
+          entityId: null,
+          details: JSON.stringify({
+            bulk: true,
+            users: editable.map((u) => u.username),
+            roles: roles.map((r) => r.code),
+            replace: !!replace,
+            added,
+            removed,
+          }),
+          hash: crypto.randomUUID().replace(/-/g, "").slice(0, 32),
+        },
+      });
+    }
+
+    return NextResponse.json({ ok: true, updated, added, removed, skippedSelf });
+  } catch (e) {
+    console.error("[users.roles.bulk]", e);
+    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
+  }
+}

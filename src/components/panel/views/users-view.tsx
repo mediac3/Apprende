@@ -53,7 +53,7 @@ interface UserRow {
   userRoles: { id: string; role: RoleRef }[];
 }
 
-// Colores de las insignias de rol (PDF: Estudiante rojo, Contacto familiar verde)
+// Colores de las insignias de rol (PDF: Estudiante rojo, Acudiente verde)
 const ROLE_COLORS: Record<string, string> = {
   rector: "bg-violet-100 text-violet-800 dark:bg-violet-950/60 dark:text-violet-300",
   coordinador: "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300",
@@ -101,6 +101,10 @@ export function UsersView() {
   const canDeleteUsers = useCan("usuarios", "canDelete");
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [rolesTarget, setRolesTarget] = useState<UserRow | null>(null);
+  // [Usuarios] Selección múltiple para asignación masiva de roles
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkSaving, setBulkSaving] = useState(false);
   // [F4.3] "Ver como" desde la lista de acciones
   const [verComoTarget, setVerComoTarget] = useState<UserRow | null>(null);
   const [startingVerComo, setStartingVerComo] = useState(false);
@@ -198,6 +202,17 @@ export function UsersView() {
         email: data.email || null, jobTitle: data.jobTitle || null,
         ...(data.password ? { password: data.password } : {}),
       });
+      // [Usuarios] El campo Rol ahora es editable desde el formulario: reutiliza el
+      // endpoint N:M existente (reemplaza el conjunto y sincroniza el rol principal).
+      // El propio actor no puede cambiar sus roles (misma regla del listado).
+      if (d.ok && editing.id !== me.id) {
+        const r = await fetch("/api/users/roles", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editing.id, institutionId: me.institution.id, userId: me.id, roleIds: data.roleIds }),
+        }).then((x) => x.json()).catch(() => ({ ok: false }));
+        if (!r.ok) toast.error(r.error ?? "Los datos se guardaron, pero los roles no");
+      }
       if (d.ok) { setShowForm(false); setEditing(null); load(); }
     } else {
       const d = await crudPost("/api/users", {
@@ -221,6 +236,31 @@ export function UsersView() {
     if (!confirm(`¿Eliminar el usuario "${u.fullName}" (${u.username})?`)) return;
     const d = await crudDelete("/api/users", u.id, me.institution.id, me.id);
     if (d.ok) load();
+  }
+
+  // [Usuarios] Asignación masiva de roles a los usuarios seleccionados
+  async function saveBulkRoles(roleIds: string[], replace: boolean) {
+    setBulkSaving(true);
+    try {
+      const res = await fetch("/api/users/roles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ institutionId: me.institution.id, userId: me.id, userIds: selectedIds, roleIds, replace }),
+      });
+      const d = await res.json();
+      if (d.ok) {
+        toast.success(`Roles actualizados en ${d.updated} usuario${d.updated === 1 ? "" : "s"}${d.skippedSelf ? " (se omitió su propio usuario)" : ""}`);
+        setBulkOpen(false);
+        setSelectedIds([]);
+        load();
+      } else {
+        toast.error(d.error ?? "No se pudo asignar los roles");
+      }
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setBulkSaving(false);
+    }
   }
 
   // [F4.2] Vista de perfil universal (reemplaza el listado mientras está abierta)
@@ -291,6 +331,21 @@ export function UsersView() {
             </div>
           </div>
 
+          {/* [Usuarios] Barra de asignación masiva de roles */}
+          {selectedIds.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm">
+              <span className="font-medium">{selectedIds.length} seleccionado{selectedIds.length === 1 ? "" : "s"}</span>
+              {canEditUsers && (
+                <Button size="sm" className="h-7" onClick={() => setBulkOpen(true)}>
+                  <BadgeCheck className="h-3.5 w-3.5 mr-1" /> Asignar roles
+                </Button>
+              )}
+              <Button size="sm" variant="ghost" className="h-7" onClick={() => setSelectedIds([])}>
+                Limpiar
+              </Button>
+            </div>
+          )}
+
           {loading ? (
             <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-10 skeleton-pulse rounded" />)}</div>
           ) : paged.length === 0 ? (
@@ -301,6 +356,17 @@ export function UsersView() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="hairline-b text-left">
+                  <th className="py-2 pr-2 font-medium">
+                    <Checkbox
+                      aria-label="Seleccionar todos los de la página"
+                      checked={paged.some((u) => u.id !== me.id) && paged.filter((u) => u.id !== me.id).every((u) => selectedIds.includes(u.id))}
+                      onCheckedChange={(v) => {
+                        const others = paged.filter((u) => u.id !== me.id);
+                        if (v) setSelectedIds((s) => [...new Set([...s, ...others.map((u) => u.id)])]);
+                        else setSelectedIds((s) => s.filter((id) => !others.some((u) => u.id === id)));
+                      }}
+                    />
+                  </th>
                   <th className="py-2 pr-3 font-medium">Usuario</th>
                   <th className="py-2 pr-3 font-medium">Persona</th>
                   <th className="py-2 pr-3 font-medium">Celular</th>
@@ -314,6 +380,14 @@ export function UsersView() {
                     const isSelf = u.id === me.id;
                     return (
                       <tr key={u.id} className="hairline-b hover:bg-secondary/50">
+                        <td className="py-2 pr-2">
+                          <Checkbox
+                            aria-label={`Seleccionar ${u.fullName}`}
+                            disabled={isSelf}
+                            checked={selectedIds.includes(u.id)}
+                            onCheckedChange={() => setSelectedIds((s) => (s.includes(u.id) ? s.filter((x) => x !== u.id) : [...s, u.id]))}
+                          />
+                        </td>
                         <td className="py-2 pr-3 font-mono text-xs">{u.username}</td>
                         <td
                           className="py-2 pr-3 font-medium cursor-pointer hover:underline decoration-dotted underline-offset-2"
@@ -432,6 +506,16 @@ export function UsersView() {
         onClose={() => setRolesTarget(null)}
         onSaved={load}
       />
+      {bulkOpen && (
+        <BulkRolesDialog
+          open
+          onOpenChange={setBulkOpen}
+          count={selectedIds.length}
+          roles={roles}
+          saving={bulkSaving}
+          onSave={saveBulkRoles}
+        />
+      )}
 
       {/* [F4.3] Confirmación «Ver como» desde la lista */}
       <AlertDialog open={!!verComoTarget} onOpenChange={(v) => !v && setVerComoTarget(null)}>
@@ -734,4 +818,62 @@ async function crudDelete(apiBase: string, id: string, institutionId: string, us
   if (d.ok) toast.success(successMsg);
   else toast.error(d.error || "Error");
   return d;
+}
+
+// ============================================================
+// [Usuarios] Asignación masiva de roles a los usuarios seleccionados
+// ============================================================
+
+function BulkRolesDialog({ open, onOpenChange, count, roles, saving, onSave }: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  count: number;
+  roles: RoleRef[];
+  saving: boolean;
+  onSave: (roleIds: string[], replace: boolean) => void;
+}) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const [replace, setReplace] = useState(false);
+
+  // Sin useEffect de reset: el padre monta este diálogo solo cuando está abierto
+  // (remount = estado fresco en cada apertura, sin setState-in-effect).
+
+  const activeRoles = roles.filter((r) => r.active !== false);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[440px]">
+        <DialogHeader>
+          <DialogTitle>Asignar roles a {count} usuario{count === 1 ? "" : "s"}</DialogTitle>
+          <DialogDescription>
+            Marque los roles a aplicar en lote. Si activa «Reemplazar», cada usuario quedará SOLO con los roles marcados; si no, solo se añaden los marcados.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-1">
+          <div className="max-h-[40vh] space-y-2 overflow-y-auto">
+            {activeRoles.map((r) => (
+              <label key={r.id} className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer hover:bg-muted/50">
+                <Checkbox
+                  checked={selected.includes(r.id)}
+                  onCheckedChange={() => setSelected((s) => (s.includes(r.id) ? s.filter((x) => x !== r.id) : [...s, r.id]))}
+                />
+                <span>{r.name}</span>
+                <span className="ml-auto text-xs text-muted-foreground">{r.code}</span>
+              </label>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={replace} onCheckedChange={(v) => setReplace(v === true)} />
+            Reemplazar todos los roles (quita los no marcados)
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button disabled={saving || selected.length === 0} onClick={() => onSave(selected, replace)}>
+            <Save className="h-4 w-4 mr-1" /> {saving ? "Aplicando…" : "Aplicar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
