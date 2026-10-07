@@ -12,6 +12,7 @@ datasource db {
 
 model Institution {
   id            String   @id @default(cuid())
+  parentStudents ParentStudent[] // [Dashboard Padre] vínculos acudiente↔estudiante
   name          String
   shortName     String?
   nit           String?
@@ -116,6 +117,7 @@ model User {
   enrollments     Enrollment[]    @relation("ProcessedBy")
   assignments     SubjectAssignment[] @relation("Teacher")
   students        Student[] // [F1] vínculo usuario↔estudiante (dashboard)
+  parentLinks     ParentStudent[] @relation("ParentStudentParent") // [Dashboard Padre] hijos del acudiente
   spaceMemberships SpaceMember[]
   headedGroups    Group[]             @relation("GroupHeadTeacher")
   userRoles       UserRole[]
@@ -215,6 +217,7 @@ model Student {
   orientations  Orientation[]
   enrollments        StudentEnrollment[]
   contacts           StudentContact[]
+  parentLinks        ParentStudent[] @relation("ParentStudentStudent") // [Dashboard Padre] acudientes del estudiante
   requirements       StudentRequirement[]
   externalCertificates ExternalCertificate[]
   gradeRecords       GradeRecord[] // Módulo Calificaciones
@@ -1154,6 +1157,25 @@ model StudentContact {
   isPrimary     Boolean  @default(false) // badge "Principal" (PDF pág 12)
   createdAt     DateTime @default(now())
 
+  @@index([studentId])
+}
+
+// [Dashboard Padre] Vínculo acudiente↔estudiante (multi-hijo). Aditiva; la UI de gestión se añade después.
+// DOWN (documentado): DROP TABLE ParentStudent; y quitar las 2 relaciones del schema.
+model ParentStudent {
+  id            String   @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  parentId      String
+  parent        User     @relation("ParentStudentParent", fields: [parentId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student  @relation("ParentStudentStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  relationship  String?  // madre, padre, acudiente (coherente con StudentContact.relationship)
+  isPrimary     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@unique([parentId, studentId])
+  @@index([parentId])
   @@index([studentId])
 }
 
