@@ -96,9 +96,10 @@ export async function getParentDashboard(parentId: string, childId?: string | nu
   if (!user || !user.active) return { ok: false as const, reason: "user_not_found" };
   if (user.role !== "acudiente") return { ok: false as const, reason: "not_acudiente" };
 
-  // ── Seguridad: SOLO hijos vinculados al acudiente ──
+  // ── Seguridad: SOLO hijos vinculados al acudiente vía ParentStudent ──
+  // (Student.userId es la cuenta propia del estudiante; el vínculo del acudiente es N:M)
   const children = await db.student.findMany({
-    where: { userId: parentId },
+    where: { parentLinks: { some: { parentId } } },
     select: { id: true, firstName: true, lastName: true, groupId: true, group: { select: { name: true } } },
     orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
   });
