@@ -631,7 +631,7 @@ function UserFormDialog({ open, onOpenChange, user, roles, onSave, me }: {
         <DialogHeader>
           <DialogTitle>{user ? "Editar usuario" : "Crear usuario"}</DialogTitle>
           <DialogDescription>
-            {user ? "Actualice los datos de contacto. Deje la contraseña vacía para mantener la actual." : "Los roles se pueden ajustar después desde el listado."}
+            {user ? "Actualice los datos de contacto y los roles. Deje la contraseña vacía para mantener la actual." : "Los roles se pueden ajustar después desde el listado."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2 max-h-[65vh] overflow-y-auto">
@@ -650,19 +650,17 @@ function UserFormDialog({ open, onOpenChange, user, roles, onSave, me }: {
               <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={user ? "Dejar vacío para mantener" : "Contraseña inicial"} autoComplete="new-password" />
             </div>
           </div>
-          {!user && (
-            <div>
-              <Label>Rol(es)</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 rounded-md hairline p-3 max-h-44 overflow-y-auto">
-                {roles.filter((r) => r.active !== false).map((r) => (
-                  <label key={r.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox checked={selected.includes(r.id)} onCheckedChange={() => toggleRole(r.id)} />
-                    <span className="truncate">{r.name}</span>
-                  </label>
-                ))}
-              </div>
+          <div>
+            <Label>Rol(es){user?.id === me.id ? " — su propio usuario no puede cambiarlos" : ""}</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 rounded-md hairline p-3 max-h-44 overflow-y-auto">
+              {roles.filter((r) => r.active !== false).map((r) => (
+                <label key={r.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox checked={selected.includes(r.id)} disabled={!!user && user.id === me.id} onCheckedChange={() => toggleRole(r.id)} />
+                  <span className="truncate">{r.name}</span>
+                </label>
+              ))}
             </div>
-          )}
+          </div>
           {user && isCoordinator && (
             <div className="space-y-2 rounded-md hairline p-3">
               <Label className="text-xs font-medium">Alcance del dashboard directivo</Label>
