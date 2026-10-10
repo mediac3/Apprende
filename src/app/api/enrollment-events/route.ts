@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getSessionUser } from "@/lib/api-guard";
+import { forbiddenUnless } from "@/lib/permissions/server";
 
 // Gestión de Estudiantes (PDF pág 11) — novedades de matrícula (retiro, traslado, repitente...)
+// [Seguridad] escrituras vía matriz de permisos (módulo "matricula").
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -24,6 +27,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // [Seguridad] identidad desde sesión + roles configurables en la matriz
+  const actor = await getSessionUser(req);
+  if (!actor) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
   try {
     const body = await req.json();
     const { enrollmentId, institutionId, userId, type, reason, date } = body;
@@ -31,6 +37,8 @@ export async function POST(req: NextRequest) {
     if (!enrollmentId || !institutionId || !type) {
       return NextResponse.json({ ok: false, error: "Faltan datos" }, { status: 400 });
     }
+    const denied = await forbiddenUnless(actor.id, institutionId, "matricula", "canCreate", "registrar novedades de matrícula");
+    if (denied) return denied;
 
     const event = await db.enrollmentEvent.create({
       data: {
@@ -69,6 +77,8 @@ export async function PATCH(req: NextRequest) {
     if (!id || !institutionId) {
       return NextResponse.json({ ok: false, error: "id e institutionId requeridos" }, { status: 400 });
     }
+    const deniedEdit = await forbiddenUnless((await getSessionUser(req))?.id, institutionId, "matricula", "canEdit", "editar novedades de matrícula");
+    if (deniedEdit) return deniedEdit;
 
     const data: any = {};
     if ("type" in body) data.type = type;
@@ -110,6 +120,8 @@ export async function DELETE(req: NextRequest) {
   if (!id || !institutionId) {
     return NextResponse.json({ ok: false, error: "id e institutionId requeridos" }, { status: 400 });
   }
+  const deniedDel = await forbiddenUnless((await getSessionUser(req))?.id, institutionId, "matricula", "canDelete", "eliminar novedades de matrícula");
+  if (deniedDel) return deniedDel;
 
   try {
     await db.enrollmentEvent.delete({ where: { id } });

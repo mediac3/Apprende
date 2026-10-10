@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import crypto from "crypto";
+import { getSessionUser } from "@/lib/api-guard";
+
+// [Seguridad] Records de módulos personalizados: solo se escriben si el rol del
+// usuario está entre los roles definidos por el rector al publicar el módulo
+// (CustomModule.visibleRolesJson); el administrador siempre puede.
+async function actorCanWriteModule(actor: { id: string; role: string } | null, moduleId: string, institutionId: string): Promise<boolean> {
+  if (!actor) return false;
+  const mod = await db.customModule.findFirst({ where: { id: moduleId, institutionId } });
+  if (!mod || !mod.published) return false;
+  if (actor.role === "administrador") return true;
+  const ur = await db.userRole.findMany({ where: { userId: actor.id }, select: { role: { select: { code: true } } } });
+  const codes = [...new Set([actor.role, ...ur.map((x) => x.role.code)])];
+  let visible: string[] = [];
+  try { visible = JSON.parse(mod.visibleRolesJson || "[]"); } catch { visible = []; }
+  return codes.some((c) => visible.includes(c));
+}
 
 // GET: listar registros de un módulo
 // ?moduleId=...&institutionId=...&userId=...&status=...&search=...
@@ -75,6 +91,12 @@ export async function POST(req: NextRequest) {
 
     if (!moduleId || !institutionId || !data) {
       return NextResponse.json({ ok: false, error: "Faltan datos" }, { status: 400 });
+    }
+
+    // [Seguridad] identidad + roles del módulo (visibleRolesJson)
+    const actor = await getSessionUser(req);
+    if (!(await actorCanWriteModule(actor, moduleId, institutionId))) {
+      return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     }
 
     const mod = await db.customModule.findFirst({ where: { id: moduleId, institutionId } });
@@ -168,7 +190,14 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "id e institutionId requeridos" }, { status: 400 });
     }
 
-    const existing = await db.customModuleRecord.findFirst({ where: { id, institutionId } });
+    // [Seguridad] identidad + roles del módulo del registro (visibleRolesJson)
+    const actorPatch = await getSessionUser(req);
+    const existingForModule = await db.customModuleRecord.findFirst({ where: { id, institutionId } });
+    if (!(await actorCanWriteModule(actorPatch, existingForModule?.moduleId ?? "", institutionId))) {
+      return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    }
+
+    const existing = existingForModule;
     if (!existing) {
       return NextResponse.json({ ok: false, error: "Registro no encontrado" }, { status: 404 });
     }
@@ -217,7 +246,14 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "id e institutionId requeridos" }, { status: 400 });
     }
 
-    const existing = await db.customModuleRecord.findFirst({ where: { id, institutionId } });
+    // [Seguridad] identidad + roles del módulo del registro (visibleRolesJson)
+    const actorDelete = await getSessionUser(req);
+    const existingForModule = await db.customModuleRecord.findFirst({ where: { id, institutionId } });
+    if (!(await actorCanWriteModule(actorDelete, existingForModule?.moduleId ?? "", institutionId))) {
+      return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    }
+
+    const existing = existingForModule;
     if (!existing) {
       return NextResponse.json({ ok: false, error: "Registro no encontrado" }, { status: 404 });
     }

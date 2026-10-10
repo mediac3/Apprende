@@ -1,6 +1,6 @@
 # Seguridad de la API — Apprende
 
-Estado: **Fase 1 + 2 + 3 implementadas** (sesión, default-deny, param-trust, guards de escritura por handler y por proxy, bcrypt, rate-limit, revocación de rutas self al desactivar).
+Estado: **Fase 1 + 2 + 3 + 4 implementadas** (sesión, default-deny, param-trust, guards de escritura por handler y por proxy, bcrypt, rate-limit, revocación, y roles de matrícula/inscripción/feed/mensajería/records vía matriz de permisos o `visibleRolesJson`).
 
 ## Modelo de sesión
 
@@ -25,6 +25,12 @@ Notas:
 - `/api/permissions` no lleva guard extra: `mode=self` lo usa cualquier rol; la matriz ya resuelve administrador internamente.
 
 ## Deuda pendiente (fases siguientes)
+
+0. ~~**Roles de matrícula/pre-matrícula/feed/mensajería**~~ ✅ FASE 4 (decisión de negocio aplicada):
+   - Inscripción y pre-matrícula (`POST /api/enrollments`): roles configurables en la matriz de permisos (módulos `inscripcion` / `pre-matricula`, acción `canCreate`; default del NAV incluye al acudiente).
+   - Matrícula interna (`/api/student-enrollments`, `/api/enrollment-events`, `/api/enrollments/update`): módulo `matricula` (canCreate/canEdit/canDelete); el actor viene de la sesión, no del body.
+   - Feed (`authorId`) y mensajería (`senderId`): **identidad forzada desde la sesión** (nadie publica/escribe en nombre de otro) + roles configurables en la matriz (módulos `comunidad` / `mensajeria`; defaults del NAV = todos los roles).
+   - Records de módulos personalizados: respeta **`visibleRolesJson`** definido por el rector al publicar (administrador siempre puede).
 
 1. ~~**Param-trust en APIs de dashboards**~~ ✅ FASE 2: `/api/student-dashboard`, `/api/teacher-dashboard`, `/api/directivo-dashboard`, `/api/parent-dashboard`, `/api/dashboard`, `/api/permissions?mode=self`, `/api/messages`, `/api/notifications` validan `userId === session.uid` (`isSelf`). Pendiente extender el mismo patrón a APIs "self" menores (p. ej. `/api/user-scope` GET ya acepta self-o-admin vía roles; revisar el resto caso a caso).
 2. **Resto de rutas de escritura**: ~~aplicar~~ ✅ FASE 3: cubiertas a nivel PROXY con el mapa `WRITE_MODULE_ROLES` (roles firmados en el token; cambia el rol → re-login para escribir) para: users/roles, audits, dashboard-settings, theme-options, user-scope, students (+bulk/import), groups, subjects, subject-assignments, evaluative-concepts, educational-models, evaluation-scales, periods, academic-years, meetings, workshops, activities, grades, grade-records, grade-comments, grade-sheet-archive, attendance y custom-modules (definiciones: solo administrador). Además llevan `requireModule` con roles FRESCOS de BD los handlers de: usuarios, roles, auditoría, estudiantes (CRUD+bulk+import), asistencia, notas, tema y umbrales. **Queda abierto por diseño**: `/api/custom-modules/records` (escrituras de usuarios finales de módulos personalizados, p. ej. «Permiso de salida» del acudiente), feed, mensajes, e-learning y matrícula/pre-matrícula (flujos multi-rol). Para blindarlas hace falta decisión de negocio sobre qué roles escriben cada una.
