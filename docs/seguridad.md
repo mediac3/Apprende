@@ -1,6 +1,6 @@
 # Seguridad de la API — Apprende
 
-Estado: **Fase 1 + Fase 2 implementadas** (sesión de API, default-deny, param-trust, guards de escritura, bcrypt, rate-limit).
+Estado: **Fase 1 + 2 + 3 implementadas** (sesión, default-deny, param-trust, guards de escritura por handler y por proxy, bcrypt, rate-limit, revocación de rutas self al desactivar).
 
 ## Modelo de sesión
 
@@ -27,7 +27,7 @@ Notas:
 ## Deuda pendiente (fases siguientes)
 
 1. ~~**Param-trust en APIs de dashboards**~~ ✅ FASE 2: `/api/student-dashboard`, `/api/teacher-dashboard`, `/api/directivo-dashboard`, `/api/parent-dashboard`, `/api/dashboard`, `/api/permissions?mode=self`, `/api/messages`, `/api/notifications` validan `userId === session.uid` (`isSelf`). Pendiente extender el mismo patrón a APIs "self" menores (p. ej. `/api/user-scope` GET ya acepta self-o-admin vía roles; revisar el resto caso a caso).
-2. **Resto de rutas de escritura**: cubiertas con `requireModule` (mapa `MODULE_ROLES` en `src/lib/api-guard.ts`) las de: gestión de estudiantes (create/edit/delete/bulk/import), asistencia, notas (grades, grade-records, grade-comments), opciones de tema, umbrales del dashboard directivo, usuarios y auditoría. **Pendiente de aplicar el mismo guard** (2 líneas por handler con el mapa ya listo): activities, groups, subjects, subject-assignments, evaluative-concepts, educational-models, evaluation-scales, periods, academic-years, meetings, workshops, curriculum-*, custom-modules (admin), enrollment-events, student-contacts/requirements/certificates, spaces, report-templates/variables, feed. Riesgo hoy: quedan tras el 401 global (exigen sesión) pero un usuario autenticado cualquiera podría escribir en ellas.
+2. **Resto de rutas de escritura**: ~~aplicar~~ ✅ FASE 3: cubiertas a nivel PROXY con el mapa `WRITE_MODULE_ROLES` (roles firmados en el token; cambia el rol → re-login para escribir) para: users/roles, audits, dashboard-settings, theme-options, user-scope, students (+bulk/import), groups, subjects, subject-assignments, evaluative-concepts, educational-models, evaluation-scales, periods, academic-years, meetings, workshops, activities, grades, grade-records, grade-comments, grade-sheet-archive, attendance y custom-modules (definiciones: solo administrador). Además llevan `requireModule` con roles FRESCOS de BD los handlers de: usuarios, roles, auditoría, estudiantes (CRUD+bulk+import), asistencia, notas, tema y umbrales. **Queda abierto por diseño**: `/api/custom-modules/records` (escrituras de usuarios finales de módulos personalizados, p. ej. «Permiso de salida» del acudiente), feed, mensajes, e-learning y matrícula/pre-matrícula (flujos multi-rol). Para blindarlas hace falta decisión de negocio sobre qué roles escriben cada una.
 3. ~~**Hash de contraseñas**~~ ✅ FASE 2: bcrypt (cost 10) en `src/lib/password.ts`; las históricas SHA-256 se aceptan y se re-hashan transparentemente en el login (upgrade verificado en BD: `$2b$…`). Semillas (scripts/seed.ts) ya siembran bcrypt.
 4. ~~**Rate limiting en login**~~ ✅ FASE 2: 5 fallos por usuario+IP cada 15 min → `429` (en memoria, válido para una sola instancia; migrar a Redis/BD si se escala horizontal).
 5. Rotación/refresh de sesión y revocación al desactivar un usuario (hoy la cookie vive 7 días; `requireRoles`/`requireModule` sí exigen `active: true`).

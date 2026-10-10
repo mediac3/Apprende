@@ -9,6 +9,7 @@ export const SESSION_TTL_S = 60 * 60 * 24 * 7; // 7 días
 export interface SessionPayload {
   uid: string;
   imp?: boolean; // true = cookie emitida como usuario objetivo de «Ver como»
+  roles?: string[]; // códigos de rol al emitirse (para gates de módulo en el proxy)
   iat: number;
   exp: number;
 }
@@ -62,12 +63,13 @@ function timingSafeEqualStr(a: string, b: string): boolean {
 
 export async function createSessionToken(
   uid: string,
-  opts?: { imp?: boolean; ttlSeconds?: number }
+  opts?: { imp?: boolean; ttlSeconds?: number; roles?: string[] }
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const payload: SessionPayload = {
     uid,
     imp: opts?.imp || undefined,
+    roles: opts?.roles && opts.roles.length > 0 ? opts.roles : undefined,
     iat: now,
     exp: now + (opts?.ttlSeconds ?? SESSION_TTL_S),
   };

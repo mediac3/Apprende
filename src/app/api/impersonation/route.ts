@@ -90,7 +90,11 @@ export async function POST(req: NextRequest) {
     });
     res.cookies.set(
       SESSION_COOKIE,
-      await createSessionToken(target.id, { imp: true, ttlSeconds: EXPIRES_MIN * 60 }),
+      await createSessionToken(target.id, {
+        imp: true,
+        ttlSeconds: EXPIRES_MIN * 60,
+        roles: roles.length > 0 ? roles : [target.role],
+      }),
       sessionCookieOptions(EXPIRES_MIN * 60)
     );
     return res;
@@ -114,9 +118,23 @@ export async function PATCH(req: NextRequest) {
     if (!log.endedAt) {
       await db.impersonationLog.update({ where: { id: logId }, data: { endedAt: new Date() } });
     }
-    // [Seguridad] restaura la identidad del administrador en la cookie de sesión
+    // [Seguridad] restaura la identidad del administrador (con sus roles) en la cookie
+    const admin = await db.user.findUnique({
+      where: { id: log.adminId },
+      select: { role: true, userRoles: { select: { role: { select: { code: true, sortOrder: true } } } } },
+    });
+    const adminRoles = admin
+      ? admin.userRoles.map((ur) => ur.role.code).sort((a, b) => {
+          // orden irrelevante para el set; dedup abajo
+          return a.localeCompare(b);
+        }).filter((c, i, arr) => arr.indexOf(c) === i)
+      : [];
     const res = NextResponse.json({ ok: true });
-    res.cookies.set(SESSION_COOKIE, await createSessionToken(log.adminId), sessionCookieOptions(SESSION_TTL_S));
+    res.cookies.set(
+      SESSION_COOKIE,
+      await createSessionToken(log.adminId, { roles: adminRoles.length > 0 ? adminRoles : [admin?.role ?? ""] }),
+      sessionCookieOptions(SESSION_TTL_S)
+    );
     return res;
   } catch (e) {
     console.error("PATCH /api/impersonation", e);
