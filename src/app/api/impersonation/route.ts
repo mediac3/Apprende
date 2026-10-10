@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { createSessionToken, SESSION_COOKIE, sessionCookieOptions, SESSION_TTL_S } from "@/lib/session";
 
 // [F4.3] Impersonación "Ver como" — SOLO Administrador, nunca sobre otro
 // Administrador, nunca sobre sí mismo. Registra inicio/fin en ImpersonationLog
@@ -65,7 +66,10 @@ export async function POST(req: NextRequest) {
       .sort((a, b) => a.role.sortOrder - b.role.sortOrder)
       .map((ur) => ur.role.code);
 
-    return NextResponse.json({
+    // [Seguridad] La cookie de sesión pasa a identificar al usuario objetivo,
+    // con TTL alineado a la salvaguarda de 30 min; al finalizar (PATCH) vuelve
+    // a identificarse la cookie con el administrador original.
+    const res = NextResponse.json({
       ok: true,
       logId: log.id,
       startedAt: log.startedAt,
@@ -84,6 +88,12 @@ export async function POST(req: NextRequest) {
         mustChangePassword: false,
       },
     });
+    res.cookies.set(
+      SESSION_COOKIE,
+      await createSessionToken(target.id, { imp: true, ttlSeconds: EXPIRES_MIN * 60 }),
+      sessionCookieOptions(EXPIRES_MIN * 60)
+    );
+    return res;
   } catch (e) {
     console.error("POST /api/impersonation", e);
     return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
@@ -104,7 +114,10 @@ export async function PATCH(req: NextRequest) {
     if (!log.endedAt) {
       await db.impersonationLog.update({ where: { id: logId }, data: { endedAt: new Date() } });
     }
-    return NextResponse.json({ ok: true });
+    // [Seguridad] restaura la identidad del administrador en la cookie de sesión
+    const res = NextResponse.json({ ok: true });
+    res.cookies.set(SESSION_COOKIE, await createSessionToken(log.adminId), sessionCookieOptions(SESSION_TTL_S));
+    return res;
   } catch (e) {
     console.error("PATCH /api/impersonation", e);
     return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
