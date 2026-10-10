@@ -14,6 +14,7 @@ import { db } from "@/lib/db";
 import { getUserRoleCodes } from "@/lib/teaching-rules";
 import { ADMIN_ROLE } from "@/lib/permissions/modules";
 import { getEffectivePermMap, getUserRolesInfo, listAllModules } from "@/lib/permissions/server";
+import { isSelf } from "@/lib/api-guard";
 
 type Entry = {
   roleId: string;
@@ -42,6 +43,10 @@ export async function GET(req: NextRequest) {
 
   try {
     if (mode === "self") {
+      // [Seguridad] param-trust: los permisos propios exigen identidad de sesión
+      if (!(await isSelf(req, userId))) {
+        return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+      }
       const [perms, { isAdmin }] = await Promise.all([
         getEffectivePermMap(userId, institutionId),
         getUserRolesInfo(userId),

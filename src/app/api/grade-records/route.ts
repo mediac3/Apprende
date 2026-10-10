@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { canUserEditGrades, getActiveStudentsOfGroup, getActiveYear } from "@/lib/teaching-rules";
+import { requireModule, forbidden } from "@/lib/api-guard";
 
 // === Módulo Calificaciones: notas (GradeRecord) ===
 // Toda consulta usa el cliente Prisma (consultas parametrizadas).
@@ -75,6 +76,8 @@ export async function GET(req: NextRequest) {
 // Body: { records: [{ studentId, activityId, value: number | null }] }
 // value null o ausente = limpiar la celda (se elimina el registro).
 export async function POST(req: NextRequest) {
+  // [Seguridad] Guardado de notas: personal docente/administrativo
+  if (!(await requireModule(req, "notas"))) return forbidden();
   try {
     const body = await req.json();
     const items: Array<{ studentId?: unknown; activityId?: unknown; value?: unknown }> =

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireModule, forbidden } from "@/lib/api-guard";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -75,6 +76,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // [Seguridad] Control de asistencia: lo registra el personal (el acudiente solo consulta)
+  if (!(await requireModule(req, "asistencia"))) return forbidden();
   try {
     const body = await req.json();
     const {

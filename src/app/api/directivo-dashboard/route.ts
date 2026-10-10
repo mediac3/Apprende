@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDirectivoDashboard } from "@/lib/queries/directivo-dashboard";
+import { isSelf, selfForbidden } from "@/lib/api-guard";
 
 // === [Dashboard directivo] KPIs, alertas, tendencias y drill-down para Rector/Coordinador ===
 // Seguridad: el alcance se resuelve EN SERVIDOR con los roles frescos de la BD.
@@ -13,6 +14,7 @@ export async function GET(req: NextRequest) {
   if (!institutionId || !userId) {
     return NextResponse.json({ ok: false, error: "institutionId y userId requeridos" }, { status: 400 });
   }
+  if (!(await isSelf(req, userId))) return selfForbidden(); // [Seguridad] param-trust
 
   try {
     const result = await getDirectivoDashboard({

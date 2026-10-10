@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import crypto from "crypto";
-
-// Hash simple y determinista (mismo algoritmo que api/auth/login)
-function hashPassword(p: string): string {
-  return crypto.createHash("sha256").update(p).digest("hex");
-}
+import { verifyPassword, hashPassword } from "@/lib/password";
 
 // [F2] Cambio de contraseña (autenticado con la contraseña actual; sin token global).
 // Obligatorio cuando User.mustChangePassword=true (contraseña inicial = documento).
@@ -36,7 +32,7 @@ export async function POST(req: NextRequest) {
       where: { username: String(username).trim(), active: true },
     });
 
-    if (!user || user.passwordHash !== hashPassword(String(currentPassword))) {
+    if (!user || !verifyPassword(String(currentPassword), user.passwordHash)) {
       return NextResponse.json(
         { ok: false, error: "Credenciales inválidas" },
         { status: 401 }

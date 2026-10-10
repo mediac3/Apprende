@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireModule, forbidden } from "@/lib/api-guard";
 import crypto from "crypto";
 import { normalizeThemeData, serializeThemeData, themeDataSchema } from "@/lib/theme-options";
 
@@ -34,6 +35,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  // [Seguridad] Opciones de tema: rector/administrador (NAV opciones-tema)
+  if (!(await requireModule(req, "opciones-tema"))) return forbidden();
   try {
     const body = await req.json();
     const institutionId: string | undefined = body?.institutionId;

@@ -20,8 +20,11 @@ import "dotenv/config";
 
 const db = new PrismaClient();
 
+// [Seguridad] bcrypt para las contraseñas sembradas (el login acepta también las
+// históricas SHA-256 y las re-hasha en el primer acceso).
+import bcrypt from "bcryptjs";
 function hashPassword(p: string): string {
-  return crypto.createHash("sha256").update(p).digest("hex");
+  return bcrypt.hashSync(p, 10);
 }
 
 function needEnv(key: string): string {

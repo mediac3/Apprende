@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { forbiddenUnless } from "@/lib/permissions/server";
+import { requireModule, forbidden } from "@/lib/api-guard";
 
 // [C1] Eliminación masiva de estudiantes en transacción atómica.
 // Regla dura: si ALGÚN estudiante del lote tiene notas registradas (Grade o
@@ -10,6 +11,8 @@ function fullNameOf(s: { lastName: string; lastName2: string | null; firstName: 
 }
 
 export async function POST(req: NextRequest) {
+  // [Seguridad] Gestión de Estudiantes: rector/administrador
+  if (!(await requireModule(req, "gestion-estudiantes"))) return forbidden();
   try {
     const body = await req.json();
     const ids: unknown = body?.ids;

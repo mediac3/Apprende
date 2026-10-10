@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { isSelf, selfForbidden } from "@/lib/api-guard";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -12,6 +13,7 @@ export async function GET(req: NextRequest) {
       { status: 400 }
     );
   }
+  if (!(await isSelf(req, userId))) return selfForbidden(); // [Seguridad] solo tus notificaciones
 
   try {
     const where: any = { userId };

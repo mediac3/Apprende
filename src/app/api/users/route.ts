@@ -10,10 +10,9 @@ import crypto from "crypto";
 // PATCH  /api/users                       → actualizar datos / estado / contraseña
 // DELETE /api/users?id=&institutionId=    → eliminar usuario
 
-// Hash simple y determinista (mismo criterio que /api/auth/login)
-function hashPassword(p: string): string {
-  return crypto.createHash("sha256").update(p).digest("hex");
-}
+// [Seguridad] bcrypt con salt (antes SHA-256 sin salt); el login acepta y
+// re-hash transparente las contraseñas históricas.
+import { hashPassword } from "@/lib/password";
 
 // Sincroniza User.role con el rol principal (menor sortOrder en UserRole)
 async function syncPrimaryRole(userId: string) {

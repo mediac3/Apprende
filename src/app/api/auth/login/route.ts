@@ -2,10 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import crypto from "crypto";
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
+import { verifyPassword, hashPassword, isLegacySha256 } from "@/lib/password";
 
-// Hash simple y determinista (no para producción, solo demo)
-function hashPassword(p: string): string {
-  return crypto.createHash("sha256").update(p).digest("hex");
+// [Seguridad] Rate limit de fuerza bruta: máx. 5 intentos fallidos por
+// usuario+IP cada 15 minutos (en memoria; válido para despliegue de una sola
+// instancia). Solo cuentan los intentos FALLIDOS.
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_FAILS = 5;
+const loginFails = new Map<string, number[]>();
+
+function loginBlocked(key: string): boolean {
+  const now = Date.now();
+  const recent = (loginFails.get(key) ?? []).filter((t) => now - t < LOGIN_WINDOW_MS);
+  loginFails.set(key, recent);
+  return recent.length >= LOGIN_MAX_FAILS;
+}
+
+function registerLoginFail(key: string) {
+  const now = Date.now();
+  const recent = (loginFails.get(key) ?? []).filter((t) => now - t < LOGIN_WINDOW_MS);
+  recent.push(now);
+  loginFails.set(key, recent);
 }
 
 export async function POST(req: NextRequest) {
@@ -16,6 +33,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { ok: false, error: "Usuario y contraseña requeridos" },
         { status: 400 }
+      );
+    }
+
+    const failKey = `${String(username).trim().toLowerCase()}|${req.headers.get("x-forwarded-for") || "local"}`;
+    if (loginBlocked(failKey)) {
+      return NextResponse.json(
+        { ok: false, error: "Demasiados intentos fallidos. Espera 15 minutos e inténtalo de nuevo." },
+        { status: 429 }
       );
     }
 
@@ -30,11 +55,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    if (!user || user.passwordHash !== hashPassword(String(password))) {
+    if (!user || !verifyPassword(String(password), user.passwordHash)) {
+      registerLoginFail(failKey);
       return NextResponse.json(
         { ok: false, error: "Credenciales inválidas" },
         { status: 401 }
       );
+    }
+
+    // [Seguridad] upgrade transparente: contraseñas históricas SHA-256 (demo) se
+    // re-hashan a bcrypt en el primer login exitoso.
+    if (isLegacySha256(user.passwordHash)) {
+      await db.user.update({
+        where: { id: user.id },
+        data: { passwordHash: hashPassword(String(password)) },
+      });
     }
 
     await db.user.update({
