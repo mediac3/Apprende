@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { forbiddenUnless } from "@/lib/permissions/server";
+import { getSessionUser } from "@/lib/api-guard";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -45,7 +46,14 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { institutionId, authorId, spaceId, content, pollQuestion, pollOptions } = body;
+    const { institutionId, spaceId, content, pollQuestion, pollOptions } = body;
+
+    // [Seguridad] identidad forzada: nadie publica en nombre de otro (el actor
+    // viene de la cookie; el authorId del body se ignora). Roles de comunidad
+    // configurables en la matriz de permisos (forbiddenUnless ya existente).
+    const author = await getSessionUser(req);
+    if (!author) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    const authorId = author.id;
 
     if (!institutionId || !authorId || !content) {
       return NextResponse.json({ ok: false, error: "Faltan datos" }, { status: 400 });

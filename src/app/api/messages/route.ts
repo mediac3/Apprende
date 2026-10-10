@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { isSelf, selfForbidden } from "@/lib/api-guard";
+import { isSelf, selfForbidden, getSessionUser } from "@/lib/api-guard";
+import { forbiddenUnless } from "@/lib/permissions/server";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -100,11 +101,19 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { senderId, receiverId, content } = body;
+    const { senderId: bodySenderId, receiverId, content } = body;
+
+    // [Seguridad] identidad forzada: nadie escribe mensajes en nombre de otro.
+    // Roles de mensajería configurables en la matriz de permisos.
+    const sender = await getSessionUser(req);
+    if (!sender) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    const senderId = sender.id;
 
     if (!senderId || !receiverId || !content) {
       return NextResponse.json({ ok: false, error: "Faltan datos" }, { status: 400 });
     }
+    const denied = await forbiddenUnless(senderId, sender.institutionId, "mensajeria", "canCreate", "enviar mensajes");
+    if (denied) return denied;
 
     const message = await db.message.create({
       data: {

@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getSessionUser } from "@/lib/api-guard";
+import { forbiddenUnless } from "@/lib/permissions/server";
 
 export async function PATCH(req: NextRequest) {
   try {
+    // [Seguridad] Procesamiento de solicitudes = gestión de matrícula (matriz de permisos)
+    const actor = await getSessionUser(req);
+    if (!actor) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
     const body = await req.json();
     const { id, status, processedById, notes } = body;
+    const denied = await forbiddenUnless(actor.id, actor.institutionId, "matricula", "canEdit", "procesar solicitudes de matrícula");
+    if (denied) return denied;
+    const processedActor = processedById || actor.id;
 
     if (!id || !status) {
       return NextResponse.json({ ok: false, error: "Faltan datos" }, { status: 400 });
@@ -19,7 +27,7 @@ export async function PATCH(req: NextRequest) {
       where: { id },
       data: {
         status,
-        processedById: processedById || null,
+        processedById: processedActor || null,
         notes: notes !== undefined ? notes : existing.notes,
       },
       include: {

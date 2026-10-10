@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getSessionUser } from "@/lib/api-guard";
+import { forbiddenUnless } from "@/lib/permissions/server";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -53,6 +55,14 @@ export async function POST(req: NextRequest) {
     if (!institutionId || !applicantName || !guardianName || !guardianPhone) {
       return NextResponse.json({ ok: false, error: "Faltan datos" }, { status: 400 });
     }
+
+    // [Seguridad] Inscripción / Pre-matrícula (acudiente): roles configurables en la
+    // matriz de permisos (módulo según el tipo de solicitud); identidad desde sesión.
+    const actor = await getSessionUser(req);
+    if (!actor) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
+    const moduleKey = type === "pre-matricula" ? "pre-matricula" : "inscripcion";
+    const denied = await forbiddenUnless(actor.id, institutionId, moduleKey, "canCreate", "registrar solicitudes");
+    if (denied) return denied;
 
     const enrollment = await db.enrollment.create({
       data: {

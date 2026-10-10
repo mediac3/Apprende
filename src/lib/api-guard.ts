@@ -71,3 +71,16 @@ export const MODULE_ROLES: Record<string, string[]> = {
 export function requireModule(req: NextRequest, moduleKey: string) {
   return requireRoles(req, MODULE_ROLES[moduleKey] ?? ["rector", "administrador"]);
 }
+
+// [Seguridad] Identidad FRESCA de BD desde la cookie (para forbiddenUnless con la
+// matriz de permisos: el actor ya no se toma del body/query). null si no hay sesión
+// válida o el usuario está inactivo.
+export async function getSessionUser(req: NextRequest) {
+  const session = await verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
+  if (!session) return null;
+  const user = await db.user.findUnique({
+    where: { id: session.uid },
+    select: { id: true, username: true, fullName: true, role: true, active: true, institutionId: true },
+  });
+  return user?.active ? user : null;
+}

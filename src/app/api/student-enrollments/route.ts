@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getSessionUser } from "@/lib/api-guard";
+import { forbiddenUnless } from "@/lib/permissions/server";
 
 // Gestión de Estudiantes (PDF) — fichas de matrícula por año (libro/folio, renovaciones)
+// [Seguridad] escrituras vía matriz de permisos (módulo "matricula", roles configurables;
+// el administrador siempre pasa).
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -37,12 +41,19 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // [Seguridad] matrícula interna vía matriz de permisos (identidad desde sesión)
+  const actor = await getSessionUser(req);
+  if (!actor) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
   try {
     const body = await req.json();
     const {
       institutionId, studentId, userId,
       academicYearId, groupId, status, libro, folio, code, enrolledAt,
     } = body;
+
+    // [Seguridad] roles configurables en la matriz (módulo "matricula")
+    const denied = await forbiddenUnless(actor.id, actor.institutionId, "matricula", "canCreate", "crear fichas de matrícula");
+    if (denied) return denied;
 
     if (!institutionId || !studentId) {
       return NextResponse.json({ ok: false, error: "Faltan datos" }, { status: 400 });
@@ -88,6 +99,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  // [Seguridad] matrícula interna vía matriz de permisos (identidad desde sesión)
+  const actor = await getSessionUser(req);
+  if (!actor) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
   try {
     const body = await req.json();
     const { id, institutionId, userId, academicYearId, groupId, status, libro, folio, code, enrolledAt } = body;
@@ -95,6 +109,8 @@ export async function PATCH(req: NextRequest) {
     if (!id || !institutionId) {
       return NextResponse.json({ ok: false, error: "id e institutionId requeridos" }, { status: 400 });
     }
+    const denied = await forbiddenUnless(actor.id, institutionId, "matricula", "canEdit", "editar fichas de matrícula");
+    if (denied) return denied;
 
     const data: any = {};
     if ("academicYearId" in body) data.academicYearId = academicYearId || null;
@@ -140,14 +156,19 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  // [Seguridad] matrícula interna vía matriz de permisos (identidad desde sesión)
+  const actor = await getSessionUser(req);
+  if (!actor) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
-  const institutionId = searchParams.get("institutionId");
+  const institutionId = searchParams.get("institutionId") || actor.institutionId;
   const userId = searchParams.get("userId");
 
   if (!id || !institutionId) {
     return NextResponse.json({ ok: false, error: "id e institutionId requeridos" }, { status: 400 });
   }
+  const denied = await forbiddenUnless(actor.id, institutionId, "matricula", "canDelete", "eliminar fichas de matrícula");
+  if (denied) return denied;
 
   try {
     await db.studentEnrollment.delete({ where: { id } });
