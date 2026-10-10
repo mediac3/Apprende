@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { forbiddenUnless } from "@/lib/permissions/server";
+import { requireRoles, forbidden } from "@/lib/api-guard";
 import crypto from "crypto";
 
 // Gestión de usuarios (módulo Administración)
@@ -32,6 +33,9 @@ function sanitize(u: any) {
 }
 
 export async function GET(req: NextRequest) {
+  // [Seguridad] identidad real desde la cookie de sesión (antes: PII pública)
+  const actor = await requireRoles(req, ["rector", "administrador"]);
+  if (!actor) return forbidden();
   const { searchParams } = new URL(req.url);
   const institutionId = searchParams.get("institutionId");
 
@@ -65,6 +69,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // [Seguridad] el actor ya no se confía del body: identidad desde la sesión
+  const actor = await requireRoles(req, ["rector", "administrador"]);
+  if (!actor) return forbidden();
   try {
     const body = await req.json();
     const {
@@ -140,6 +147,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  // [Seguridad] el actor ya no se confía del body: identidad desde la sesión
+  const actor = await requireRoles(req, ["rector", "administrador"]);
+  if (!actor) return forbidden();
   try {
     const body = await req.json();
     const {
@@ -218,6 +228,9 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  // [Seguridad] el actor ya no se confía del query: identidad desde la sesión
+  const actor = await requireRoles(req, ["rector", "administrador"]);
+  if (!actor) return forbidden();
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");

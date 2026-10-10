@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import crypto from "crypto";
+import { createSessionToken, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
 
 // Hash simple y determinista (no para producción, solo demo)
 function hashPassword(p: string): string {
@@ -84,7 +85,11 @@ export async function POST(req: NextRequest) {
       },
     };
 
-    return NextResponse.json({ ok: true, user: safe });
+    // [Seguridad] Sesión httpOnly firmada: a partir de aquí la API exige esta cookie
+    // (middleware default-deny). El estado de UI sigue en el store del cliente.
+    const res = NextResponse.json({ ok: true, user: safe });
+    res.cookies.set(SESSION_COOKIE, await createSessionToken(user.id), sessionCookieOptions());
+    return res;
   } catch (e) {
     console.error("[auth.login]", e);
     return NextResponse.json(

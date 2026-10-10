@@ -48,10 +48,11 @@ export const useAuthStore = create<AuthState>()(
       setImpersonating: (impersonating) => set({ impersonating }),
       logout: () => {
         set({ user: null, impersonating: null });
-        // [Seguridad] al salir, el módulo activo y los permisos en caché NO deben
-        // sobrevivir a la sesión: evita que el siguiente usuario herede la vista
-        // (p.ej. un acudiente cayendo en el módulo Usuarios de la rectora anterior).
-        // Import diferido para no crear ciclo de módulos entre stores.
+        // [Seguridad] cierra la sesión de API (elimina la cookie httpOnly) y evita
+        // que el módulo activo o los permisos en caché sobrevivan a la sesión:
+        // el siguiente usuario no hereda vistas del anterior (p. ej. Usuarios).
+        // Imports diferidos para no crear ciclo de módulos entre stores.
+        void fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
         void import("./ui-store").then((m) => m.useUIStore.getState().setModule("dashboard"));
         void import("./perm-store").then((m) => m.usePermStore.getState().reset());
       },

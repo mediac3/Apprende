@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireRoles, forbidden } from "@/lib/api-guard";
 
 export async function GET(req: NextRequest) {
+  // [Seguridad] la auditoría es del módulo rector/administrador (NAV) y expone
+  // trazabilidad sensible: identidad real desde la cookie de sesión.
+  const actor = await requireRoles(req, ["rector", "administrador"]);
+  if (!actor) return forbidden();
   const { searchParams } = new URL(req.url);
   const institutionId = searchParams.get("institutionId");
   const moduleFilter = searchParams.get("module");

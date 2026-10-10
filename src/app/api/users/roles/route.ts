@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import crypto from "crypto";
+import { requireRoles, forbidden } from "@/lib/api-guard";
 
 // Cambiar el estado de los roles de un usuario (modal del módulo Usuarios)
 // PATCH /api/users/roles { id, institutionId, userId (actor), roleIds[] }
@@ -18,6 +19,9 @@ async function syncPrimaryRole(userId: string) {
 }
 
 export async function PATCH(req: NextRequest) {
+  // [Seguridad] identidad real desde la cookie de sesión
+  const actor = await requireRoles(req, ["rector", "administrador"]);
+  if (!actor) return forbidden();
   try {
     const body = await req.json();
     const { id, institutionId, userId: actorId, roleIds } = body;
@@ -104,6 +108,9 @@ export async function PATCH(req: NextRequest) {
 // replace=true: REEMPLAZA el conjunto completo de cada usuario por roleIds.
 // El propio actor se omite (evita auto-bloqueo) y se reporta en skippedSelf.
 export async function POST(req: NextRequest) {
+  // [Seguridad] identidad real desde la cookie de sesión
+  const actor = await requireRoles(req, ["rector", "administrador"]);
+  if (!actor) return forbidden();
   try {
     const body = await req.json();
     const { institutionId, userId: actorId, userIds, roleIds, replace } = body;
