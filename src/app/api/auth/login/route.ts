@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
     // [Seguridad] Sesión httpOnly firmada: a partir de aquí la API exige esta cookie
     // (middleware default-deny). El estado de UI sigue en el store del cliente.
     const res = NextResponse.json({ ok: true, user: safe });
-    res.cookies.set(SESSION_COOKIE, await createSessionToken(user.id), sessionCookieOptions());
+    res.cookies.set(SESSION_COOKIE, await createSessionToken(user.id, { roles: safe.roles }), sessionCookieOptions());
     return res;
   } catch (e) {
     console.error("[auth.login]", e);

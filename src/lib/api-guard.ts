@@ -31,11 +31,14 @@ export function forbidden() {
 
 // [Seguridad] Param-trust: para APIs "self" (dashboards, permisos propios,
 // mensajería…) el ?userId= del query debe coincidir con la identidad de la
-// cookie — si no, es lectura cruzada de otro usuario.
+// cookie — si no, es lectura cruzada de otro usuario. Verifica además que la
+// cuenta siga ACTIVA en BD: desactivar un usuario revoca sus rutas self al momento.
 export async function isSelf(req: NextRequest, userId: string | null | undefined): Promise<boolean> {
   if (!userId) return false;
   const session = await verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
-  return !!session && session.uid === userId;
+  if (!session || session.uid !== userId) return false;
+  const user = await db.user.findUnique({ where: { id: session.uid }, select: { active: true } });
+  return !!user?.active;
 }
 
 export function selfForbidden() {
@@ -61,6 +64,8 @@ export const MODULE_ROLES: Record<string, string[]> = {
   actas: ["rector", "coordinador", "administrador"],
   matricula: ["rector", "administrador", "coordinador"],
   "dashboard-directivo": ["rector", "coordinador", "administrador"],
+  talleres: ["docente", "coordinador", "rector", "administrador"],
+  "constructor-modulos": ["administrador"],
 };
 
 export function requireModule(req: NextRequest, moduleKey: string) {
