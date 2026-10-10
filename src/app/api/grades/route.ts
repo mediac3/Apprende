@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { canUserEditGrades, getActiveYear } from "@/lib/teaching-rules";
+import { requireModule, forbidden } from "@/lib/api-guard";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -50,6 +51,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // [Seguridad] Calificaciones: personal docente/administrativo (roles frescos de BD)
+  if (!(await requireModule(req, "notas"))) return forbidden();
   try {
     const body = await req.json();
     const {

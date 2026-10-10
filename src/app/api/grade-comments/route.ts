@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireModule, forbidden } from "@/lib/api-guard";
 
 // [theme-options] Comentarios por celda de la planilla de Notas parciales.
 // GET  ?groupId&subjectId&periodId → mapa "studentId::activityId" → texto.
@@ -39,6 +40,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  // [Seguridad] Comentarios de planilla: personal docente/administrativo
+  if (!(await requireModule(req, "notas"))) return forbidden();
   try {
     const body = await req.json();
     const institutionId: string | undefined = body?.institutionId;

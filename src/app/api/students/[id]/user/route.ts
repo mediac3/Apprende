@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import crypto from "crypto";
+import { hashPassword } from "@/lib/password";
 
 // [F3] Usuario vinculado al estudiante — estado del tab "Usuario" de la ficha.
 // La autorización fina es client-side (patrón de la app: NAV rector/administrador);
 // aquí se validan las reglas duras de negocio (documento, unicidad, existencia).
-
-function hashPassword(p: string): string {
-  return crypto.createHash("sha256").update(p).digest("hex"); // mismo algoritmo que api/auth/login
-}
 
 function serializeUser(u: {
   id: string; username: string; role: string; active: boolean;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { isSelf, selfForbidden } from "@/lib/api-guard";
 
 // Resumen para el dashboard
 export async function GET(req: NextRequest) {
@@ -14,6 +15,7 @@ export async function GET(req: NextRequest) {
       { status: 400 }
     );
   }
+  if (!(await isSelf(req, userId))) return selfForbidden(); // [Seguridad] param-trust
 
   try {
     const [

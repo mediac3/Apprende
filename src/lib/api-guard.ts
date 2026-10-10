@@ -28,3 +28,41 @@ export async function requireRoles(req: NextRequest, roles: string[]) {
 export function forbidden() {
   return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
 }
+
+// [Seguridad] Param-trust: para APIs "self" (dashboards, permisos propios,
+// mensajería…) el ?userId= del query debe coincidir con la identidad de la
+// cookie — si no, es lectura cruzada de otro usuario.
+export async function isSelf(req: NextRequest, userId: string | null | undefined): Promise<boolean> {
+  if (!userId) return false;
+  const session = await verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
+  return !!session && session.uid === userId;
+}
+
+export function selfForbidden() {
+  return Response.json({ ok: false, reason: "forbidden_user" }, { status: 403 });
+}
+
+// Mapa módulo→roles (espejo del NAV de institutional-panel). Centralizado para
+// que añadir cobertura a nuevas rutas sea una línea.
+export const MODULE_ROLES: Record<string, string[]> = {
+  usuarios: ["rector", "administrador"],
+  auditoria: ["rector", "administrador"],
+  "gestion-estudiantes": ["rector", "administrador"],
+  "gestion-grupos": ["rector", "administrador"],
+  asignacion: ["rector", "coordinador", "administrador"],
+  "conceptos-evaluativos": ["rector", "administrador"],
+  "modelos-educativos": ["rector", "coordinador", "administrador"],
+  promocion: ["rector", "administrador"],
+  "opciones-tema": ["rector", "administrador"],
+  configuracion: ["rector", "coordinador", "administrador"],
+  notas: ["docente", "director_grupo", "coordinador", "rector", "administrador"],
+  asistencia: ["docente", "director_grupo", "coordinador", "rector", "administrador"],
+  "gestion-actividades": ["docente", "director_grupo", "coordinador", "rector", "administrador"],
+  actas: ["rector", "coordinador", "administrador"],
+  matricula: ["rector", "administrador", "coordinador"],
+  "dashboard-directivo": ["rector", "coordinador", "administrador"],
+};
+
+export function requireModule(req: NextRequest, moduleKey: string) {
+  return requireRoles(req, MODULE_ROLES[moduleKey] ?? ["rector", "administrador"]);
+}

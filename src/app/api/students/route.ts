@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { forbiddenUnless } from "@/lib/permissions/server";
+import { hashPassword } from "@/lib/password";
+import { requireModule, forbidden } from "@/lib/api-guard";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -79,6 +81,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // [Seguridad] Gestión de Estudiantes: rector/administrador (roles frescos de BD)
+  if (!(await requireModule(req, "gestion-estudiantes"))) return forbidden();
   try {
     const body = await req.json();
     const {
@@ -210,6 +214,8 @@ export async function POST(req: NextRequest) {
 // Gestión de Estudiantes (PDF) — actualización parcial de la ficha del estudiante.
 // Solo aplica los campos presentes en el body; no altera el comportamiento de GET/POST.
 export async function PATCH(req: NextRequest) {
+  // [Seguridad] Gestión de Estudiantes: rector/administrador (roles frescos de BD)
+  if (!(await requireModule(req, "gestion-estudiantes"))) return forbidden();
   try {
     const body = await req.json();
     const { id, institutionId, userId } = body;
@@ -280,7 +286,7 @@ export async function PATCH(req: NextRequest) {
             where: { id: u.id },
             data: {
               username: data.documentNumber,
-              passwordHash: crypto.createHash("sha256").update(String(data.documentNumber)).digest("hex"),
+              passwordHash: hashPassword(String(data.documentNumber)),
               mustChangePassword: true,
             },
           });
@@ -311,6 +317,8 @@ export async function PATCH(req: NextRequest) {
 
 // Gestión de Estudiantes (PDF) — eliminar estudiante (borrado en cascada de sus registros)
 export async function DELETE(req: NextRequest) {
+  // [Seguridad] Gestión de Estudiantes: rector/administrador (roles frescos de BD)
+  if (!(await requireModule(req, "gestion-estudiantes"))) return forbidden();
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
   const institutionId = searchParams.get("institutionId");

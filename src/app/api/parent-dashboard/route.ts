@@ -3,12 +3,14 @@
 // Seguridad: el childId se valida DENTRO de la query contra los hijos del acudiente (403 si es ajeno).
 import { NextRequest, NextResponse } from "next/server";
 import { getParentDashboard } from "@/lib/queries/parent-dashboard";
+import { isSelf, selfForbidden } from "@/lib/api-guard";
 
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get("userId");
   if (!userId) {
     return NextResponse.json({ error: "userId requerido" }, { status: 400 });
   }
+  if (!(await isSelf(req, userId))) return selfForbidden(); // [Seguridad] param-trust
   const childId = req.nextUrl.searchParams.get("childId"); // opcional: hijo activo del selector
   const periodId = req.nextUrl.searchParams.get("periodId"); // opcional: periodo del selector (default: activo)
   try {

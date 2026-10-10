@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getUserRoleCodes } from "@/lib/teaching-rules";
+import { requireModule, forbidden } from "@/lib/api-guard";
 
 // === [Dashboard directivo] Umbrales de alertas configurables por institución ===
 // GET: devuelve la fila (o defaults on-read, sin crear) — usado por el dashboard y Configuración.
@@ -19,6 +20,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  // [Seguridad] identidad real desde la cookie (antes: userId falsificable del body)
+  if (!(await requireModule(req, "dashboard-directivo"))) return forbidden();
   try {
     const body = await req.json();
     const institutionId = String(body.institutionId || "");

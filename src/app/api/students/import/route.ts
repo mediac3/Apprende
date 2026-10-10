@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import crypto from "crypto";
 import { forbiddenUnless } from "@/lib/permissions/server";
+import { requireModule, forbidden } from "@/lib/api-guard";
 
 type ImportRow = Record<string, any>;
 
@@ -17,6 +18,8 @@ function normHeaderIn(s: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  // [Seguridad] Importación de estudiantes: rector/administrador
+  if (!(await requireModule(req, "gestion-estudiantes"))) return forbidden();
   try {
     const body = await req.json();
     const { institutionId, userId, academicYearId, rows, institutionFields } = body as {
